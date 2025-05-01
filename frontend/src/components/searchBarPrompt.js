@@ -6,7 +6,6 @@ import MarkdownIt from 'markdown-it'; // Importa el paquete
 const md = new MarkdownIt(); // Inicializa el parser
 
 const SearchBarPrompt = () => {
-  
   const [result, setResult] = useState('');
 
   const handleSearch = async (promptText) => {

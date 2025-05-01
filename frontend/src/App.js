@@ -1,27 +1,30 @@
 import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 import SearchBar from './components/searchBarPrompt';
 import Sidebar from './components/Sidebar';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 
 function App() {
   return (
     <Router>
-      <nav>
-        <Link to="/">Chat</Link>
-        <Link to="/dashboard">Dashboard</Link>
-        <Link to="/config">Configuration</Link>
-      </nav>
-      <Routes>
-        <Route path="/" element={<ChatPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/config" element={<ConfigPage />} />
-      </Routes>
+      <div className="app-container">
+        {/* Eliminamos el viejo nav y usamos el Sidebar */}
+        <Sidebar />
+        
+        {/* Contenido principal que cambiará con las rutas */}
+        <div className="main-content">
+          <Routes>
+            <Route path="/" element={<ChatPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/config" element={<ConfigPage />} />
+          </Routes>
+        </div>
+      </div>
     </Router>
   );
 }
 
-
+// Componentes de página (mejor moverlos a archivos separados)
 function ChatPage() {
   return (
     <div className="page">
