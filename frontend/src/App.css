@@ -1,3 +1,4 @@
+/* App.css */
 /* Base styles */
 body {
   margin: 0;
@@ -8,25 +9,59 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Navigation */
-nav {
-  background: #282c34;
-  padding: 1rem;
+/* Eliminamos los estilos del nav viejo (ya no lo usamos) */
+
+.app-container {
   display: flex;
-  gap: 1rem;
+  min-height: 100vh;
 }
 
-nav a {
+/* Sidebar más estrecha y mejorada */
+.sidebar {
+  width: 180px; /* Reducimos el ancho */
+  background: #2c3e50;
+  padding: 20px 15px; /* Menos padding horizontal */
+  position: fixed; /* Fija la posición */
+  height: 100vh;
+  left: 0;
+  top: 0;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1); /* Sutil sombra */
+  z-index: 1000; /* Asegura que esté por encima del contenido */
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px;
+  margin-left: 180px; /* Mismo ancho que el sidebar */
+  min-height: 100vh;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
   color: white;
+  padding: 12px 10px;
+  margin: 8px 0;
+  border-radius: 6px;
   text-decoration: none;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  transition: background-color 0.3s;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
 }
 
-nav a:hover {
-  background-color: #61dafb;
-  color: #282c34;
+.sidebar-item:hover {
+  background: #9399a0;
+  transform: translateX(5px);
+}
+
+.sidebar-item.active {
+  background: #52768e;
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-item .icon {
+  font-size: 1.1rem;
+  margin-right: 12px;
+  min-width: 20px; /* Mejor alineación */
 }
 
 /* Page content */
@@ -38,45 +73,41 @@ nav a:hover {
 
 /* Responsive layout */
 @media (max-width: 768px) {
-  nav {
-    flex-direction: column;
-    gap: 0.5rem;
+  .sidebar {
+    width: 60px; /* Sidebar muy estrecha en móvil */
+    padding: 10px 5px;
+  }
+  
+  .sidebar-item {
+    justify-content: center;
+    padding: 15px 5px;
+  }
+  
+  .sidebar-item .label {
+    display: none; /* Ocultamos texto en móvil */
+  }
+  
+  .sidebar-item .icon {
+    margin-right: 0;
+    font-size: 1.3rem;
+  }
+  
+  .main-content {
+    margin-left: 60px; /* Ajustamos margen */
+    padding: 15px;
   }
   
   .page {
     padding: 1rem;
   }
 }
-.app-container {
-  display: flex;
-  min-height: 100vh;
+
+/* Opcional: Scroll personalizado para sidebar */
+.sidebar::-webkit-scrollbar {
+  width: 5px;
 }
 
-.sidebar {
-  width: 250px;
-  background: #2c3e50;
-  padding: 20px;
-}
-
-.main-content {
-  flex: 1;
-  padding: 20px;
-}
-
-.sidebar-item {
-  display: flex;
-  align-items: center;
-  color: white;
-  padding: 10px;
-  margin: 5px 0;
-  border-radius: 5px;
-  text-decoration: none;
-}
-
-.sidebar-item:hover {
-  background: #34495e;
-}
-
-.sidebar-item.active {
-  background: #3498db;
+.sidebar::-webkit-scrollbar-thumb {
+  background: #e7e8e9;
+  border-radius: 10px;
 }

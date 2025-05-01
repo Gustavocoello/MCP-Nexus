@@ -18,9 +18,10 @@ const SearchBar = ({ onSearch }) => {
   return (
     <div style={{ 
       display: 'flex',
-      margin: '30px 0',
+      margin: '30px auto',
       width: '80%',
-      maxWidth: '600px'
+      maxWidth: '600px',
+      justifyContent: 'center'
     }}>
       <input
         type="text"

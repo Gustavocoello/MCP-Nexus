@@ -27,8 +27,9 @@ function App() {
 // Componentes de página (mejor moverlos a archivos separados)
 function ChatPage() {
   return (
-    <div className="page">
-      <h1>Chat Interface</h1>
+    <div className="page" style={{textAlign: 'center'}}>
+      <h1>Hi, I'm Jarvis.</h1>
+      <h4>How can I help you Gustavo?</h4>
       <SearchBar />
     </div>
   );
