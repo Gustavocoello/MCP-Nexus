@@ -1,14 +1,50 @@
 import React from 'react';
-import SearchBarPrompt from './components/searchBarPrompt'; // Importa el componente combinado
 import './App.css';
+import SearchBar from './components/searchBarPrompt';
+import Sidebar from './components/Sidebar';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 
 function App() {
   return (
-    <div className="App" style={{ backgroundColor: 'black', minHeight: '100vh' }}>
-      <header className="App-header">
-        <h1 style={{ color: 'white', marginBottom: '30px' }}>Buscador de IA</h1>
-        <SearchBarPrompt /> {/* Componente único con lógica integrada */}
-      </header>
+    <Router>
+      <nav>
+        <Link to="/">Chat</Link>
+        <Link to="/dashboard">Dashboard</Link>
+        <Link to="/config">Configuration</Link>
+      </nav>
+      <Routes>
+        <Route path="/" element={<ChatPage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/config" element={<ConfigPage />} />
+      </Routes>
+    </Router>
+  );
+}
+
+
+function ChatPage() {
+  return (
+    <div className="page">
+      <h1>Chat Interface</h1>
+      <SearchBar />
+    </div>
+  );
+}
+
+function DashboardPage() {
+  return (
+    <div className="page">
+      <h1>Dashboard</h1>
+      <p>This is the dashboard page (under development)</p>
+    </div>
+  );
+}
+
+function ConfigPage() {
+  return (
+    <div className="page">
+      <h1>Configuration</h1>
+      <p>Configuration page for developers (under development)</p>
     </div>
   );
 }
