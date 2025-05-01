@@ -24,5 +24,6 @@ yarn-error.log*
 
 
 /.env
+/frontend/.env
 /__pycache__
 __pycache__/

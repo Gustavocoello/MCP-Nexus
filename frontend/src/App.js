@@ -1,16 +1,13 @@
 import React from 'react';
-import SearchBar from './components/SearchBar';
+import SearchBarPrompt from './components/searchBarPrompt'; // Importa el componente combinado
 import './App.css';
 
 function App() {
-  const handleSearch = (query) => {
-    alert(`Searching for: ${query}`);
-  };
-
   return (
     <div className="App" style={{ backgroundColor: 'black', minHeight: '100vh' }}>
-      <header className="App-header" style={{ backgroundColor: 'black' }}>
-        <SearchBar onSearch={handleSearch} />
+      <header className="App-header">
+        <h1 style={{ color: 'white', marginBottom: '30px' }}>Buscador de IA</h1>
+        <SearchBarPrompt /> {/* Componente único con lógica integrada */}
       </header>
     </div>
   );
