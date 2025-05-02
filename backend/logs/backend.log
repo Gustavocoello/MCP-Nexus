@@ -125,3 +125,15 @@
 2025-05-01 16:17:13,804 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK" [_client.py:1025]
 2025-05-01 16:17:16,402 - werkzeug - INFO - 127.0.0.1 - - [01/May/2025 16:17:16] "POST /api/search/prompt HTTP/1.1" 200 - [_internal.py:97]
 2025-05-01 16:17:16,873 - werkzeug - INFO - 127.0.0.1 - - [01/May/2025 16:17:16] "POST /api/search/prompt HTTP/1.1" 200 - [_internal.py:97]
+2025-05-01 22:34:09,706 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://192.168.101.17:5000 [_internal.py:97]
+2025-05-01 22:34:09,723 - werkzeug - INFO - [33mPress CTRL+C to quit[0m [_internal.py:97]
+2025-05-01 22:34:09,744 - werkzeug - INFO -  * Restarting with stat [_internal.py:97]
+2025-05-01 22:34:13,930 - werkzeug - WARNING -  * Debugger is active! [_internal.py:97]
+2025-05-01 22:34:13,942 - werkzeug - INFO -  * Debugger PIN: 969-640-475 [_internal.py:97]
+2025-05-01 22:34:14,154 - werkzeug - INFO - 127.0.0.1 - - [01/May/2025 22:34:14] "OPTIONS /api/search/prompt HTTP/1.1" 200 - [_internal.py:97]
+2025-05-01 22:34:14,161 - backend.utils - INFO - usando el deepseek proveedor (Intento 1 /2) [utils.py:80]
+2025-05-01 22:34:14,786 - httpx - INFO - HTTP Request: POST https://openrouter.ai/api/v1/chat/completions "HTTP/1.1 200 OK" [_client.py:1025]
+2025-05-01 22:34:26,709 - werkzeug - INFO - 127.0.0.1 - - [01/May/2025 22:34:26] "POST /api/search/prompt HTTP/1.1" 200 - [_internal.py:97]

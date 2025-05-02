@@ -24,17 +24,7 @@ body {
   min-height: 100vh;
 }
 
-.sidebar-item {
-  display: flex;
-  align-items: center;
-  color: white;
-  padding: 12px 10px;
-  margin: 8px 0;
-  border-radius: 6px;
-  text-decoration: none;
-  transition: all 0.2s ease;
-  font-size: 0.9rem;
-}
+
 
 .sidebar-item:hover {
   background: #9399a0;
