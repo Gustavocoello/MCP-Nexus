@@ -7,6 +7,7 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: white;
 }
 
 /* Eliminamos los estilos del nav viejo (ya no lo usamos) */
@@ -14,19 +15,6 @@ body {
 .app-container {
   display: flex;
   min-height: 100vh;
-}
-
-/* Sidebar más estrecha y mejorada */
-.sidebar {
-  width: 180px; /* Reducimos el ancho */
-  background: #2c3e50;
-  padding: 20px 15px; /* Menos padding horizontal */
-  position: fixed; /* Fija la posición */
-  height: 100vh;
-  left: 0;
-  top: 0;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1); /* Sutil sombra */
-  z-index: 1000; /* Asegura que esté por encima del contenido */
 }
 
 .main-content {
@@ -71,36 +59,6 @@ body {
   margin: 0 auto;
 }
 
-/* Responsive layout */
-@media (max-width: 768px) {
-  .sidebar {
-    width: 60px; /* Sidebar muy estrecha en móvil */
-    padding: 10px 5px;
-  }
-  
-  .sidebar-item {
-    justify-content: center;
-    padding: 15px 5px;
-  }
-  
-  .sidebar-item .label {
-    display: none; /* Ocultamos texto en móvil */
-  }
-  
-  .sidebar-item .icon {
-    margin-right: 0;
-    font-size: 1.3rem;
-  }
-  
-  .main-content {
-    margin-left: 60px; /* Ajustamos margen */
-    padding: 15px;
-  }
-  
-  .page {
-    padding: 1rem;
-  }
-}
 
 /* Opcional: Scroll personalizado para sidebar */
 .sidebar::-webkit-scrollbar {
