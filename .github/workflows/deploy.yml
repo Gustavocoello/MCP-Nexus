@@ -3,8 +3,6 @@ name: Deploy Build to Azure Functions
 on:
   push:
     branches: [ "master" ]  # Dispara el despliegue al hacer push a master/main
-    paths:
-        - backend/**
 
 env:
   AZURE_FUNCTIONAPP_NAME: mcp-build-gustavo  # Nombre de tu Function App en Azure
