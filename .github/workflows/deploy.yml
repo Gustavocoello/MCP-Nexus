@@ -1,48 +1,56 @@
-name: Deploy Build to Azure Functions
-
+name: Build and Deploy to Azure Functions
 on:
   push:
-    branches: [ "master" ]  # Dispara el despliegue al hacer push a master/main
+    branches: [ "master" ]
+    
 
 env:
-  AZURE_FUNCTIONAPP_NAME: mcp-build-gustavo  # Nombre de tu Function App en Azure
-  PYTHON_VERSION: '3.12'                     # Versión de Python
+  AZURE_FUNCTIONAPP_NAME: mcp-build-gustavo
+  RESOURCE_GROUP: "DefaultResourceGroup-EUS"  # <-- ¡Reemplaza esto!
+  PYTHON_VERSION: "3.12"
+
+permissions:
+  id-token: write
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    environment: production  # Opcional: Define un entorno (útil para approvals)
+    environment: production
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt  # Asegúrate de tener este archivo
+        run: pip install -r requirements.txt
         working-directory: backend
 
-      - name: Deploy to Azure Functions
+      - name: Deploy to Azure
         uses: Azure/functions-action@v1
         with:
           app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
-         
-      - name: Set enireoment variables in Azure
-        uses: Azure/cli@v1
+
+      - name: Set environment variables in Azure
+        uses: azure/cli@v1  # ¡Nota: "azure/cli" en minúscula!
         with:
-            inlineScript: |
-                az functionapp config appsettings set \
-                --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
-                --resource-group ${{ env.RESOURCE_GROUP }} \
-                --settings \
-                    OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
-                    DEEP_API_KEY="${{ secrets.DEEP_API_KEY }}" \
-                    QWEN3_KEY="${{ secrets.QWEN3_KEY }}" \
-                    GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}""
+          inlineScript: |
+            az functionapp config appsettings set \
+              --name ${{ env.AZURE_FUNCTIONAPP_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --settings \
+                OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+                DEEP_API_KEY="${{ secrets.DEEP_API_KEY }}" \
+                QWEN3_KEY="${{ secrets.QWEN3_KEY }}" \
+                GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"  # Sin comilla extra al final
