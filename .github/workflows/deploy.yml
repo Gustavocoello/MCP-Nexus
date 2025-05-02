@@ -35,8 +35,7 @@ jobs:
         with:
           app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
-        working-directory: backend 
-
+         
       - name: Set enireoment variables in Azure
         uses: Azure/cli@v1
         with:
