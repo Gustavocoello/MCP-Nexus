@@ -1,16 +1,11 @@
 import logging
 import logging.config
-from logging.handlers import RotatingFileHandler
 import os
 
-# Configuración base
+# Directorio para logs
 LOG_DIR = 'logs'
-LOG_FILE = os.path.join(LOG_DIR, 'backend.log')
-LOG_LEVEL = logging.DEBUG
-LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s [%(filename)s:%(lineno)d]'
-
-# Crear directorio de logs si no existe
 os.makedirs(LOG_DIR, exist_ok=True)
+LOG_FILE = os.path.join(LOG_DIR, 'backend.log')
 
 # Configuración del logging
 LOGGING_CONFIG = {
@@ -18,33 +13,33 @@ LOGGING_CONFIG = {
     'disable_existing_loggers': False,
     'formatters': {
         'standard': {
-            'format': LOG_FORMAT,
+            'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s [%(filename)s:%(lineno)d]'
         },
     },
     'handlers': {
         'console': {
-            'level': 'DEBUG',
             'class': 'logging.StreamHandler',
             'formatter': 'standard',
+            'level': 'DEBUG',
         },
         'file': {
-            'level': 'INFO',
             'class': 'logging.handlers.RotatingFileHandler',
+            'formatter': 'standard',
             'filename': LOG_FILE,
             'maxBytes': 10485760,  # 10MB
             'backupCount': 5,
-            'formatter': 'standard',
-        },
+            'level': 'DEBUG',
+        }
     },
     'loggers': {
-        '': {  # root logger
+        '': {  # Logger raíz (captura todos los logs)
             'handlers': ['console', 'file'],
-            'level': LOG_LEVEL,
+            'level': 'DEBUG',
             'propagate': True,
         },
-        'backend': {
+        'backend': {  # Logger específico
             'handlers': ['console', 'file'],
-            'level': LOG_LEVEL,
+            'level': 'DEBUG',
             'propagate': False,
         },
     }
@@ -55,3 +50,14 @@ logging.config.dictConfig(LOGGING_CONFIG)
 
 def get_logger(name):
     return logging.getLogger(f'backend.{name}')
+
+""" Parte eliminada del código de configuración del logger 
+'file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOG_FILE,
+            'maxBytes': 10485760,  # 10MB
+            'backupCount': 5,
+            'formatter': 'standard',
+        },
+"""

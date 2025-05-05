@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import os 
 
 # Configuración de logging
-logger = get_logger('utils')
+logger = get_logger(__name__)
 
 # Cargar las variables de entorno desde el archivo .env
 load_dotenv()
