@@ -35,15 +35,16 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
-        working-directory: backend
+        working-directory: backend/functions
 
       - name: Deploy to Azure
         uses: Azure/functions-action@v1
         with:
           app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+          package: backend/functions
 
       - name: Set environment variables in Azure
-        uses: azure/cli@v1  # ¡Nota: "azure/cli" en minúscula!
+        uses: azure/cli@v2  # ¡Nota: "azure/cli" en minúscula!
         with:
           inlineScript: |
             az functionapp config appsettings set \

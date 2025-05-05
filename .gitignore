@@ -22,8 +22,15 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-
+# Archivos de configuración de entorno y locales
 /.env
 /frontend/.env
 /__pycache__
 __pycache__/
+
+# Eliminamos los archivos de logs
+logs/
+functions/logs/
+
+# Eliminamos los archivos locales de Azure functions
+*local.settings.json
