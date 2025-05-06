@@ -6,7 +6,7 @@ on:
 
 env:
   AZURE_FUNCTIONAPP_NAME: mcp-build-gustavo
-  RESOURCE_GROUP: "DefaultResourceGroup-EUS"  # <-- ¡Reemplaza esto!
+  RESOURCE_GROUP: "DefaultResourceGroup-EUS"  
   PYTHON_VERSION: "3.12"
 
 permissions:
@@ -40,13 +40,13 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
-        working-directory: backend/
+        working-directory: backend/functions
 
       - name: Deploy to Azure
         uses: Azure/functions-action@v1
         with:
           app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-          package: backend/
+          package: backend/functions
 
       - name: Set environment variables in Azure
         uses: azure/cli@v2  # ¡Nota: "azure/cli" en minúscula!
