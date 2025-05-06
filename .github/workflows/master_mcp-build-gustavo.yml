@@ -36,17 +36,17 @@ jobs:
       - name: Copy backend files to functions directory
         run: |
             # Copia todo el contenido de backend/ a backend/functions/
-            rsync -av --exclude='functions/' backend/ backend/functions/
+            rsync -av --exclude='functions/' --exclude='mcp-project/' backend/ backend/functions/
 
       - name: Install dependencies
         run: pip install -r requirements.txt
-        working-directory: backend/functions
+        working-directory: backend/
 
       - name: Deploy to Azure
         uses: Azure/functions-action@v1
         with:
           app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-          package: backend/functions 
+          package: backend/
 
       - name: Set environment variables in Azure
         uses: azure/cli@v2  # ¡Nota: "azure/cli" en minúscula!

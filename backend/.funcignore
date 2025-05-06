@@ -1,0 +1,6 @@
+# Ignorar archivos innecesarios
+__pycache__/
+venv/
+mcp-project/
+*.log
+*.tmp
