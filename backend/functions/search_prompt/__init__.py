@@ -26,23 +26,29 @@ except ImportError as e:
     print(f"Error al importar generate_prompt: {str(e)}")
 """
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.abspath(os.path.join(current_dir, "..", "..")) # Sube dos niveles para llegar a backend -> search_prompt/functions/backend
+# Determinar la raíz del proyecto
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
-try:
+# Si estamos en local, añadir backend/ al sys.path
+if os.path.exists(os.path.join(project_root, 'src')):
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
+    logger.info("Modo local: Ruta del proyecto añadida a sys.path")
+else:
+    logger.info("Modo Azure: No se modificó sys.path")
+
+try:
     from src.services.ai_providers.utils import generate_prompt
-    print("generate_prompt importado desde src.services.ai_providers.utils")
+    logger.info("generate_prompt importado desde src.services.ai_providers.utils")
 except ImportError as e:
-    print(f"No se pudo importar desde src.services.ai_providers.utils: {e}")
-    # Intentar importar generate_prompt desde un módulo local en functions
+    logger.warning(f"No se pudo importar desde src: {e}")
     try:
         from utils import generate_prompt
         logger.info("generate_prompt importado desde utils.py en functions")
     except ImportError as e2:
         logger.error(f"No se pudo importar generate_prompt desde ninguna ubicación: {e2}")
         raise
+
 # Azure functions
 # App = func.FunctionApp() -> viene desde function_app.py
 #@app.route(route="search/prompt", auth_level=func.AuthLevel.FUNCTION) no necesarios 
