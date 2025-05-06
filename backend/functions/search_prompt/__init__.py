@@ -1,7 +1,7 @@
 import os
 import sys
 import json
-import logging  # ✅ Importa directamente el módulo logging
+import logging  
 from function_app import app
 import azure.functions as func
 
@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))  # backend/
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
+    print("Ruta del proyecto agregada a sys.path:", project_root)
 
 # Ahora puedes importar desde services.ai_providers.utils
 try:
