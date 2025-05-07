@@ -7,23 +7,6 @@ import azure.functions as func
 
 # Configurar logging
 logger = logging.getLogger(__name__)
-
-"""
-Esta parte funciona en local, pero no en Azure Functions.
-# Esto es para que funcione en local, ya que la estructura de carpetas es diferente
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))  # backend/
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-    print("Ruta del proyecto agregada a sys.path:", project_root)
-
-# Ahora puedes importar desde services.ai_providers.utils
-try:
-    from src.services.ai_providers.utils import generate_prompt
-    print("Importación exitosa!")
-except ImportError as e:
-    print(f"Error al importar generate_prompt: {str(e)}")
-"""
-
 # Determinar el directorio actual
 current_dir = os.path.dirname(__file__)
 print(f"Directorio actual: {current_dir}")
@@ -54,7 +37,7 @@ try:
 except ImportError as e:
     logger.warning(f"No se pudo importar desde services.ai_providers.utils: {e}")
     try:
-        from utils import generate_prompt
+        from src.services.ai_providers.utils import generate_prompt
         logger.info("generate_prompt importado desde utils.py en functions")
     except ImportError as e2:
         logger.error(f"No se pudo importar generate_prompt desde ninguna ubicación: {e2}")
