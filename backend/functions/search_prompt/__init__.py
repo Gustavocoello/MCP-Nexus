@@ -1,9 +1,7 @@
 import os
 import sys
 import json
-import logging
-
-from openai import project  
+import logging 
 from function_app import app
 import azure.functions as func
 
