@@ -26,22 +26,35 @@ except ImportError as e:
     print(f"Error al importar generate_prompt: {str(e)}")
 """
 
-# Determinar la raíz del proyecto
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+# Determinar el directorio actual
+current_dir = os.path.dirname(__file__)
+print(f"Directorio actual: {current_dir}")
 
-# Si estamos en local, añadir backend/ al sys.path
+# Determinar la ruta al directorio 'src' (para Azure)
+src_path = os.path.abspath(os.path.join(current_dir, '..', 'src'))
+
+# Determinar la raíz del proyecto (para entorno local)
+project_root = os.path.abspath(os.path.join(current_dir, '..', '..'))
+
+# Verificar si estamos en entorno local
 if os.path.exists(os.path.join(project_root, 'src')):
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
-    logger.info("Modo local: Ruta del proyecto añadida a sys.path")
+    print(f"Entorno local: 'src' añadido a sys.path desde {project_root}")
+# Verificar si estamos en Azure
+elif os.path.exists(src_path):
+    if src_path not in sys.path:
+        sys.path.insert(0, src_path)
+    print(f"Entorno Azure: 'src' añadido a sys.path desde {src_path}")
 else:
-    logger.info("Modo Azure: No se modificó sys.path")
+    logger.warning("No se encontró el directorio 'src' en ninguna ubicación esperada.")
 
+# Intentar importar generate_prompt
 try:
     from src.services.ai_providers.utils import generate_prompt
-    logger.info("generate_prompt importado desde src.services.ai_providers.utils")
+    logger.info("generate_prompt importado correctamente desde services.ai_providers.utils")
 except ImportError as e:
-    logger.warning(f"No se pudo importar desde src: {e}")
+    logger.warning(f"No se pudo importar desde services.ai_providers.utils: {e}")
     try:
         from utils import generate_prompt
         logger.info("generate_prompt importado desde utils.py en functions")
