@@ -2,6 +2,8 @@ name: Build and Deploy to Azure Functions
 on:
   push:
     branches: [ "master" ]
+    paths:
+      - "backend/**"
     
 
 env:
