@@ -1,22 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 
-const SearchBar = ({ onSearch }) => {
-  const [query, setQuery] = useState('');
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      onSearch(query);
-    }
-  };
-
-  const handleClick = () => {
-    if (query.trim()) {
-      onSearch(query);
+const SearchBar = ({ value, onChange, onKeyPress }) => {
+  const handleButtonClick = () => {
+    if (value.trim()) {
+      onKeyPress({ key: 'Enter' }); 
     }
   };
 
   return (
-    <div style={{ 
+    <div style={{
       display: 'flex',
       margin: '30px auto',
       width: '80%',
@@ -25,9 +17,9 @@ const SearchBar = ({ onSearch }) => {
     }}>
       <input
         type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onKeyPress={handleKeyPress}
+        value={value}
+        onChange={onChange}
+        onKeyPress={onKeyPress}
         placeholder="Search..."
         style={{
           padding: '15px',
@@ -41,7 +33,7 @@ const SearchBar = ({ onSearch }) => {
         }}
       />
       <button
-        onClick={handleClick}
+        onClick={handleButtonClick} // Llama a una función controladora
         style={{
           marginLeft: '15px',
           padding: '15px 30px',

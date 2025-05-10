@@ -10,8 +10,7 @@ body {
   background-color: white;
 }
 
-/* Eliminamos los estilos del nav viejo (ya no lo usamos) */
-
+/* Layout principal */
 .app-container {
   display: flex;
   min-height: 100vh;
@@ -20,37 +19,18 @@ body {
 .main-content {
   flex: 1;
   padding: 20px;
-  margin-left: 180px; /* Mismo ancho que el sidebar */
+  margin-left: 180px; /* Ajustar al ancho del sidebar */
   min-height: 100vh;
 }
 
-
-
-.sidebar-item:hover {
-  background: #9399a0;
-  transform: translateX(5px);
-}
-
-.sidebar-item.active {
-  background: #52768e;
-  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-.sidebar-item .icon {
-  font-size: 1.1rem;
-  margin-right: 12px;
-  min-width: 20px; /* Mejor alineación */
-}
-
-/* Page content */
+/* Contenido de página */
 .page {
   padding: 2rem;
   max-width: 1200px;
   margin: 0 auto;
 }
 
-
-/* Opcional: Scroll personalizado para sidebar */
+/* Scroll personalizado para sidebar */
 .sidebar::-webkit-scrollbar {
   width: 5px;
 }
@@ -58,4 +38,69 @@ body {
 .sidebar::-webkit-scrollbar-thumb {
   background: #e7e8e9;
   border-radius: 10px;
+}
+
+/* Contenedor de la lista de mensajes */
+.message-list {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 20px;
+  width: 80%;
+  margin: 0 auto 30px auto;
+  background-color: #f9f9f9;
+  border-radius: 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Cada mensaje */
+.message {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* Por defecto a la izquierda */
+  margin-bottom: 10px;
+}
+
+.message.user {
+  align-items: flex-end; /* El usuario se alinea a la derecha */
+}
+
+/* Burbuja de cada mensaje */
+.message-bubble {
+  max-width: 70%;
+  padding: 10px 15px;
+  border-radius: 15px;
+  font-size: 16px;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.message.user .message-bubble {
+  background-color: #484f55;
+  color: white;
+  border-radius: 15px 5px 15px 15px; /* Esquina superior izquierda más redondeada */
+}
+
+.message.jarvis .message-bubble {
+  background-color: #eaeaea;
+  color: #333;
+  border-radius: 5px 15px 15px 15px; /* Esquina superior derecha más redondeada */
+}
+
+/* Estilos para contenido HTML */
+.message-bubble p {
+  margin: 0;
+}
+
+.message-bubble h1,
+.message-bubble h2,
+.message-bubble h3 {
+  margin: 0;
+  color: inherit;
+}
+
+.message-bubble ul,
+.message-bubble ol {
+  padding-left: 20px;
 }

@@ -1,30 +1,49 @@
 import React, { useState } from 'react';
 import SearchBar from './SearchBar';
 import onPrompt from './service/api_service';
-import MarkdownIt from 'markdown-it'; // Importa el paquete
+import MarkdownIt from 'markdown-it';
 
-const md = new MarkdownIt(); // Inicializa el parser
+const md = new MarkdownIt();
 
-const SearchBarPrompt = () => {
-  const [result, setResult] = useState('');
+const SearchBarPrompt = ({ onNewMessage }) => {
+  const [query, setQuery] = useState('');
 
-  const handleSearch = async (promptText) => {
-    try {
-      const response = await onPrompt(promptText);
-      // Convierte el resultado de Markdown a HTML
-      const htmlResult = md.render(response.result || '');
-      setResult(htmlResult);
-    } catch (error) {
-      console.error(error.message);
+  const handleKeyPress = async (e) => {
+    if (e.key === 'Enter' && query.trim()) {
+      // Notificar al padre (ChatPage) que el usuario escribió algo
+      if (onNewMessage) {
+        onNewMessage({ role: 'user', text: query });
+        setQuery(''); // Limpiar el campo de entrada
+        
+      }
+
+      try {
+        const response = await onPrompt(query);
+
+        // Convertir resultado a HTML si es necesario
+        const htmlResult = md.render(response.result || '');
+
+        // Notificar al padre (ChatPage) que Jarvis respondió
+        if (onNewMessage) {
+          onNewMessage({ role: 'jarvis', text: htmlResult }); // Envía el HTML
+        }
+      } catch (error) {
+        console.error(error.message);
+        if (onNewMessage) {
+          onNewMessage({ role: 'jarvis', text: 'Hubo un error al procesar tu solicitud.' });
+        }
+      }
+
+      setQuery('');
     }
   };
 
   return (
-    <div>
-      <SearchBar onSearch={handleSearch} />
-      {/* Muestra el resultado como HTML */}
-      <div dangerouslySetInnerHTML={{ __html: result }} /> 
-    </div>
+    <SearchBar
+      value={query}
+      onChange={(e) => setQuery(e.target.value)}
+      onKeyPress={handleKeyPress}
+    />
   );
 };
 
