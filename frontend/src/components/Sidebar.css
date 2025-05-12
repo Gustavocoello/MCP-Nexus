@@ -1,6 +1,6 @@
-/* ==== Sidebar general ==== */
+/* ==== Sidebar General ==== */
 .sidebar {
-  width: 130px;
+  width: 150px;
   background: #151413;
   padding: 20px 15px;
   position: fixed;
@@ -9,7 +9,20 @@
   top: 0;
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
   z-index: 1000;
-  transform: translateX(0);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* ==== Logo ==== */
+.jarvis-logo {
+  width: 200px;
+  height: 30px; /* Altura aumentada */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px; /* Padding reducido */
+  margin: 0 auto;
 }
 
 /* ==== Toggle Button ==== */
@@ -29,6 +42,14 @@
 
 .toggle-btn:hover {
   background: #e0e0e0;
+}
+
+/* ==== Sidebar Containers ==== */
+.sidebar-upper {
+  flex: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 /* ==== Sidebar Items ==== */
@@ -55,11 +76,17 @@
   box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
 }
 
+.sidebar-item:last-child {
+  margin-top: auto;
+  margin-bottom: 30px;
+}
+
 /* ==== Icono y Label ==== */
 .icon {
   font-size: 1.25rem;
   margin-right: 0.75rem;
   min-width: 20px;
+  transition: margin 0.3s ease;
 }
 
 .label {
@@ -67,48 +94,56 @@
   white-space: nowrap;
 }
 
-/* ==== Contenido interno (por si hay scroll o padding interno) ==== */
-.sidebar-content {
-  padding: 50px;
+/* Estilo por defecto: muestra el logo completo */
+.logo-full {
+  display: block;
 }
 
-/* Responsive styles */
+.logo-icon {
+  display: none;
+}
+
+/* ================= RESPONSIVE ================= */
 @media (max-width: 768px) {
   .sidebar {
     width: 40px;
     padding: 0.5rem;
   }
+  .sidebar-upper {
+    align-items: center;
+  }
   .sidebar-item {
     justify-content: center;
     padding: 15px 5px;
   }
-  
+
   .sidebar-item .label {
-    display: none; /* Ocultamos texto en móvil */
+    display: none;
   }
-  
-  .sidebar-item .icon {
-    margin-right: 0;
-    font-size: 1.3rem;
-  }
-  
-  .main-content {
-    margin-left: 40px; /* Ajustamos margen */
-    padding: 15px;
-  }
-  
-  .page {
-    padding: 1rem;
-  }
-  
-  .label {
-    opacity: 0;
-    width: 0;
-    overflow: hidden;
-  }
-  
+
   .icon {
     margin-right: 0;
     font-size: 1.5rem;
+  }
+
+  .main-content {
+    margin-left: 40px;
+    padding: 15px;
+  }
+
+  .page {
+    padding: 1rem;
+  }
+  .logo-full {
+    display: none;
+  }
+
+  .logo-icon {
+    display: block;
+  }
+  .jarvis-logo {
+    width: 20px;
+    height: 20px;
+    margin: 0 auto;
   }
 }

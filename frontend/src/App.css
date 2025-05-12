@@ -47,7 +47,6 @@ body {
   padding: 20px;
   width: 80%;
   margin: 0 auto 30px auto;
-  background-color: #f9f9f9;
   border-radius: 15px;
   display: flex;
   flex-direction: column;
@@ -103,4 +102,30 @@ body {
 .message-bubble ul,
 .message-bubble ol {
   padding-left: 20px;
+}
+.typing-indicator {
+  margin: 20px auto;
+  padding: 10px 20px;
+  color: #333;
+  border-radius: 15px;
+  max-width: 70%;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Animación opcional */
+.typing-indicator::after {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background-color: #007bff;
+  border-radius: 50%;
+  margin-left: 10px;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
 }

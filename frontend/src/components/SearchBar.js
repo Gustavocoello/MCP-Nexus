@@ -1,53 +1,81 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-const SearchBar = ({ value, onChange, onKeyPress }) => {
-  const handleButtonClick = () => {
-    if (value.trim()) {
-      onKeyPress({ key: 'Enter' }); 
+const SearchBar = ({ onSearch, showIcon }) => {
+  const [query, setQuery] = useState('');
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && query.trim()) {
+      triggerSearch();
+    }
+  };
+
+  const triggerSearch = () => {
+    if (query.trim()) {
+      onSearch(query);
+      setQuery('');
     }
   };
 
   return (
     <div style={{
       display: 'flex',
-      margin: '30px auto',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      gap: '10px',
       width: '80%',
       maxWidth: '600px',
-      justifyContent: 'center'
+      margin: '0 auto'
     }}>
-      <input
-        type="text"
-        value={value}
-        onChange={onChange}
-        onKeyPress={onKeyPress}
-        placeholder="Search..."
-        style={{
-          padding: '15px',
-          borderRadius: '30px',
-          border: '2px solid white',
-          flex: 1,
-          outline: 'none',
-          fontSize: '18px',
-          backgroundColor: 'black',
-          color: 'white'
-        }}
-      />
-      <button
-        onClick={handleButtonClick} // Llama a una función controladora
-        style={{
-          marginLeft: '15px',
-          padding: '15px 30px',
-          borderRadius: '30px',
-          border: '2px solid white',
-          backgroundColor: 'black',
-          color: 'white',
-          cursor: 'pointer',
-          fontSize: '18px',
-          fontWeight: 'bold'
-        }}
-      >
-        Search
-      </button>
+      {/* Ícono condicional */}
+      {showIcon && (
+        <img 
+          src="/icons/jarvis.png" 
+          alt="Jarvis Icon" 
+          style={{ flexShrink: 0 }} 
+        />
+      )}
+
+      {/* Contenedor input + botón */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        flexWrap: 'nowrap',
+        width: '100%',
+        gap: '10px',
+      }}>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="Search..."
+          style={{
+            padding: '15px',
+            borderRadius: '30px',
+            border: '2px solid white',
+            flex: 1,
+            outline: 'none',
+            fontSize: '16px',
+            backgroundColor: 'black',
+            color: 'white'
+          }}
+        />
+        <button
+          onClick={triggerSearch}
+          style={{
+            padding: '15px 30px',
+            borderRadius: '30px',
+            border: '2px solid white',
+            backgroundColor: 'black',
+            color: 'white',
+            cursor: 'pointer',
+            fontSize: '16px',
+            fontWeight: 'bold'
+          }}
+        >
+          Search
+        </button>
+      </div>
     </div>
   );
 };
