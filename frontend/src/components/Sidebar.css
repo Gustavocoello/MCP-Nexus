@@ -12,8 +12,35 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  transition: all 0.5s ease-in-out;
+  position: relative;
+  }
+  .sidebar-upper {
+    margin-top: 15px;
+    margin-bottom: 20px;
+  }
+  /* ==== Botón de Toggle ==== */
+  .sidebar-toggle {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  right: 0px;
+  top: 1px;
+  width: 40px;
+  height: 40px;
+  color: #ffffff;
+  border-radius: 50%;
+  font-size: 11px;
+  cursor: pointer;
+  z-index: 1000;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease-in-out;
 }
 
+.sidebar-toggle:hover {
+  transform: scale(1.1);  
+}
 /* ==== Logo ==== */
 .jarvis-logo {
   width: 200px;
@@ -23,35 +50,7 @@
   justify-content: center;
   padding: 5px; /* Padding reducido */
   margin: 0 auto;
-}
-
-/* ==== Toggle Button ==== */
-.toggle-btn {
-  position: absolute;
-  left: -50px;
-  top: 20px;
-  background: #f5f5f5;
-  color: #333;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px 0 0 4px;
-  padding: 10px;
-  cursor: pointer;
-  font-size: 20px;
-  transition: all 0.3s ease;
-}
-
-.toggle-btn:hover {
-  background: #e0e0e0;
-}
-
-/* ==== Sidebar Containers ==== */
-.sidebar-upper {
-  flex: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
+  }
 /* ==== Sidebar Items ==== */
 .sidebar-item {
   display: flex;
@@ -65,85 +64,197 @@
   font-size: 0.9rem;
   cursor: pointer;
   transition: background 0.3s ease;
-}
+  }
 
 .sidebar-item:hover {
-  background: #e0e0e0;
-}
+  background: #706b6b;
+  }
 
 .sidebar-item.active {
-  background: #090500;
   box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-.sidebar-item:last-child {
-  margin-top: auto;
-  margin-bottom: 30px;
-}
-
+  }
 /* ==== Icono y Label ==== */
 .icon {
   font-size: 1.25rem;
-  margin-right: 0.75rem;
-  min-width: 20px;
-  transition: margin 0.3s ease;
-}
+  margin-right: 10px;
+  transition: all 0.3s ease;
+  }
 
 .label {
   transition: opacity 0.3s ease, width 0.3s ease;
   white-space: nowrap;
-}
+  }
+.logo-icon {
+  display: none;
+  font-size: 1.5rem;
+  color: white;
+  }
+/* ======= Aqui va cuando se abre el sidebar ========*/
+.siderbar.open {
+  width: 150px;
+  }
+.sidebar.open.sidebar-toggle {
+  right: calc(150px - 20px); 
+  }
+.sidebar.open .jarvis-logo {
+  margin: 0 auto;
+  }
+.sidebar.open .logo-icon {
+  display: none;
+  }
 
-/* Estilo por defecto: muestra el logo completo */
-.logo-full {
+/* ===== Aqui va cuando se cierra el sidebar ========*/
+.sidebar.closed {
+  width: 40px;
+  padding: 0.5rem;
+  }
+.sidebar.closed .label {
+  display: none;
+  }
+.sidebar.closed .icon {
+  margin-right: 0;
+  display: block;
+  margin: 0 auto;
+  }
+.sidebar.closed .sidebar-toggle {
+  right: calc(50% - 20px); /* Centra el botón (mitad del ancho del botón) */
+  }
+.sidebar.closed .logo-icon {
+    margin: 0;
+    position: absolute;
+    top: 65px;
+    transform: translateY(-50%);
+    display: flex;
+  }
+
+  /* Ocultar/mostrar según estado */
+.logo-full { /* Logo animado */
   display: block;
 }
 
-.logo-icon {
+.logo-icon { /* Letra J */
   display: none;
 }
 
-/* ================= RESPONSIVE ================= */
+.sidebar.closed .logo-full {
+  display: none;
+}
+
+.sidebar.closed .logo-icon {
+  display: flex;
+}
+
+/* ================= RESPONSIVE: Solo este bloque ================= */
 @media (max-width: 768px) {
+  /* Sidebar arrancando cerrado */
   .sidebar {
     width: 40px;
     padding: 0.5rem;
   }
-  .sidebar-upper {
-    align-items: center;
-  }
-  .sidebar-item {
-    justify-content: center;
-    padding: 15px 5px;
+
+  /* Al hacer click en toggle pasa a abierto igual que en desktop */
+  .sidebar.open {
+    width: 150px;            /* Ancho de escritorio */
+    padding: 20px 15px;      /* Mismo padding que en desktop */
   }
 
+  /* Logo completo oculto por defecto en móvil */
+  .logo-full {
+    display: none !important;
+  }
+  /* Logo ícono visible por defecto en móvil */
+  .logo-icon {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Al abrir, mostrar logo completo y ocultar el ícono */
+  .sidebar.open .logo-full {
+    display: block !important;
+  }
+  .sidebar.open .logo-icon {
+    display: none !important;
+  }
+
+  /* Ítems centrados y solo icono cuando está cerrado */
+  .sidebar-item {
+    padding: 10px 5px;
+  }
   .sidebar-item .label {
     display: none;
   }
+  .sidebar.open .sidebar-item .label {
+    display: inline;
+    opacity: 1;
+    width: auto;
+  }
 
+  /* Iconos más grandes y centrados */
   .icon {
     margin-right: 0;
     font-size: 1.5rem;
   }
+  .sidebar.open .icon {
+    margin-right: 10px;
+  }
 
+  /* Ajuste de contenido principal */
   .main-content {
-    margin-left: 40px;
+    margin-left: 0;
     padding: 15px;
   }
-
   .page {
-    padding: 1rem;
-  }
-  .logo-full {
-    display: none;
+    padding: 0;
   }
 
-  .logo-icon {
-    display: block;
-  }
+  /* Logo “jarvis” reducido en cerrado */
   .jarvis-logo {
     width: 20px;
     height: 20px;
     margin: 0 auto;
   }
+  .sidebar.open .jarvis-logo {
+    width: 200px;
+    height: 30px;
+    padding: 5px;
+    margin: 0 auto;
+  }
+  .sidebar-item:not(.jarvis):hover {
+    background: #706b6b;
+  }
+
+  /* == Anular hover en el logo == */
+  .sidebar-item.jarvis:hover {
+    background: transparent !important;
+  }
 }
+/* ================= FIN RESPONSIVE ================= */
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* Sirve para poner el setting al final de la barra lateral 
+    .sidebar-item:last-child {
+      margin-top: auto;
+      margin-bottom: 30px;
+    }
+    */
+
+    
