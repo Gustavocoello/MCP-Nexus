@@ -1,10 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { FaArrowUp } from 'react-icons/fa';
+import '../App.css'; // Asumiendo que App.css estará en la misma carpeta o en ruta correcta
 
 const SearchBar = ({ onSearch, showIcon }) => {
   const [query, setQuery] = useState('');
+  const textareaRef = useRef(null);
+
+  // Ajustar altura del textarea basado en contenido, con máximo de 100px
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'; // reset height
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 100) + 'px'; // altura máxima 100px
+    }
+  }, [query]);
 
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && query.trim()) {
+    if (e.key === 'Enter' && !e.shiftKey && query.trim()) {
+      e.preventDefault();
       triggerSearch();
     }
   };
@@ -17,67 +29,42 @@ const SearchBar = ({ onSearch, showIcon }) => {
   };
 
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'flex-start',
-      gap: '10px',
-      width: '80%',
-      maxWidth: '600px',
-      margin: '0 auto'
-    }}>
-      {/* Ícono condicional */}
+    <div className="search-bar-container">
       {showIcon && (
         <img 
           src="/icons/jarvis.png" 
           alt="Jarvis Icon" 
-          style={{ flexShrink: 0 }} 
+          className="jarvis-icon" 
         />
       )}
 
-      {/* Contenedor input + botón */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        flexWrap: 'nowrap',
-        width: '100%',
-        gap: '10px',
-      }}>
-        <input
-          type="text"
+      <div className="textarea-container">
+        <textarea
+          ref={textareaRef}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onKeyPress={handleKeyPress}
+          onKeyDown={handleKeyPress}
           placeholder="Search..."
-          style={{
-            padding: '15px',
-            borderRadius: '30px',
-            border: '2px solid white',
-            flex: 1,
-            outline: 'none',
-            fontSize: '16px',
-            backgroundColor: 'black',
-            color: 'white'
+          rows={1}
+          className={`search-textarea ${query ? 'expanded' : 'collapsed'}`}
+        />
+        <FaArrowUp 
+          onClick={triggerSearch}
+          className="arrow-icon"
+          aria-label="Search"
+          role="button"
+          tabIndex={0}
+          onKeyPress={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              triggerSearch();
+            }
           }}
         />
-        <button
-          onClick={triggerSearch}
-          style={{
-            padding: '15px 30px',
-            borderRadius: '30px',
-            border: '2px solid white',
-            backgroundColor: 'black',
-            color: 'white',
-            cursor: 'pointer',
-            fontSize: '16px',
-            fontWeight: 'bold'
-          }}
-        >
-          Search
-        </button>
       </div>
     </div>
   );
 };
 
 export default SearchBar;
+

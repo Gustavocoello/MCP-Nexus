@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import SearchBar from '../components/SearchBar';
 import MessageList from '../components/MessageList';
 import onPrompt from '../components/service/api_service';
+import { TbMessagePlus } from "react-icons/tb";
 import MarkdownIt from 'markdown-it';
 
 const md = new MarkdownIt();
@@ -17,7 +18,7 @@ const ChatPage = () => {
       // Generar IDs únicos
       const userMessageId = messageIdCounter;
       const tempMessageId = messageIdCounter + 1;
-      
+
       // Agregar mensaje del usuario
       setMessages(prev => [
         ...prev,
@@ -69,7 +70,14 @@ const ChatPage = () => {
   };
 
   return (
-    <div className="page" style={{ textAlign: 'center' }}>
+    <div className="page">
+      {/* Botón para nuevo chat */}
+      <button className="new-chat-button" onClick={() => { 
+        setMessages([]); 
+        setHasSentMessage(false);
+      }}>
+        <TbMessagePlus size={23} />
+      </button>
       {/* Cabecera */}
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px' }}>
         <img src="/icons/jarvis00.png" alt="Jarvis Icon" style={{ width: '140px', height: '80px' }} />

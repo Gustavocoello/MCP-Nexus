@@ -1,7 +1,8 @@
-/* App.css */
 /* Base styles */
-body {
+body, html {
   margin: 0;
+  padding: 0;
+  height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
@@ -10,43 +11,44 @@ body {
   background-color: white;
 }
 
-/* Layout principal */
 .app-container {
-  display: flex;
-  min-height: 100vh;
+  display: flex; /* Usa flexbox */
+  height: 100vh; /* Asegura que ocupe toda la altura de la pantalla */
 }
 
 .main-content {
-  flex: 1;
-  padding: 20px;
-  margin-left: 180px; /* Ajustar al ancho del sidebar */
-  min-height: 100vh;
+  flex: 1; /* Hace que ocupe todo el espacio disponible */
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* Centra verticalmente */
+  align-items: center; /* Centra horizontalmente */
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto; /* Elimina los márgenes laterales restrictivos */
+  transition: margin-left 0.5s ease-in-out; 
 }
 
 /* Contenido de página */
 .page {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
   padding: 2rem;
-  max-width: 1200px;
+  width: 100%; /* Asegura que ocupe todo el ancho disponible */
+  max-width: 1400px; /* Aumenta el máximo ancho */
   margin: 0 auto;
-}
-
-/* Scroll personalizado para sidebar */
-.sidebar::-webkit-scrollbar {
-  width: 5px;
-}
-
-.sidebar::-webkit-scrollbar-thumb {
-  background: #e7e8e9;
-  border-radius: 10px;
 }
 
 /* Contenedor de la lista de mensajes */
 .message-list {
-  max-height: 60vh;
-  overflow-y: auto;
+  max-height: 60vh; /* Limitar la altura máxima */
+  overflow-y: auto; /* Scroll solo si es necesario */
   padding: 20px;
-  width: 80%;
-  margin: 0 auto 30px auto;
+  width: 100%; /* Aumenta el ancho */
+  max-width: 700px; /* Aumenta el máximo ancho si es necesario */
+  margin: 0 auto 30px; /* Centrar horizontalmente */
   border-radius: 15px;
   display: flex;
   flex-direction: column;
@@ -92,17 +94,6 @@ body {
   margin: 0;
 }
 
-.message-bubble h1,
-.message-bubble h2,
-.message-bubble h3 {
-  margin: 0;
-  color: inherit;
-}
-
-.message-bubble ul,
-.message-bubble ol {
-  padding-left: 20px;
-}
 .typing-indicator {
   margin: 20px auto;
   padding: 10px 20px;
@@ -125,7 +116,301 @@ body {
   animation: blink 1s infinite;
 }
 
+/* Oculta la barra de scroll en Webkit (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* Para Firefox */
+body {
+  scrollbar-width: none;
+}
+
+/* Para IE/Edge (menos común hoy) */
+body {
+  -ms-overflow-style: none;
+}
+
+/* Ajustar barra de búsqueda para que quede centrada y con ancho adecuado */
+.search-bar-container {
+  width: 100%; /* Aumenta el ancho */
+  max-width: 730px; /* Aumenta el máximo ancho si es necesario */
+  margin: 0 auto;
+  color: white;
+  position: relative;
+  font-family: Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jarvis-icon {
+  flex-shrink: 0;
+  margin-top: 12px;
+}
+
+.textarea-container {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+}
+
+.search-textarea {
+  width: 100%;
+  padding: 15px 55px 15px 15px; /* right padding for arrow icon space */
+  border-radius: 30px;
+  border: 2px solid white;
+  outline: none;
+  font-size: 16px;
+  background-color: black;
+  color: white;
+  resize: none;
+  overflow: hidden;
+  font-family: inherit;
+}
+
+.arrow-icon {
+  position: absolute;
+  right: 15px;
+  bottom: 15px;
+  color: white;
+  font-size: 22px;
+  user-select: none;
+}
+
+.arrow-icon:hover {
+  color: #4f4f50;
+}
+
+.arrow-icon:focus {
+  outline: none; /* Eliminar el contorno */
+}
+
 @keyframes blink {
   0%, 100% { opacity: 0; }
   50% { opacity: 1; }
+}
+/* Base styles */
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: white;
+}
+
+.app-container {
+  display: flex; /* Usa flexbox */
+  height: 100vh; /* Asegura que ocupe toda la altura de la pantalla */
+}
+
+.main-content {
+  flex: 1; /* Hace que ocupe todo el espacio disponible */
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* Centra verticalmente */
+  align-items: center; /* Centra horizontalmente */
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto; /* Elimina los márgenes laterales restrictivos */
+}
+
+/* Contenido de página */
+.page {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  padding: 2rem;
+  width: 100%; /* Asegura que ocupe todo el ancho disponible */
+  max-width: 1400px; /* Aumenta el máximo ancho */
+  margin: 0 auto;
+}
+
+/* Contenedor de la lista de mensajes */
+.message-list {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 20px;
+  width: 80%; /* Asegura que coincida con el search-bar */
+  max-width: 600px; /* Mismo máximo ancho que el search-bar */
+  margin: 0 auto 30px;
+  border-radius: 15px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Cada mensaje */
+.message {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.message.user {
+  align-items: flex-end; /* El usuario se alinea a la derecha */
+}
+
+/* Burbuja de cada mensaje */
+.message-bubble {
+  max-width: 70%;
+  padding: 10px 15px;
+  border-radius: 15px;
+  font-size: 16px;
+  word-break: break-word;
+  line-height: 1.4;
+  text-align: justify; /* Justifica el texto en todas las burbujas */
+}
+
+.message.user .message-bubble {
+  background-color: #484f55;
+  color: white;
+  border-radius: 15px 5px 15px 15px;
+  text-align: right; /* Alinea el texto a la derecha para los mensajes del usuario */
+}
+
+.message.jarvis .message-bubble {
+  background-color: #eaeaea;
+  color: #333;
+  border-radius: 5px 15px 15px 15px;
+  text-align: left; /* Alinea el texto a la izquierda para los mensajes de Jarvis */
+}
+
+/* Estilos para contenido HTML */
+.message-bubble p {
+  margin: 0;
+}
+
+.typing-indicator {
+  margin: 20px auto;
+  padding: 10px 20px;
+  color: #333;
+  border-radius: 15px;
+  max-width: 70%;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Animación opcional */
+.typing-indicator::after {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background-color: #007bff;
+  border-radius: 50%;
+  margin-left: 10px;
+  animation: blink 1s infinite;
+}
+
+/* Oculta la barra de scroll en Webkit (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* Para Firefox */
+body {
+  scrollbar-width: none;
+}
+
+/* Para IE/Edge (menos común hoy) */
+body {
+  -ms-overflow-style: none;
+}
+
+/* Ajustar barra de búsqueda para que quede centrada y con ancho adecuado */
+.search-bar-container {
+  width: 80%; /* Ancho predeterminado */
+  max-width: 600px; /* Máximo ancho predeterminado */
+  margin: 0 auto;
+  color: white;
+  position: relative;
+  font-family: Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jarvis-icon {
+  flex-shrink: 0;
+  margin-top: 12px;
+}
+
+.textarea-container {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+}
+
+.search-textarea {
+  width: 100%;
+  padding: 15px 55px 15px 15px; /* Espacio para el icono de flecha */
+  border-radius: 30px;
+  border: 2px solid white;
+  outline: none;
+  font-size: 16px;
+  background-color: black;
+  color: white;
+  resize: none;
+  overflow: hidden;
+  font-family: inherit;
+}
+
+.arrow-icon {
+  position: absolute;
+  right: 15px;
+  bottom: 15px;
+  color: white;
+  font-size: 22px;
+  user-select: none;
+}
+
+.arrow-icon:hover {
+  color: #4f4f50;
+}
+
+.arrow-icon:focus {
+  outline: none; /* Eliminar el contorno */
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+/* Media query para pantallas <= 768px */
+@media (max-width: 768px) {
+  .search-bar-container {
+    width: 90%; /* Reduce el ancho para pantallas pequeñas */
+    max-width: 500px; /* Reducimos el máximo ancho */
+  }
+
+  .search-textarea {
+    padding: 10px 40px 10px 10px; /* Ajustamos el padding para mantener proporciones */
+  }
+
+  .jarvis-icon {
+    margin-top: 8px; /* Reducimos el margen superior del icono */
+  }
+
+  .arrow-icon {
+    font-size: 18px; /* Reducimos el tamaño del icono de flecha */
+  }
+
+  .message-bubble {
+    font-size: 14px; /* Ajustamos el tamaño del texto de los mensajes */
+  }
+
+  .message-list {
+    max-height: 50vh; /* Reducimos la altura máxima del chat para pantallas pequeñas */
+  }
 }

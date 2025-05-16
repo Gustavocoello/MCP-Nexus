@@ -13,8 +13,7 @@
   flex-direction: column;
   justify-content: space-between;
   transition: all 0.5s ease-in-out;
-  position: relative;
-  }
+}
   .sidebar-upper {
     margin-top: 15px;
     margin-bottom: 20px;
@@ -102,6 +101,11 @@
 .sidebar.open .logo-icon {
   display: none;
   }
+  .siderbar.open .icon {
+  font-size: 1.25rem;
+  margin-right: 10px;
+  transition: all 0.3s ease;
+  }
 
 /* ===== Aqui va cuando se cierra el sidebar ========*/
 .sidebar.closed {
@@ -142,6 +146,37 @@
 
 .sidebar.closed .logo-icon {
   display: flex;
+}
+
+.sidebar-item:not(.jarvis):hover {
+  background: #706b6b;
+}
+
+.sidebar-item.jarvis:hover {
+  background: transparent !important;
+}
+/*====== Nuevo Chat botom ==========*/
+.new-chat-button {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: #151413;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 1001; /* Asegura que esté por encima del sidebar */
+  transition: background-color 0.3s ease;
+}
+
+.new-chat-button:hover {
+  background-color: #333;
 }
 
 /* ================= RESPONSIVE: Solo este bloque ================= */
@@ -193,7 +228,7 @@
   /* Iconos más grandes y centrados */
   .icon {
     margin-right: 0;
-    font-size: 1.5rem;
+    font-size: 1.25rem;
   }
   .sidebar.open .icon {
     margin-right: 10px;
@@ -228,6 +263,20 @@
   .sidebar-item.jarvis:hover {
     background: transparent !important;
   }
+  /* ======== Ajuste para evitar solapamiento ======== */
+
+  .sidebar.open ~ .main-content {
+    margin-left: 150px;
+    transition: margin-left 0.5s ease-in-out;
+
+  }
+@media (min-width: 768px) {
+  .sidebar.open ~ .main-content {
+    margin-left: 150px;
+    transition: margin-left 0.5s ease-in-out;
+  }
+}
+
 }
 /* ================= FIN RESPONSIVE ================= */
 

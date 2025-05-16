@@ -1,14 +1,10 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import './App.css';
-
-// Componentes
 import Sidebar from './components/Sidebar';
-
-// Páginas
 import ChatPage from './pages/ChatPage';
 import DashboardPage from './pages/DashboardPage';
 import ConfigPage from './pages/ConfigPage';
+import './App.css';
 
 function App() {
   return (
