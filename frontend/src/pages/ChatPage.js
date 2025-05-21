@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SearchBar from '../components/SearchBar';
 import MessageList from '../components/MessageList';
 import onPrompt from '../components/service/api_service';
@@ -8,35 +8,88 @@ import MarkdownIt from 'markdown-it';
 const md = new MarkdownIt();
 
 const ChatPage = () => {
-  const [messages, setMessages] = useState([]);
+  const loadAllChats = () => {
+    const saved = localStorage.getItem('allChats');
+    return saved ? JSON.parse(saved) : [];
+  };
+
+  const loadActiveChat = () => {
+    const allChats = loadAllChats();
+    return allChats.length > 0 ? allChats[allChats.length - 1].messages : [];
+  };
+
+  const [messages, setMessages] = useState(loadActiveChat);
   const [messageIdCounter, setMessageIdCounter] = useState(0);
   const [isJarvisTyping, setIsJarvisTyping] = useState(false);
   const [hasSentMessage, setHasSentMessage] = useState(false);
 
+  // 👇 Escuchar evento global 'chat-loaded'
+  useEffect(() => {
+    const handleChatLoaded = () => {
+      const tempChat = localStorage.getItem('tempChatToLoad');
+      if (tempChat) {
+        const parsedMessages = JSON.parse(tempChat);
+        setMessages(parsedMessages);
+        localStorage.removeItem('tempChatToLoad'); // Limpiar después de usarlo
+      }
+    };
+
+    window.addEventListener('chat-loaded', handleChatLoaded);
+
+    // Limpiar listener al desmontar
+    return () => {
+      window.removeEventListener('chat-loaded', handleChatLoaded);
+      localStorage.removeItem('tempChatToLoad'); // Limpiar al desmontar
+    };
+  }, []);
+
+  // 👇 Guardar cambios en messages como último chat activo
+  useEffect(() => {
+    const allChats = loadAllChats();
+
+    if (allChats.length > 0) {
+      allChats[allChats.length - 1].messages = messages;
+    } else {
+      allChats.push({ id: `chat-${Date.now()}`, messages });
+    }
+
+    localStorage.setItem('allChats', JSON.stringify(allChats));
+
+    // Vamos a verificar que se guarda en localStorage
+    console.log("Chats guardados en localStorage:", JSON.parse(localStorage.getItem('allChats')));
+  }, [messages]);
+
+  // 👇 Modificar la función createNewChat para incluir fecha
+const createNewChat = () => {
+  const allChats = loadAllChats();
+  
+  const newChat = {
+    id: `chat-${Date.now()}`,
+    date: new Date().toISOString(), // ¡FECHA ES CLAVE!
+    messages: []
+  };
+
+  allChats.push(newChat);
+  localStorage.setItem('allChats', JSON.stringify(allChats));
+  setMessages([]);
+  setHasSentMessage(false);
+  
+  // Forzar recarga del sidebar (opcional)
+  window.dispatchEvent(new Event('chats-updated'));
+};
   const handleNewMessage = async (message) => {
     if (message.role === 'user') {
-      // Generar IDs únicos
       const userMessageId = messageIdCounter;
       const tempMessageId = messageIdCounter + 1;
 
-      // Agregar mensaje del usuario
       setMessages(prev => [
         ...prev,
-        { 
-          id: `user-${userMessageId}`, 
-          role: 'user', 
-          text: message.text 
-        }
+        { id: `user-${userMessageId}`, role: 'user', text: message.text }
       ]);
 
-      // Agregar mensaje temporal de carga
       setMessages(prev => [
         ...prev,
-        { 
-          id: `jarvis-${tempMessageId}`, 
-          role: 'jarvis', 
-          text: '' 
-        }
+        { id: `jarvis-${tempMessageId}`, role: 'jarvis', text: '' }
       ]);
 
       setMessageIdCounter(prev => prev + 2);
@@ -44,24 +97,16 @@ const ChatPage = () => {
       setIsJarvisTyping(true);
 
       try {
-        // Llamar a la API
         const response = await onPrompt(message.text);
-        
-        // Convertir a HTML
         const htmlResult = md.render(response.result || '');
-        
-        // Actualizar mensaje temporal
+
         setMessages(prev => prev.map(msg => 
-          msg.id === `jarvis-${tempMessageId}`
-            ? { ...msg, text: htmlResult }
-            : msg
+          msg.id === `jarvis-${tempMessageId}` ? { ...msg, text: htmlResult } : msg
         ));
       } catch (error) {
         console.error(error);
         setMessages(prev => prev.map(msg => 
-          msg.id === `jarvis-${tempMessageId}`
-            ? { ...msg, text: 'Error al procesar la solicitud' }
-            : msg
+          msg.id === `jarvis-${tempMessageId}` ? { ...msg, text: 'Error al procesar la solicitud' } : msg
         ));
       } finally {
         setIsJarvisTyping(false);
@@ -71,14 +116,10 @@ const ChatPage = () => {
 
   return (
     <div className="page">
-      {/* Botón para nuevo chat */}
-      <button className="new-chat-button" onClick={() => { 
-        setMessages([]); 
-        setHasSentMessage(false);
-      }}>
+      <button className="new-chat-button" onClick={createNewChat}>
         <TbMessagePlus size={23} />
       </button>
-      {/* Cabecera */}
+
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px' }}>
         <img src="/icons/jarvis00.png" alt="Jarvis Icon" style={{ width: '140px', height: '80px' }} />
         <h1>Hi, I'm Jarvis.</h1>
@@ -86,20 +127,18 @@ const ChatPage = () => {
 
       <h4>How can I help you today?</h4>
 
-      {/* Lista de mensajes */}
       <MessageList messages={messages} />
 
-      {/* Indicador de escritura */}
       {isJarvisTyping && (
         <div className="typing-indicator">
           Jarvis está escribiendo...
         </div>
       )}
 
-      {/* Barra de búsqueda */}
       <SearchBar 
-      onSearch={(userQuery) => handleNewMessage({ role: 'user', text: userQuery })}
-      showIcon={hasSentMessage}/>
+        onSearch={(userQuery) => handleNewMessage({ role: 'user', text: userQuery })}
+        showIcon={hasSentMessage}
+      />
     </div>
   );
 };

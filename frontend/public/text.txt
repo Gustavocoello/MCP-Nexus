@@ -1,0 +1,91 @@
+/* ==== Estilos generales para el sidebar ==== */
+.sidebar {
+  width: 150px;
+  background: #151413;
+  padding: 20px 15px;
+  position: fixed;
+  height: 100vh;
+  left: 0;
+  top: 0;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.5s ease-in-out;
+  overflow-y: hidden; /* Oculta el scroll vertical */
+}
+
+/* ==== Estilos para la lista de chats ==== */
+.chats-list {
+  list-style: none;
+  padding-left: 0;
+  margin-top: 5px;
+  overflow-y: auto; /* Permite desplazamiento interno sin mostrar scroll */
+  max-height: calc(100vh - 150px); /* Limita la altura para evitar scroll global */
+}
+
+/* ==== Estilos para los títulos de categoría ==== */
+.chat-category {
+  display: block;
+  margin-top: 10px;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #aaa; /* Color más claro para los títulos */
+}
+
+/* ==== Estilos para los elementos de chat ==== */
+.sidebar-chat-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  color: white;
+  padding: 12px 10px;
+  margin: 8px 0;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  background-color: #222; /* Fondo ligeramente más claro para diferenciarlo */
+}
+
+.sidebar-chat-item:hover {
+  background: #706b6b;
+}
+
+.sidebar-chat-item .label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* Trunca el texto con puntos suspensivos si no cabe */
+}
+
+.no-chats-message {
+  color: #777;
+  margin-left: 15px;
+  font-size: 0.85rem;
+}
+
+
+
+
+
+.sidebar-chat-item {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  color: white;
+  padding: 12px 10px; /* Ajusta el padding según necesites */
+  margin: 8px 0;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  background-color: #222; /* Fondo ligeramente más claro para diferenciarlo */
+
+  /* Fijar ancho y altura fijos */
+  width: 100%; /* Ocupa todo el ancho del sidebar */
+  height: 40px; /* Altura fija para todos los botones */
+  overflow: hidden; /* Oculta contenido que exceda el tamaño */
+}
