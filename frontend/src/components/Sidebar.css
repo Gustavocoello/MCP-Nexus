@@ -1,6 +1,9 @@
-/* ==== Sidebar General ==== */
+/* ================= */
+/* == SIDEBAR GENERAL == */
+/* ================= */
+
 .sidebar {
-  width: 150px;
+  width: 240px;
   background: #151413;
   padding: 20px 15px;
   position: fixed;
@@ -14,12 +17,17 @@
   justify-content: space-between;
   transition: all 0.5s ease-in-out;
 }
-  .sidebar-upper {
-    margin-top: 15px;
-    margin-bottom: 20px;
-  }
-  /* ==== Botón de Toggle ==== */
-  .sidebar-toggle {
+
+.sidebar-upper {
+  margin-top: 15px;
+  margin-bottom: 20px;
+}
+
+/* ================= */
+/* == BOTÓN TOGGLE == */
+/* ================= */
+
+.sidebar-toggle {
   position: absolute;
   display: flex;
   align-items: center;
@@ -38,19 +46,47 @@
 }
 
 .sidebar-toggle:hover {
-  transform: scale(1.1);  
+  transform: scale(1.1);
 }
-/* ==== Logo ==== */
+
+/* ================= */
+/* == LOGO JARVIS == */
+/* ================= */
+
 .jarvis-logo {
   width: 200px;
-  height: 30px; /* Altura aumentada */
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 5px; /* Padding reducido */
+  padding: 5px;
   margin: 0 auto;
-  }
-/* ==== Sidebar Items ==== */
+}
+
+.logo-full {
+  display: block;
+}
+
+.logo-icon {
+  display: none !important;
+  font-size: 1.5rem;
+  color: white;
+}
+
+.sidebar.closed .logo-full {
+  display: none !important;
+}
+
+.sidebar.closed .logo-icon {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ================= */
+/* == ITEMS DEL SIDEBAR == */
+/* ================= */
+
 .sidebar-item {
   display: flex;
   align-items: center;
@@ -63,33 +99,58 @@
   font-size: 0.9rem;
   cursor: pointer;
   transition: background 0.3s ease;
-  }
+}
 
 .sidebar-item:hover {
   background: #706b6b;
-  }
+}
 
 .sidebar-item.active {
   box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
-  }
-  /*======== Chat-item =====*/
-/* ==== Estilos para la lista de chats ==== */
+}
+
+/* ================= */
+/* == ICONOS Y TEXTO == */
+/* ================= */
+
+.icon {
+  font-size: 1.25rem;
+  margin-right: 10px;
+  transition: all 0.3s ease;
+}
+
+.label {
+  transition: opacity 0.3s ease, width 0.3s ease;
+  white-space: nowrap;
+}
+
+.logo-icon {
+  display: none;
+  font-size: 1.5rem;
+  color: white;
+}
+
+/* ================= */
+/* == CHATS == */
+/* ================= */
+
+/* ==== Lista de chats ==== */
 .chats-list {
   list-style: none;
   padding-left: 0;
   margin-top: 5px;
-  overflow-y: auto; /* Permite desplazamiento interno sin mostrar scroll */
+  overflow-y: auto;
   max-height: calc(100vh - 150px);
-  width: 100%; 
+  width: 100%;
 }
 
-/* ==== Estilos para los títulos de categoría ==== */
+/* ==== Categorías ==== */
 .chat-category {
   display: block;
   margin-top: 10px;
   margin-bottom: 5px;
   font-weight: bold;
-  color: #aaa; /* Color más claro para los títulos */
+  color: #aaa;
 }
 
 .no-chats-message {
@@ -97,70 +158,52 @@
   margin-left: 15px;
   font-size: 0.85rem;
 }
+
 /* ==== Botones de chat ==== */
 .sidebar-chat-item {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
+  flex:1;
+  text-align: left;
+  background-color: transparent;
+  border: none;
+  padding: 10px 10px;
   color: white;
-  text-decoration: none;
   font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.3s ease;
-
-  /* Sin fondo por defecto */
-  background-color: transparent;
-  border: none;
-  outline: none;
-  padding: 0;
-  margin: 8px 0;
-  width: 100%;
-  height: 40px;
   overflow: hidden;
+  white-space: nowrap;
+  max-width:none;
+  text-overflow: ellipsis;
 }
 
-/* ==== Hover opcional (opcional y suave) ==== */
 .sidebar-chat-item:hover {
   background-color: #333;
   border-radius: 6px;
 }
 
-/* ==== Chat seleccionado (activo) ==== */
 .sidebar-chat-item.active {
-  background-color: #222;       /* Fondo oscuro */
-  color: #fff;                  /* Color de texto blanco */
-  font-weight: bold;            /* Texto en negrita */
-  padding: 12px 10px;          /* Añade espacio interno */
-  border-radius: 8px;           /* Bordes redondeados */
-  overflow: visible;            /* Evita corte al redondear */
+  background-color: #222;
+  color: #fff;
+  font-weight: bold;
+  padding: 8px 12px;
+  border-radius: 8px;
+  text-overflow: ellipsis;
 }
-/* ==== Icono y Label ==== */
-.icon {
-  font-size: 1.25rem;
-  margin-right: 10px;
-  transition: all 0.3s ease;
-  }
 
-.label {
-  transition: opacity 0.3s ease, width 0.3s ease;
-  white-space: nowrap;
-  }
-.logo-icon {
-  display: none;
-  font-size: 1.5rem;
-  color: white;
-  }
-
-  /*======== Aqui va el botom para eliminar un chat*/
+/* ==== Contenedor del chat ==== */
 .chat-item-container {
-  position: relative; /* Para posicionar elementos absolutos */
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
 }
 
+/* ==== Icono de 3 puntos ==== */
 .more-options {
   position: absolute;
   top: 50%;
-  right: 10px; /* Alinea al lado derecho */
-  transform: translateY(-50%); /* Centra verticalmente */
+  right: 0;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -179,15 +222,22 @@
   color: white;
   opacity: 1;
 }
+.more-options, .more-button {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
 /* ==== Menú contextual ==== */
 .menu-contextual {
   position: fixed;
-  background-color: #222; /* Fondo oscuro con transparencia */
+  background-color: #222;
   border-radius: 6px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-  z-index: 1000; /* Asegura que el menú aparezca encima */
-  padding: 5px 0; /* Espacio interno */
-  min-width: 150px; /* Ancho mínimo para evitar que sea demasiado estrecho */
+  z-index: 1000;
+  padding: 5px 0;
+  min-width: 80px;
 }
 
 .menu-contextual button {
@@ -195,14 +245,14 @@
   border: none;
   color: white;
   width: 100%;
-  text-align: left;
+  text-align: center;
   padding: 8px 12px;
   cursor: pointer;
   transition: background-color 0.3s ease;
 }
 
 .menu-contextual button:hover {
-  background-color: #706b6b; /* Sombra suave al pasar el mouse */
+  background-color: #706b6b;
 }
 
 .delete-chat-button {
@@ -221,74 +271,9 @@
   background-color: #706b6b;
 }
 
-/* ======= Aqui va cuando se abre el sidebar ========*/
-.siderbar.open {
-  width: 150px;
-  }
-.sidebar.open.sidebar-toggle {
-  right: calc(150px - 20px); 
-  }
-.sidebar.open .jarvis-logo {
-  margin: 0 auto;
-  }
-.sidebar.open .logo-icon {
-  display: none;
-  }
-  .siderbar.open .icon {
-  font-size: 1.25rem;
-  margin-right: 10px;
-  transition: all 0.3s ease;
-  }
-
-/* ===== Aqui va cuando se cierra el sidebar ========*/
-.sidebar.closed {
-  width: 40px;
-  padding: 0.5rem;
-  }
-.sidebar.closed .label {
-  display: none;
-  }
-.sidebar.closed .icon {
-  margin-right: 0;
-  display: block;
-  margin: 0 auto;
-  }
-.sidebar.closed .sidebar-toggle {
-  right: calc(50% - 20px); /* Centra el botón (mitad del ancho del botón) */
-  }
-.sidebar.closed .logo-icon {
-    margin: 0;
-    position: absolute;
-    top: 65px;
-    transform: translateY(-50%);
-    display: flex;
-  }
-
-  /* Ocultar/mostrar según estado */
-.logo-full { /* Logo animado */
-  display: block;
-}
-
-.logo-icon { /* Letra J */
-  display: none;
-}
-
-.sidebar.closed .logo-full {
-  display: none;
-}
-
-.sidebar.closed .logo-icon {
-  display: flex;
-}
-
-.sidebar-item:not(.jarvis):hover {
-  background: #706b6b;
-}
-
-.sidebar-item.jarvis:hover {
-  background: transparent !important;
-}
-/*====== Nuevo Chat botom ==========*/
+/* ================= */
+/* == ICONO PARA NUEVO CHAT == */
+/* ================= */
 .new-chat-button {
   position: fixed;
   top: 20px;
@@ -312,15 +297,77 @@
   background-color: #333;
 }
 
-/* Sidebar.css */
-.sidebar-closed .chats-list {
+
+/* ================= */
+/* == ESTADOS DE SIDEBAR == */
+/* ================= */
+
+.sidebar.open {
+  width: 220px;
+}
+
+.sidebar.open.sidebar-toggle {
+  right: calc(150px - 20px);
+}
+
+.sidebar.open .jarvis-logo {
+  margin: 0 auto;
+}
+
+.sidebar.open .logo-icon {
   display: none;
 }
 
-.sidebar-open .chats-list {
-  display: block;
-  transition: all 0.3s ease;
+.sidebar.closed {
+  width: 40px;
+  padding: 0.5rem;
 }
+
+.sidebar.closed .label {
+  display: none;
+}
+
+.sidebar.closed .icon {
+  margin-right: 0;
+  display: block;
+  margin: 0 auto;
+}
+
+.sidebar.closed .sidebar-toggle {
+  right: calc(50% - 20px);
+}
+
+.sidebar.closed .logo-icon {
+  margin: 0;
+  position: absolute;
+  top: 65px;
+  transform: translateY(-50%);
+  display: flex;
+}
+
+.logo-icon { /* Letra J */
+  display: none;
+}
+
+.sidebar.closed .logo-full {
+  display: none;
+}
+
+.sidebar.closed .logo-icon {
+  display: flex;
+}
+
+.sidebar-item:not(.jarvis):hover {
+  background: #706b6b;
+}
+
+.sidebar-item.jarvis:hover {
+  background: transparent !important;
+}
+
+/* ================= */
+/* == RESPONSIVE == */
+/* ================= */
 
 /* ================= RESPONSIVE: Solo este bloque ================= */
 @media (max-width: 768px) {
@@ -423,30 +470,3 @@
 }
 /* ================= FIN RESPONSIVE ================= */
 
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/* Sirve para poner el setting al final de la barra lateral 
-    .sidebar-item:last-child {
-      margin-top: auto;
-      margin-bottom: 30px;
-    }
-    */
-
-    
