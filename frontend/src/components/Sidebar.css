@@ -19,7 +19,7 @@
 }
 
 .sidebar-upper {
-  margin-top: 15px;
+  margin-top: 10px;
   margin-bottom: 20px;
 }
 
@@ -92,7 +92,7 @@
   align-items: center;
   justify-content: flex-start;
   color: white;
-  padding: 12px 10px;
+  padding: 11px 10px;
   margin: 8px 0;
   border-radius: 6px;
   text-decoration: none;
@@ -108,7 +108,19 @@
 .sidebar-item.active {
   box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
 }
-
+.chats-scroll {
+  overflow-y: auto;
+  flex: 1;
+  margin-top: -20px;
+}
+.sidebar-section {
+  flex: 1; 
+  overflow-y: auto; 
+}
+.sidebar-item:last-child {
+  margin-top: auto;
+  margin-bottom: 30px;
+}
 /* ================= */
 /* == ICONOS Y TEXTO == */
 /* ================= */
@@ -188,6 +200,9 @@
   padding: 8px 12px;
   border-radius: 8px;
   text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  text-align: left;
 }
 
 /* ==== Contenedor del chat ==== */

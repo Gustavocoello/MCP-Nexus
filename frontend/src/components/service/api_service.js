@@ -1,13 +1,13 @@
 import axios from 'axios';
 
 
-//const REACT_APP = process.env.REACT_APP_URL; // Localhost:5000 o la URL de tu backend en producción
-const REACT_APP_URL = process.env.REACT_APP_URL_AZURE_PROMPT; // Azure Functions Nube
+const REACT_APP = process.env.REACT_APP_URL; // Localhost:5000 o la URL de tu backend en producción
+//const REACT_APP_URL = process.env.REACT_APP_URL_AZURE_PROMPT; // Azure Functions Nube
 
 
 const onPrompt = async (promptText) => {
     try {
-      const response = await axios.post(`${REACT_APP_URL}`, { 
+      const response = await axios.post(`${REACT_APP}/api/search/prompt`, { 
         prompt: promptText
       },{
         headers: {

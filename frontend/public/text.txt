@@ -89,3 +89,50 @@
   height: 40px; /* Altura fija para todos los botones */
   overflow: hidden; /* Oculta contenido que exceda el tamaño */
 }
+
+
+const categorizeChats = (chats) => {
+  const categorizedChats = {
+    today: [],
+    yesterday: [],
+    previous7Days: [],
+    previous30Days: [],
+    older: []
+  };
+
+  const now = dayjs(); // Fecha actual
+
+  chats.forEach((chat) => {
+    const chatDate = dayjs(chat.date);
+
+    if (chatDate.isSame(now, 'day')) {
+      categorizedChats.today.push(chat);
+    } else if (chatDate.isSame(now.subtract(1, 'day'), 'day')) {
+      categorizedChats.yesterday.push(chat);
+    } else if (chatDate.isAfter(now.subtract(7, 'day'), 'day')) {
+      categorizedChats.previous7Days.push(chat);
+    } else if (chatDate.isAfter(now.subtract(30, 'day'), 'day')) {
+      categorizedChats.previous30Days.push(chat);
+    } else {
+      categorizedChats.older.push(chat);
+    }
+  });
+
+  return categorizedChats;
+};
+
+if (chatDate.isSame(now, 'day')) {
+      categorizedChats.today.push(chat);
+    } else if (chatDate.isSame(now.clone().subtract(1, 'day'), 'day')) {
+      categorizedChats.yesterday.push(chat);
+    } else if (chatDate.isAfter(now.clone().subtract(7, 'day'), 'day')) {
+      categorizedChats.previous7Days.push(chat);
+    } else if (chatDate.isAfter(now.clone().subtract(30, 'day'), 'day')) {
+      categorizedChats.previous30Days.push(chat);
+    } else {
+      categorizedChats.older.push(chat);
+    }
+  });
+
+  return categorizedChats;
+};

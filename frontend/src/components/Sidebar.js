@@ -31,37 +31,31 @@ const Sidebar = () => {
 
     setChats(loadChats());
   }, []);
-  
 
-  const categorizeChats = (chats) => {
-  const categorizedChats = {
-    today: [],
-    yesterday: [],
-    previous7Days: [],
-    previous30Days: [],
-    older: []
-  };
+  function getChatGroup(chatDateStr) {
+  const chatDate = dayjs(chatDateStr);
+  const now = dayjs();
+  const diffDays = now.diff(chatDate, 'day');
 
-  const now = dayjs(); // Fecha actual
+  if (diffDays === 0) return 'today';
+  if (diffDays === 1) return 'yesterday';
+  if (diffDays < 7) return 'last7days';
+  if (diffDays < 30) return 'last30days';
+  return 'older';
+}
 
-  chats.forEach((chat) => {
-    const chatDate = dayjs(chat.date);
+const categorizedChats = chats.reduce((acc, chat) => {
+  const group = getChatGroup(chat.date);
+  acc[group].push(chat);
+  return acc;
+}, {
+  today: [],
+  yesterday: [],
+  previous7Days: [],
+  previous30Days: [],
+  older: []
+});
 
-    if (chatDate.isSame(now, 'day')) {
-      categorizedChats.today.push(chat);
-    } else if (chatDate.isSame(now.clone().subtract(1, 'day'), 'day')) {
-      categorizedChats.yesterday.push(chat);
-    } else if (chatDate.isAfter(now.clone().subtract(7, 'day'), 'day')) {
-      categorizedChats.previous7Days.push(chat);
-    } else if (chatDate.isAfter(now.clone().subtract(30, 'day'), 'day')) {
-      categorizedChats.previous30Days.push(chat);
-    } else {
-      categorizedChats.older.push(chat);
-    }
-  });
-
-  return categorizedChats;
-};
 
   const handleDeleteChat = (chatId) => {
   const updatedChats = chats.filter(chat => chat.id !== chatId);
@@ -76,7 +70,9 @@ const Sidebar = () => {
     localStorage.removeItem('activeChatId');
 
     // Disparar evento para limpiar mensajes en ChatPage
-    window.dispatchEvent(new Event('chat-loaded'));
+    window.dispatchEvent(new CustomEvent('chat-loaded', { 
+    detail: { chatId }
+  }));
   }
 };
   const [showMenu, setShowMenu] = useState(null);
@@ -93,14 +89,15 @@ const toggleMenu = (chatId, event) => {
   setShowMenu(chatId === showMenu ? null : chatId);
 };
 
-  // Categorizar los chats
-  const categorizedChats = categorizeChats(chats);
 
   const handleLoadChat = (messages, chatId) => {
     // Guardar temporalmente en localStorage
     localStorage.setItem('tempChatToLoad', JSON.stringify(messages));
+    localStorage.setItem('activeChatId', chatId);
     // Disparar evento para recargar el chat
-    window.dispatchEvent(new Event('chat-loaded'));
+    window.dispatchEvent(new CustomEvent('chat-loaded', { 
+    detail: { chatId }
+  }));
     setCurrentChatId(chatId);
   };
 
@@ -133,12 +130,13 @@ const toggleMenu = (chatId, event) => {
       </div>
       {/* Lista de chats */}
       <div className="sidebar-section">
+        <div className="chats-scroll">
         <ul className="chats-list">
           {/* Solo muestra chats si el sidebar está abierto */}
           {isOpen && (
             <>
               {/* === CHATS DE HOY === */}
-              {categorizedChats.today.length > 0 && (
+              {categorizedChats?.today?.length > 0 && (
                 <li>
                   {/* Título de la categoría Today */}
                   <span className="chat-category">Today</span>
@@ -191,7 +189,7 @@ const toggleMenu = (chatId, event) => {
               )}
 
               {/* === CHATS DE AYER === */}
-              {categorizedChats.yesterday.length > 0 && (
+              {categorizedChats?.yesterday?.length > 0 && (
                 <li>
                   <span className="chat-category">Yesterday</span>
                   {categorizedChats.yesterday.map((chat, index) => (
@@ -239,7 +237,7 @@ const toggleMenu = (chatId, event) => {
               )}
 
               {/* === CHATS DE LOS ÚLTIMOS 7 DÍAS === */}
-              {categorizedChats.previous7Days.length > 0 && (
+              {categorizedChats?.previous7Days?.length > 0 && (
                 <li>
                   <span className="chat-category">Previous 7 days</span>
                   {categorizedChats.previous7Days.map((chat, index) => (
@@ -287,7 +285,7 @@ const toggleMenu = (chatId, event) => {
               )}
 
               {/* === CHATS DE LOS ÚLTIMOS 30 DÍAS === */}
-              {categorizedChats.previous30Days.length > 0 && (
+              {categorizedChats?.previous30Days?.length > 0 && (
                 <li>
                   <span className="chat-category">Previous 30 days</span>
                   {categorizedChats.previous30Days.map((chat, index) => (
@@ -335,7 +333,7 @@ const toggleMenu = (chatId, event) => {
               )}
 
               {/* === CHATS ANTIGUOS === */}
-              {categorizedChats.older.length > 0 && (
+              {categorizedChats?.older?.length > 0 && (
                 <li>
                   <span className="chat-category">Older</span>
                   {categorizedChats.older.map((chat, index) => (
@@ -393,6 +391,7 @@ const toggleMenu = (chatId, event) => {
             </>
           )}
         </ul>
+        </div>
       </div>
 
      
