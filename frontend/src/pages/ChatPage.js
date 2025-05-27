@@ -59,9 +59,8 @@ const ChatPage = () => {
       const targetChat = allChats.find(chat => chat.id === chatId);
 
       if (targetChat) {
-        // Mover chat al final y actualizar estados
-        const updatedChats = allChats.filter(chat => chat.id !== chatId);
-        updatedChats.push(targetChat);
+        // Mover chat al principio y actualizar estados
+       const updatedChats = [targetChat, ...allChats.filter(c => c.id !== chatId)];
         
         localStorage.setItem('allChats', JSON.stringify(updatedChats));
         setActiveChatId(chatId);
@@ -89,11 +88,10 @@ useEffect(() => {
     };
 
     // 2. Filtrar el chat viejo y añadir la versión actualizada al final
-    const updatedChats = [
-      ...allChats.filter(chat => chat.id !== activeChatId),
-      updatedChat
-    ];
-
+   const updatedChats = [
+    updatedChat,
+    ...allChats.filter(chat => chat.id !== activeChatId)
+];
     // 3. Guardar en localStorage y notificar cambios
     localStorage.setItem('allChats', JSON.stringify(updatedChats));
     window.dispatchEvent(new Event('chats-updated'));
@@ -110,7 +108,7 @@ useEffect(() => {
       messages: []
     };
 
-    const updatedChats = [...loadAllChats(), newChat];
+    const updatedChats = [newChat, ...loadAllChats()];
     localStorage.setItem('allChats', JSON.stringify(updatedChats));
     
     setActiveChatId(newChat.id);

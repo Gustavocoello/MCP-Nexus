@@ -1,8 +1,9 @@
-from re import search
-from flask import Flask, request, jsonify, Request
+from flask import Config, Flask, request, jsonify, Request
 from flask_cors import CORS
 from config.logging_config import get_logger
-from api.v1.routes import search_bp
+from api.v1.routes import search_bp, chat_bp
+from config.config import Config
+from extensions import db
 from dotenv import load_dotenv
 import os 
 
@@ -19,8 +20,19 @@ logger = get_logger('app')
 # Inicializamos la aplicación Flask
 app = Flask(__name__)
 CORS(app)
+app.config.from_object(Config)
 
+db.init_app(app)
+# Registrar los blueprints de las rutas
+"""Mensajes de la IA sin memoria"""
 app.register_blueprint(search_bp, url_prefix='/api/search')
+"""Mensajes de la IA con memoria"""
+app.register_blueprint(chat_bp, url_prefix='/api/chat')
+
+
+with app.app_context():
+    from database.models.models import Chat, Message
+    db.create_all()
 
 # Inicia el servidor Flask
 if __name__ == "__main__":

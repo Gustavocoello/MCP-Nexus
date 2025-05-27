@@ -32,6 +32,19 @@ const Sidebar = () => {
     setChats(loadChats());
   }, []);
 
+  // Escuchar cambios externos en el chat activo
+useEffect(() => {
+  const handleChatLoaded = (e) => {
+    const { chatId } = e.detail;
+    setCurrentChatId(chatId);
+  };
+
+  window.addEventListener('chat-loaded', handleChatLoaded);
+  return () => {
+    window.removeEventListener('chat-loaded', handleChatLoaded);
+  };
+}, []);
+
   function getChatGroup(chatDateStr) {
   const chatDate = dayjs(chatDateStr);
   const now = dayjs();
@@ -39,8 +52,8 @@ const Sidebar = () => {
 
   if (diffDays === 0) return 'today';
   if (diffDays === 1) return 'yesterday';
-  if (diffDays < 7) return 'last7days';
-  if (diffDays < 30) return 'last30days';
+  if (diffDays < 7) return 'previous7Days';
+  if (diffDays < 30) return 'previous30Days';
   return 'older';
 }
 
@@ -66,7 +79,6 @@ const categorizedChats = chats.reduce((acc, chat) => {
   // Si eliminamos el chat activo, limpiamos el estado local y localStorage
   if (currentChatId === chatId) {
     setCurrentChatId(null);
-    localStorage.removeItem('tempChatToLoad');
     localStorage.removeItem('activeChatId');
 
     // Disparar evento para limpiar mensajes en ChatPage
@@ -132,260 +144,67 @@ const toggleMenu = (chatId, event) => {
       <div className="sidebar-section">
         <div className="chats-scroll">
         <ul className="chats-list">
-          {/* Solo muestra chats si el sidebar está abierto */}
           {isOpen && (
             <>
-              {/* === CHATS DE HOY === */}
-              {categorizedChats?.today?.length > 0 && (
-                <li>
-                  {/* Título de la categoría Today */}
-                  <span className="chat-category">Today</span>
+              {Object.entries(categorizedChats).map(([groupKey, groupChats]) => (
+                groupChats.length > 0 && (
+                  <li key={groupKey}>
+                    <span className="chat-category">
+                      {{
+                        today: 'Today',
+                        yesterday: 'Yesterday',
+                        previous7Days: 'Previous 7 days',
+                        previous30Days: 'Previous 30 days',
+                        older: 'Older'
+                      }[groupKey]}
+                    </span>
 
-                  {/* Lista de chats de hoy */}
-                  {categorizedChats.today.map((chat, index) => (
-                    <div key={index} className="chat-item-container">
-                      <button
-                        className={`sidebar-chat-item ${chat.id === currentChatId ? 'active' : ''}`}
-                        onClick={() => handleLoadChat(chat.messages, chat.id)}
-                      >
-                        <span className="label">
-                          {getFirstUserMessage(chat.messages)}
-                        </span>
-                      </button>
-
-                      {/* Icono de 3 puntos - Solo aparece si es el chat activo */}
-                      {chat.id === currentChatId && (
+                    {groupChats.map((chat, index) => (
+                      <div key={index} className="chat-item-container">
                         <button
-                          className="more-button"
-                          onClick={(e) => toggleMenu(chat.id, e)}
+                          className={`sidebar-chat-item ${chat.id === currentChatId ? 'active' : ''}`}
+                          onClick={() => handleLoadChat(chat.messages, chat.id)}
                         >
-                          <CgMoreAlt size={18} />
+                          <span className="label">{getFirstUserMessage(chat.messages)}</span>
                         </button>
-                      )}
 
-                      {/* Menú contextual - Aparece encima del sidebar */}
-                      {showMenu === chat.id && (
-                        <div
-                          className="menu-contextual"
-                          style={{
-                            top: `${menuPosition.top}px`,
-                            left: `${menuPosition.left}px`,
-                          }}
-                        >
+                        {chat.id === currentChatId && (
                           <button
-                            className="delete-chat-button"
-                            onClick={() => {
-                              handleDeleteChat(chat.id);
-                              toggleMenu(null);
+                            className="more-button"
+                            onClick={(e) => toggleMenu(chat.id, e)}
+                          >
+                            <CgMoreAlt size={18} />
+                          </button>
+                        )}
+
+                        {showMenu === chat.id && (
+                          <div
+                            className="menu-contextual"
+                            style={{
+                              top: `${menuPosition.top}px`,
+                              left: `${menuPosition.left}px`,
                             }}
                           >
-                            Delete
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </li>
-              )}
+                            <button
+                              className="delete-chat-button"
+                              onClick={() => {
+                                handleDeleteChat(chat.id);
+                                toggleMenu(null);
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </li>
+                )
+              ))}
 
-              {/* === CHATS DE AYER === */}
-              {categorizedChats?.yesterday?.length > 0 && (
+              {Object.values(categorizedChats).every(group => group.length === 0) && (
                 <li>
-                  <span className="chat-category">Yesterday</span>
-                  {categorizedChats.yesterday.map((chat, index) => (
-                    <div key={index} className="chat-item-container">
-                      <button
-                        className={`sidebar-chat-item ${chat.id === currentChatId ? 'active' : ''}`}
-                        onClick={() => handleLoadChat(chat.messages, chat.id)}
-                      >
-                        <span className="label">
-                          {getFirstUserMessage(chat.messages)}
-                        </span>
-                      </button>
-
-                      {chat.id === currentChatId && (
-                        <button
-                          className="more-button"
-                          onClick={(e) => toggleMenu(chat.id, e)}
-                        >
-                          <CgMoreAlt size={18} />
-                        </button>
-                      )}
-
-                      {showMenu === chat.id && (
-                        <div
-                          className="menu-contextual"
-                          style={{
-                            top: `${menuPosition.top}px`,
-                            left: `${menuPosition.left}px`,
-                          }}
-                        >
-                          <button
-                            className="delete-chat-button"
-                            onClick={() => {
-                              handleDeleteChat(chat.id);
-                              toggleMenu(null);
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </li>
-              )}
-
-              {/* === CHATS DE LOS ÚLTIMOS 7 DÍAS === */}
-              {categorizedChats?.previous7Days?.length > 0 && (
-                <li>
-                  <span className="chat-category">Previous 7 days</span>
-                  {categorizedChats.previous7Days.map((chat, index) => (
-                    <div key={index} className="chat-item-container">
-                      <button
-                        className={`sidebar-chat-item ${chat.id === currentChatId ? 'active' : ''}`}
-                        onClick={() => handleLoadChat(chat.messages, chat.id)}
-                      >
-                        <span className="label">
-                          {getFirstUserMessage(chat.messages)}
-                        </span>
-                      </button>
-
-                      {chat.id === currentChatId && (
-                        <button
-                          className="more-button"
-                          onClick={(e) => toggleMenu(chat.id, e)}
-                        >
-                          <CgMoreAlt size={18} />
-                        </button>
-                      )}
-
-                      {showMenu === chat.id && (
-                        <div
-                          className="menu-contextual"
-                          style={{
-                            top: `${menuPosition.top}px`,
-                            left: `${menuPosition.left}px`,
-                          }}
-                        >
-                          <button
-                            className="delete-chat-button"
-                            onClick={() => {
-                              handleDeleteChat(chat.id);
-                              toggleMenu(null);
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </li>
-              )}
-
-              {/* === CHATS DE LOS ÚLTIMOS 30 DÍAS === */}
-              {categorizedChats?.previous30Days?.length > 0 && (
-                <li>
-                  <span className="chat-category">Previous 30 days</span>
-                  {categorizedChats.previous30Days.map((chat, index) => (
-                    <div key={index} className="chat-item-container">
-                      <button
-                        className={`sidebar-chat-item ${chat.id === currentChatId ? 'active' : ''}`}
-                        onClick={() => handleLoadChat(chat.messages, chat.id)}
-                      >
-                        <span className="label">
-                          {getFirstUserMessage(chat.messages)}
-                        </span>
-                      </button>
-
-                      {chat.id === currentChatId && (
-                        <button
-                          className="more-button"
-                          onClick={(e) => toggleMenu(chat.id, e)}
-                        >
-                          <CgMoreAlt size={18} />
-                        </button>
-                      )}
-
-                      {showMenu === chat.id && (
-                        <div
-                          className="menu-contextual"
-                          style={{
-                            top: `${menuPosition.top}px`,
-                            left: `${menuPosition.left}px`,
-                          }}
-                        >
-                          <button
-                            className="delete-chat-button"
-                            onClick={() => {
-                              handleDeleteChat(chat.id);
-                              toggleMenu(null);
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </li>
-              )}
-
-              {/* === CHATS ANTIGUOS === */}
-              {categorizedChats?.older?.length > 0 && (
-                <li>
-                  <span className="chat-category">Older</span>
-                  {categorizedChats.older.map((chat, index) => (
-                    <div key={index} className="chat-item-container">
-                      <button
-                        className={`sidebar-chat-item ${chat.id === currentChatId ? 'active' : ''}`}
-                        onClick={() => handleLoadChat(chat.messages, chat.id)}
-                      >
-                        <span className="label">
-                          {getFirstUserMessage(chat.messages)}
-                        </span>
-                      </button>
-
-                      {chat.id === currentChatId && (
-                        <button
-                          className="more-button"
-                          onClick={(e) => toggleMenu(chat.id, e)}
-                        >
-                          <CgMoreAlt size={18} />
-                        </button>
-                      )}
-
-                      {showMenu === chat.id && (
-                        <div
-                          className="menu-contextual"
-                          style={{
-                            top: `${menuPosition.top}px`,
-                            left: `${menuPosition.left}px`,
-                          }}
-                        >
-                          <button
-                            className="delete-chat-button"
-                            onClick={() => {
-                              handleDeleteChat(chat.id);
-                              toggleMenu(null);
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </li>
-              )}
-
-              {/* === MENSAJE CUANDO NO HAY CHATS GUARDADOS === */}
-              {Object.values(categorizedChats).every(category => category.length === 0) && (
-                <li>
-                  <span className="no-chats-message">
-                    No hay chats guardados
-                  </span>
+                  <span className="no-chats-message">No hay chats guardados</span>
                 </li>
               )}
             </>
@@ -393,7 +212,6 @@ const toggleMenu = (chatId, event) => {
         </ul>
         </div>
       </div>
-
      
       {/* Settings */}
       <Link 
