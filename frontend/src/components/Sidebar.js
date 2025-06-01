@@ -1,49 +1,66 @@
 import React, { useState, useEffect } from 'react';
-import dayjs from 'dayjs'; // Importar dayjs
+import dayjs from 'dayjs';
 import { Link, useLocation } from 'react-router-dom';
 import { FaChartBar, FaCog, FaBars } from 'react-icons/fa';
 import { CgMoreAlt } from "react-icons/cg";
 import AnimatedJarvis from './AnimatedJarvis';
+import MarkdownIt from 'markdown-it';
+import ChatMenu from '../components/ChatMenu';
 import './Sidebar.css';
 
+// Servicios
+import { getAllChats, getChatMessages, deleteChat } from '../components/service/chatService';
 
-// Versión optimizada con manejo de mensajes vacíos
-const getFirstUserMessage = (messages = []) => { // <-- Parámetro por defecto
-  const userMessage = messages.find(msg => msg.role === "user"); // <-- find() en vez de filter()
-  return userMessage?.text || "Sin mensaje"; // <-- Optional chaining
-};
+const md = new MarkdownIt();
 
 const Sidebar = () => {
   const location = useLocation();
-  const [isOpen, setIsOpen] = useState(true); // true = abierto por defecto
+  const [isOpen, setIsOpen] = useState(true); 
   const [chats, setChats] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
   // Cargar los chats desde localStorage
+  const fetchAndSetChats = async () => {
+  try {
+    const fetchedChats = await getAllChats();
+    const chatsConTitulo = fetchedChats.map(chat => ({
+      ...chat,
+      title: chat.title && chat.title.trim() !== '' ? chat.title : 'Sin título',
+      date: chat.updated_at || chat.created_at
+    }));
+    setChats(chatsConTitulo);
+  } catch (error) {
+    console.error('Error cargando chats:', error);
+  }
+};
+
+useEffect(() => {
+  fetchAndSetChats();
+}, []);
+
+useEffect(() => {
+  const handleChatsUpdated = () => {
+    fetchAndSetChats();
+  };
+
+  window.addEventListener('chats-updated', handleChatsUpdated);
+  return () => window.removeEventListener('chats-updated', handleChatsUpdated);
+}, []);
+
+   
+  // Escuchar cambios externos en el chat activo
   useEffect(() => {
-    const loadChats = () => {
-      const saved = localStorage.getItem('allChats');
-      return saved ? JSON.parse(saved) : [];
+    const handleChatLoaded = (e) => {
+      const { chatId } = e.detail;
+      setCurrentChatId(chatId);
     };
 
-    
-
-    setChats(loadChats());
+    window.addEventListener('chat-loaded', handleChatLoaded);
+    return () => {
+      window.removeEventListener('chat-loaded', handleChatLoaded);
+    };
   }, []);
-
-  // Escuchar cambios externos en el chat activo
-useEffect(() => {
-  const handleChatLoaded = (e) => {
-    const { chatId } = e.detail;
-    setCurrentChatId(chatId);
-  };
-
-  window.addEventListener('chat-loaded', handleChatLoaded);
-  return () => {
-    window.removeEventListener('chat-loaded', handleChatLoaded);
-  };
-}, []);
 
   function getChatGroup(chatDateStr) {
   const chatDate = dayjs(chatDateStr);
@@ -69,24 +86,32 @@ const categorizedChats = chats.reduce((acc, chat) => {
   older: []
 });
 
+  // Borrar un chat
+  const handleDeleteChat = async (chatId) => {
+  try {
+    // Llamar al backend para eliminar el chat
+    await deleteChat(chatId);
 
-  const handleDeleteChat = (chatId) => {
-  const updatedChats = chats.filter(chat => chat.id !== chatId);
+    // Actualizar estado local
+    const updatedChats = chats.filter(chat => chat.id !== chatId);
+    setChats(updatedChats);
 
-  setChats(updatedChats);
-  localStorage.setItem('allChats', JSON.stringify(updatedChats));
-
-  // Si eliminamos el chat activo, limpiamos el estado local y localStorage
-  if (currentChatId === chatId) {
-    setCurrentChatId(null);
+    // Si eliminé el chat que estaba abierto, borro la referencia
+  if (localStorage.getItem('activeChatId') === chatId) {
     localStorage.removeItem('activeChatId');
+  }
 
-    // Disparar evento para limpiar mensajes en ChatPage
-    window.dispatchEvent(new CustomEvent('chat-loaded', { 
-    detail: { chatId }
-  }));
+    // Si es el chat activo, limpiar
+    if (currentChatId === chatId) {
+      setCurrentChatId(null);
+      localStorage.removeItem('activeChatId'); // Opcional: si aún usas localStorage para algo
+      window.dispatchEvent(new CustomEvent('chat-loaded', { detail: { chatId } }));
+    }
+  } catch (error) {
+    console.error('Error eliminando chat:', error);
   }
 };
+  
   const [showMenu, setShowMenu] = useState(null);
 
 const toggleMenu = (chatId, event) => {
@@ -101,17 +126,31 @@ const toggleMenu = (chatId, event) => {
   setShowMenu(chatId === showMenu ? null : chatId);
 };
 
+  // Cargar mensajes del chat seleccionado
+  const handleLoadChat = async (chatId) => {
+  try {
+    // Cargar mensajes del chat desde backend
+    const rawMessages = await getChatMessages(chatId);
 
-  const handleLoadChat = (messages, chatId) => {
-    // Guardar temporalmente en localStorage
-    localStorage.setItem('tempChatToLoad', JSON.stringify(messages));
-    localStorage.setItem('activeChatId', chatId);
-    // Disparar evento para recargar el chat
-    window.dispatchEvent(new CustomEvent('chat-loaded', { 
-    detail: { chatId }
-  }));
+    // Actualizar chat activo
     setCurrentChatId(chatId);
-  };
+
+    const messages = rawMessages.map(m => ({
+      id:   m.id,
+      role: m.role,
+      html: md.render(m.content || '')   // convierte Markdown → HTML
+    }));
+
+    // Disparar evento para cargar mensajes en ChatPage
+    // console.log("Mensajes desde backend:", messages); 
+    window.dispatchEvent(new CustomEvent('chat-loaded', {
+      detail: { chatId, messages }
+      
+    }));
+  } catch (error) {
+    console.error('Error cargando chat:', error);
+  }
+};
 
   return (
     <div className={`sidebar ${isOpen ? 'open' : 'closed'}`}>
@@ -159,14 +198,14 @@ const toggleMenu = (chatId, event) => {
                       }[groupKey]}
                     </span>
 
-                    {groupChats.map((chat, index) => (
-                      <div key={index} className="chat-item-container">
+                    {groupChats.map((chat) => (
+                      <div key={chat.id} className="chat-item-container">
                         <button
                           className={`sidebar-chat-item ${chat.id === currentChatId ? 'active' : ''}`}
-                          onClick={() => handleLoadChat(chat.messages, chat.id)}
+                          onClick={() => handleLoadChat(chat.id)}
                         >
-                          <span className="label">{getFirstUserMessage(chat.messages)}</span>
-                        </button>
+                          <span className="label">{chat.title || "Sin título"}</span>
+                          </button>
 
                         {chat.id === currentChatId && (
                           <button
@@ -176,25 +215,13 @@ const toggleMenu = (chatId, event) => {
                             <CgMoreAlt size={18} />
                           </button>
                         )}
-
                         {showMenu === chat.id && (
-                          <div
-                            className="menu-contextual"
-                            style={{
-                              top: `${menuPosition.top}px`,
-                              left: `${menuPosition.left}px`,
-                            }}
-                          >
-                            <button
-                              className="delete-chat-button"
-                              onClick={() => {
-                                handleDeleteChat(chat.id);
-                                toggleMenu(null);
-                              }}
-                            >
-                              Delete
-                            </button>
-                          </div>
+                          <ChatMenu
+                            chatId={chat.id}
+                            position={menuPosition}
+                            onDelete={handleDeleteChat}
+                            onClose={() => setShowMenu(null)}
+                          />
                         )}
                       </div>
                     ))}

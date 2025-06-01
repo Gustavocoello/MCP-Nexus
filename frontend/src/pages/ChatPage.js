@@ -1,27 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import SearchBar from '../components/SearchBar';
 import MessageList from '../components/MessageList';
-import onPrompt from '../components/service/api_service';
 import { TbMessagePlus } from "react-icons/tb";
 import MarkdownIt from 'markdown-it';
+//import onPrompt from '../components/service/chatService';
+import { getAllChats, getChatMessages, createChat, sendMessage } from '../components/service/chatService';
 
 const md = new MarkdownIt();
 
 const ChatPage = () => {
   // Funciones auxiliares
-  const loadAllChats = () => {
-    const saved = localStorage.getItem('allChats');
-    return saved ? JSON.parse(saved) : [];
-  };
-
-  // Generadores de IDs
-  const generateChatId = () => {
-    return `chat-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-  };
-
-  const generateMessageId = (role) => {
-    return `${role}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
-  };
+  const loadAllChats = async () => {
+  try {
+    const chats = await getAllChats(); // Llama al backend
+    return chats;
+  } catch (error) {
+    console.error('Error cargando chats:', error);
+    return [];
+  } 
+};
 
   // Estados
   const [messages, setMessages] = useState([]);
@@ -31,130 +28,126 @@ const ChatPage = () => {
 
   // Efecto: Inicializar chat activo al cargar
   useEffect(() => {
-  const allChats = loadAllChats();
-  const storedActiveChatId = localStorage.getItem('activeChatId');
+  const initChat = async () => {
+    const allChats = await loadAllChats();
+    if (allChats.length === 0) return;
 
-  if (storedActiveChatId) {
-    const targetChat = allChats.find(chat => chat.id === storedActiveChatId);
-    if (targetChat) {
-      setMessages(targetChat.messages);
-      setActiveChatId(storedActiveChatId);
-    } else if (allChats.length > 0) {
-      setActiveChatId(allChats[0].id);
-      setMessages(allChats[0].messages);
+    const savedChatId = localStorage.getItem('activeChatId');
+    let chatToLoad = allChats.find(chat => chat.id === savedChatId);
+
+    if (!chatToLoad) {
+      chatToLoad = allChats[0]; // fallback: primer chat si no se encontró el guardado
     }
-  } else if (allChats.length > 0) {
-    setActiveChatId(allChats[0].id);
-    setMessages(allChats[0].messages);
-  } else {
-    setMessages([]);
-  }
+
+  const rawMessages = await getChatMessages(chatToLoad.id);
+
+  const formatted = rawMessages.map(m => ({
+    id:   m.id,
+    role: m.role,
+    html: md.render(m.content || '')   // ⬅️  misma lógica que usas en Sidebar
+  }));
+
+  setActiveChatId(chatToLoad.id);
+  setMessages(formatted);
+    localStorage.setItem('activeChatId', chatToLoad.id); // aseguramos persistencia
+  };
+
+  initChat();
 }, []);
 
   // Efecto: Escuchar eventos de carga de chat
   useEffect(() => {
-    const handleChatLoaded = (event) => {
-      const { chatId } = event.detail;
-      const allChats = loadAllChats();
-      const targetChat = allChats.find(chat => chat.id === chatId);
+  const handleChatLoaded = (event) => {
+    const { chatId, messages } = event.detail; // Listo los mensajes
 
-      if (targetChat) {
-        // Mover chat al principio y actualizar estados
-       const updatedChats = [targetChat, ...allChats.filter(c => c.id !== chatId)];
-        
-        localStorage.setItem('allChats', JSON.stringify(updatedChats));
-        setActiveChatId(chatId);
-        setMessages(targetChat.messages);
-      }
-    };
-
-    window.addEventListener('chat-loaded', handleChatLoaded);
-    return () => window.removeEventListener('chat-loaded', handleChatLoaded);
-  }, []);
-
-// Efecto: Guardar mensajes automáticamente y actualizar fecha
-useEffect(() => {
-  if (!activeChatId) return;
-
-  const allChats = loadAllChats();
-  const activeChat = allChats.find(chat => chat.id === activeChatId);
-
-  if (activeChat) {
-    // 1. Crear copia actualizada del chat activo
-    const updatedChat = {
-      ...activeChat,
-      messages: messages,
-      date: new Date().toISOString() // Fecha actualizada
-    };
-
-    // 2. Filtrar el chat viejo y añadir la versión actualizada al final
-   const updatedChats = [
-    updatedChat,
-    ...allChats.filter(chat => chat.id !== activeChatId)
-];
-    // 3. Guardar en localStorage y notificar cambios
-    localStorage.setItem('allChats', JSON.stringify(updatedChats));
-    window.dispatchEvent(new Event('chats-updated'));
-  }
-}, [messages, activeChatId]);
-
-
-  // Función para crear nuevo chat
-  const createNewChat = () => {
-
-    const newChat = {
-      id: generateChatId(),
-      date: new Date().toISOString(),
-      messages: []
-    };
-
-    const updatedChats = [newChat, ...loadAllChats()];
-    localStorage.setItem('allChats', JSON.stringify(updatedChats));
-    
-    setActiveChatId(newChat.id);
-    setMessages([]);
-    setHasSentMessage(false);
-    
-    // Notificar a otros componentes
-    window.dispatchEvent(new Event('chats-updated'));
+    setActiveChatId(chatId);
+    setMessages(messages); 
+    localStorage.setItem('activeChatId', chatId); // Guardar el ID del chat activo
   };
+
+  window.addEventListener('chat-loaded', handleChatLoaded);
+  return () => window.removeEventListener('chat-loaded', handleChatLoaded);
+}, []);
+
+// Efecto: Cargar el último chat al iniciar  
+useEffect(() => {
+  const lastChatId = localStorage.getItem("lastChatId");
+  if (lastChatId) {
+    window.dispatchEvent(new CustomEvent('chat-loaded', {
+      detail: { chatId: parseInt(lastChatId) }
+    }));
+  }
+}, []);
+
+
+// Función para crear nuevo chat
+const createNewChat = async () => {
+try {
+  const newChat = await createChat({}); // Backend genera el ID
+  const emptyMessages = [];
+
+  setActiveChatId(newChat.id);
+  setMessages(emptyMessages);
+  setHasSentMessage(false);
+
+  // Notificar cambios
+  window.dispatchEvent(new CustomEvent('chats-updated', {
+  detail: { newChatId: newChat.id }
+  }));
+
+} catch (error) {
+  console.error('Error creando chat:', error);
+}
+};
 
   // Manejar nuevos mensajes
   const handleNewMessage = async (message) => {
-    if (message.role === 'user') {
-      const userMessageId = generateMessageId('user');
-      const jarvisMessageId = generateMessageId('jarvis');
+  if (message.role === 'user') {
+    const jarvisTempId = `jarvis-${Date.now()}`;
 
-      // Agregar mensajes temporalmente
-      setMessages(prev => [
-        ...prev,
-        { id: userMessageId, role: 'user', text: message.text },
-        { id: jarvisMessageId, role: 'jarvis', text: '' }
-      ]);
+    // --- USER ---------------------------------------------------------------
+    const userContent = message.content ?? message.text ?? '';
+    const userHtml    = md.render(userContent);
 
-      setHasSentMessage(true);
-      setIsJarvisTyping(true);
+    setMessages(prev => [
+      ...prev,
+      { id: `user-${Date.now()}`, role: 'user', html: userHtml },
+      { id: jarvisTempId,  role: 'assistant', html: '' }
+    ]);
 
-      try {
-        // Obtener respuesta de la API
-        const response = await onPrompt(message.text);
-        const htmlResult = md.render(response.result || '');
+    setHasSentMessage(true);
+    setIsJarvisTyping(true);
 
-        // Actualizar mensaje de Jarvis
-        setMessages(prev => prev.map(msg => 
-          msg.id === jarvisMessageId ? { ...msg, text: htmlResult } : msg
-        ));
-      } catch (error) {
-        console.error(error);
-        setMessages(prev => prev.map(msg => 
-          msg.id === jarvisMessageId ? { ...msg, text: 'Error al procesar la solicitud' } : msg
-        ));
-      } finally {
-        setIsJarvisTyping(false);
-      }
+    try {
+      // envía SIEMPRE el mismo campo al backend
+      const response   = await sendMessage(activeChatId, userContent);
+      const replyText = typeof response.reply === 'string' ? response.reply : '';
+      
+      const jarvisHtml = md.render(replyText);    
+ 
+
+      // --- JARVIS -----------------------------------------------------------
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === jarvisTempId ? { ...msg, html: jarvisHtml } : msg
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === jarvisTempId
+            ? { ...msg, html: 'Error al procesar la solicitud.' }
+            : msg
+        )
+      );
+    } finally {
+      setIsJarvisTyping(false);
     }
-    
-  };
+  }
+};
+
+
 
   return (
     <div className="page">
@@ -169,7 +162,7 @@ useEffect(() => {
 
       <h4>How can I help you today?</h4>
 
-      <MessageList messages={messages} />
+      <MessageList messages={messages || []}/>
 
       {isJarvisTyping && (
         <div className="typing-indicator">

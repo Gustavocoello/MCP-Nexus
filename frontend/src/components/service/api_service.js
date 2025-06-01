@@ -19,5 +19,6 @@ const onPrompt = async (promptText) => {
       throw new Error(error.response?.data?.error || 'Error al introducir el prompt');
     }
   };
-  
+   
   export default onPrompt;
+
