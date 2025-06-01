@@ -1,3 +1,4 @@
+from openai import chat
 from src.services.ai_providers.utils import generate_prompt
 from src.services.ai_providers.context import completion
 from database.models.models import Chat, Message
@@ -84,34 +85,134 @@ def summarize_and_trim(chat):
 
 
 # ------------- route principal -------------
-@chat_bp.post('/')
+
+# ----------------- GET ---------------------
+@chat_bp.route('', methods=['GET'], strict_slashes=False)
+def get_all_chats():
+    chats = Chat.query.order_by(Chat.updated_at.desc()).all()
+    return jsonify([{
+        "id": chat.id,
+        "created_at": chat.created_at.isoformat(),
+        "updated_at": chat.updated_at.isoformat() if chat.updated_at else None,
+        "summary": chat.summary,
+        "title": chat.title if chat.title else "Sin título"
+    } for chat in chats])
+
+@chat_bp.route('/<chat_id>/messages', methods=['GET'])
+def get_chat_messages(chat_id):
+    messages = (Message.query
+                .filter_by(chat_id=chat_id)
+                .order_by(Message.created_at.asc())
+                .all())
+    return jsonify([{
+        "id": msg.id,
+        "role": msg.role,
+        "content": msg.content,
+        "created_at": msg.created_at.isoformat()
+    } for msg in messages])
+    
+# ----------------- DELETE -------------------
+    
+@chat_bp.route('/<chat_id>', methods=['DELETE'])
+def delete_chat(chat_id):
+    chat = Chat.query.get(chat_id)
+    if not chat:
+        return jsonify({"error": "Chat no encontrado"}), 404
+
+    db.session.delete(chat)
+    db.session.commit()
+    return jsonify({"message": "Chat eliminado correctamente"}), 200
+
+
+# ----------------- POST ---------------------    
+    
+@chat_bp.route('', methods=['POST'], strict_slashes=False)
 def create_chat():
-    chat = Chat(id=request.json.get("id") or datetime.utcnow().isoformat())
-    db.session.add(chat)
-    db.session.commit()
-    return jsonify({"chat_id": chat.id}), 201
+    try:
+        chat = Chat()
+        db.session.add(chat)
+        db.session.commit()
+        
+        return jsonify({
+            "id": chat.id,
+            "created_at": chat.created_at.isoformat()
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
 
-@chat_bp.post('/<chat_id>/message')
+@chat_bp.route('/<chat_id>/message', methods=['POST'], strict_slashes=False)
 def send_message(chat_id):
-    user_text = request.json["text"]
+    user_text = (request.json.get("text") or "").strip()
+    if not user_text:
+        return jsonify({"error": "Texto vacío"}), 400
 
-    chat = Chat.query.get(chat_id) or Chat(id=chat_id)
-    db.session.add(chat)
-    db.session.add(Message(chat_id=chat.id, role="user", content=user_text))
+    print("BODY RECIBIDO:", request.json)
 
-    recent = (Message.query.filter_by(chat_id=chat.id)
-              .order_by(Message.created_at.desc())
-              .limit(MAX_RAW).all()[::-1])
+    try:
+        # ---------- 1) guardar mensaje del usuario -------------
+        chat = Chat.query.get(chat_id)
+        if chat is None:
+            chat = Chat(id=chat_id)
+            db.session.add(chat)
 
-    payload = build_payload(chat, recent, user_text)
+        chat.updated_at = datetime.utcnow()
 
-    # <<< UNA sola línea llama al router >>>
-    assistant_reply = completion(payload)
+        # Crear mensaje del usuario
+        user_message = Message(chat_id=chat.id, role="user", content=user_text)
+        db.session.add(user_message)
 
-    db.session.add(Message(chat_id=chat.id, role="assistant",
-                           content=assistant_reply))
+        # Si el chat aún no tiene título, usar el primer mensaje como título resumido
+        if not chat.title:
+            palabras = user_text.split()
+            resumen = " ".join(palabras[:10]) + ("..." if len(palabras) > 10 else "")
+            chat.title = resumen
+
+        db.session.commit()  # 🔑 commit antes de seguir
+
+        # ---------- 2) construir prompt ------------------------
+        recent = (
+            Message.query
+            .filter_by(chat_id=chat.id)
+            .order_by(Message.created_at.desc())
+            .limit(MAX_RAW)
+            .all()[::-1]  # últimos en orden cronológico
+        )
+
+        payload = build_payload(chat, recent, user_text)
+
+        # ---------- 3) llamar al modelo ------------------------
+        assistant_reply = completion(payload)
+
+        # ---------- 4) guardar respuesta del modelo ------------
+        chat.updated_at = datetime.utcnow()
+        db.session.add(Message(chat_id=chat.id, role="assistant", content=assistant_reply))
+        db.session.commit()  # commit corto
+
+        # ---------- 5) resumen y poda --------------------------
+        summarize_and_trim(chat)  # esta función hace su propio commit
+
+        return jsonify({"reply": assistant_reply})
+
+    except Exception as e:
+        db.session.rollback()
+        logger.exception("Error en send_message")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        db.session.close()
+        
+# --------------- PUT ---------------
+@chat_bp.route('/<chat_id>/title', methods=['PUT'])
+def update_chat_title(chat_id):
+    data = request.get_json()
+    new_title = data.get('title')
+
+    chat = Chat.query.get(chat_id)
+    if not chat:
+        return jsonify({'error': 'Chat no encontrado'}), 404
+
+    chat.title = new_title
     db.session.commit()
 
-    summarize_and_trim(chat)
-    return jsonify({"reply": assistant_reply})
+    return jsonify({'message': 'Título actualizado', 'title': new_title})

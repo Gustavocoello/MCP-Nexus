@@ -19,7 +19,7 @@ logger = get_logger('app')
 
 # Inicializamos la aplicación Flask
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True)
 app.config.from_object(Config)
 
 db.init_app(app)
