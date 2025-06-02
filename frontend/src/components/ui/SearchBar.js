@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaArrowUp } from 'react-icons/fa';
-import '../App.css'; // Asumiendo que App.css estará en la misma carpeta o en ruta correcta
+import '../../styles/App.css'; // Asumiendo que App.css estará en la misma carpeta o en ruta correcta
 
 const SearchBar = ({ onSearch, showIcon }) => {
   const [query, setQuery] = useState('');

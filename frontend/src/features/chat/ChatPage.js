@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import SearchBar from '../components/SearchBar';
-import MessageList from '../components/MessageList';
+import SearchBar from '../../components/ui/SearchBar';
+import MessageList from './components/MessageList/MessageList';
 import { TbMessagePlus } from "react-icons/tb";
 import MarkdownIt from 'markdown-it';
 //import onPrompt from '../components/service/chatService';
-import { getAllChats, getChatMessages, createChat, sendMessage } from '../components/service/chatService';
+import { getAllChats, getChatMessages, createChat, sendMessage } from '../../service/chatService';
 
 const md = new MarkdownIt();
 

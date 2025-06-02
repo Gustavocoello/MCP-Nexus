@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import dayjs from 'dayjs';
 import { Link, useLocation } from 'react-router-dom';
 import { FaChartBar, FaCog, FaBars } from 'react-icons/fa';
-import { CgMoreAlt } from "react-icons/cg";
-import AnimatedJarvis from './AnimatedJarvis';
+import dayjs from 'dayjs';
 import MarkdownIt from 'markdown-it';
-import ChatMenu from '../components/ChatMenu';
-import './Sidebar.css';
+import { CgMoreAlt } from "react-icons/cg";
+import AnimatedJarvis from '../../ui/AnimatedJarvis';
+import ChatMenu from '../../../features/chat/components/ChatMenu/ChatMenu';
+import '../Sidebar/Sidebar.css';
 
 // Servicios
-import { getAllChats, getChatMessages, deleteChat } from '../components/service/chatService';
+import { getAllChats, getChatMessages, deleteChat } from '../.././../service/chatService';
 
 const md = new MarkdownIt();
 
