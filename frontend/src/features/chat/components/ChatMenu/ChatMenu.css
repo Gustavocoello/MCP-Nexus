@@ -1,0 +1,53 @@
+.menu-contextual {
+  position: fixed;
+  background-color: #222;
+  border-radius: 6px;
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.3); /* sombra moderna */
+  padding: 0.5rem;
+  z-index: 1000;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 130px;
+  transform: translateX(-20px); /* Desplaza hacia fuera del sidebar */
+}
+.menu-option {
+  background-color: transparent;
+  border: none;
+  color: white;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.3s ease;
+  font-size: 0.9rem;
+  border-radius: 6px;
+}
+
+/* Hover default para opciones */
+.menu-option:hover {
+  background-color: #706b6b;
+}
+
+/* Eliminar con color de advertencia */
+.delete-option {
+  color: #ff4d4d;
+  font-weight: bold;
+}
+
+.delete-option:hover {
+  background-color: #5c1a1a;
+}
+
+/* Íconos dentro de botones */
+.menu-option .icon {
+  font-size: 1.2rem;
+}
+
+/* Renombrar en gris */
+.rename-option {
+  color: #bbb;
+}
+

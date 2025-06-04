@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import SearchBar from '../../components/ui/SearchBar';
+import SearchBar from '../../components/ui/SearchBar/SearchBar';
 import MessageList from './components/MessageList/MessageList';
 import { TbMessagePlus } from "react-icons/tb";
 import MarkdownIt from 'markdown-it';
 //import onPrompt from '../components/service/chatService';
 import { getAllChats, getChatMessages, createChat, sendMessage } from '../../service/chatService';
 
-const md = new MarkdownIt();
+const md = new MarkdownIt({
+  html: true,                   
+  linkify: true,                
+  highlight: function (str, lang) {
+    // Usaremos una clase para el formateo posterior con CSS
+    return `<pre class="code-block"><code class="language-${lang}">${md.utils.escapeHtml(str)}</code></pre>`;
+  }
+});
 
 const ChatPage = () => {
   // Funciones auxiliares
@@ -69,16 +76,12 @@ const ChatPage = () => {
   return () => window.removeEventListener('chat-loaded', handleChatLoaded);
 }, []);
 
-// Efecto: Cargar el último chat al iniciar  
-useEffect(() => {
-  const lastChatId = localStorage.getItem("lastChatId");
-  if (lastChatId) {
-    window.dispatchEvent(new CustomEvent('chat-loaded', {
-      detail: { chatId: parseInt(lastChatId) }
-    }));
-  }
-}, []);
-
+  // Cada vez que cambia el chat activo, actualiza localStorage
+  useEffect(() => {
+    if (activeChatId) {
+      localStorage.setItem('activeChatId', activeChatId);
+    }
+  }, [activeChatId]);
 
 // Función para crear nuevo chat
 const createNewChat = async () => {
@@ -87,6 +90,7 @@ try {
   const emptyMessages = [];
 
   setActiveChatId(newChat.id);
+  localStorage.setItem('activeChatId', newChat.id);
   setMessages(emptyMessages);
   setHasSentMessage(false);
 
@@ -150,32 +154,32 @@ try {
 
 
   return (
-    <div className="page">
-      <button className="new-chat-button" onClick={createNewChat}>
-        <TbMessagePlus size={23} />
-      </button>
+  <div className="page">
+    <button className="new-chat-button" onClick={createNewChat}>
+      <TbMessagePlus size={23} />
+    </button>
 
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px' }}>
-        <img src="/icons/jarvis00.png" alt="Jarvis Icon" style={{ width: '140px', height: '80px' }} />
-        <h1>Hi, I'm Jarvis.</h1>
+    <div className="content-area">
+      <div className="jarvis-header">
+        <img src="/icons/jarvis00.png" alt="Jarvis Icon" className="jarvis-logo1" />
+        <h1 className="jarvis-title">Hi, I'm Jarvis.</h1>
       </div>
 
       <h4>How can I help you today?</h4>
 
-      <MessageList messages={messages || []}/>
+      <MessageList messages={messages || []} />
 
       {isJarvisTyping && (
-        <div className="typing-indicator">
-          Jarvis está escribiendo...
-        </div>
+        <div className="typing-indicator">Jarvis está escribiendo...</div>
       )}
-
-      <SearchBar 
-        onSearch={(userQuery) => handleNewMessage({ role: 'user', text: userQuery })}
-        showIcon={hasSentMessage}
-      />
     </div>
-  );
-};
+
+    <SearchBar 
+      onSearch={(userQuery) => handleNewMessage({ role: 'user', text: userQuery })}
+      showIcon={hasSentMessage}
+    />
+  </div>
+);
+}
 
 export default ChatPage;

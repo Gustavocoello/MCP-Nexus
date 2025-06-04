@@ -15,7 +15,7 @@ const md = new MarkdownIt();
 
 const Sidebar = () => {
   const location = useLocation();
-  const [isOpen, setIsOpen] = useState(true); 
+  const [isOpen, setIsOpen] = useState(false); 
   const [chats, setChats] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
@@ -114,16 +114,23 @@ const categorizedChats = chats.reduce((acc, chat) => {
   
   const [showMenu, setShowMenu] = useState(null);
 
-const toggleMenu = (chatId, event) => {
-  if (event && event.currentTarget) {
-    const rect = event.currentTarget.getBoundingClientRect();
-    setMenuPosition({
-      top: rect.bottom + window.scrollY,
-      left: rect.right + window.scrollX,
-    });
+  const toggleMenu = (chatId, event) => {
+  // Detener la propagación solo si hay un evento (evita errores)
+  if (event) {
+    event.stopPropagation();
+    
+    // Solo calcula la posición si el menú se va a abrir (no cerrar)  
+    if (showMenu !== chatId) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setMenuPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.right + window.scrollX,
+      });
+    }
   }
 
-  setShowMenu(chatId === showMenu ? null : chatId);
+  // Alternar visibilidad del menú
+  setShowMenu(showMenu === chatId ? null : chatId);
 };
 
   // Cargar mensajes del chat seleccionado
@@ -210,7 +217,10 @@ const toggleMenu = (chatId, event) => {
                         {chat.id === currentChatId && (
                           <button
                             className="more-button"
-                            onClick={(e) => toggleMenu(chat.id, e)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleMenu(chat.id, e);
+                            }}
                           >
                             <CgMoreAlt size={18} />
                           </button>

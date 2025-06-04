@@ -244,47 +244,6 @@
   transform: translateY(-50%);
 }
 
-/* ==== Menú contextual ==== */
-.menu-contextual {
-  position: fixed;
-  background-color: #222;
-  border-radius: 6px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
-  padding: 5px 0;
-  min-width: 80px;
-}
-
-.menu-contextual button {
-  background-color: transparent;
-  border: none;
-  color: white;
-  width: 100%;
-  text-align: center;
-  padding: 8px 12px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.menu-contextual button:hover {
-  background-color: #706b6b;
-}
-
-.delete-chat-button {
-  padding: 8px 12px;
-  font-size: 0.9rem;
-  color: white;
-  text-align: left;
-  width: max-content;
-  background-color: transparent;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.delete-chat-button:hover {
-  background-color: #706b6b;
-}
 
 /* ================= */
 /* == ICONO PARA NUEVO CHAT == */

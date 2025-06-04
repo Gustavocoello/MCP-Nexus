@@ -1,0 +1,84 @@
+/* Ajustar barra de búsqueda para que quede centrada y con ancho adecuado */
+.search-bar-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  color: white;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 10px 20px;
+  z-index: 1000;
+  font-family: Arial, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jarvis-icon {
+  flex-shrink: 0;
+  margin-top: 12px;
+}
+
+.textarea-container {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+}
+
+.search-textarea {
+  width: 100%;
+  padding: 15px 55px 15px 15px; /* right padding for arrow icon space */
+  border-radius: 30px;
+  border: 2px solid white;
+  outline: none;
+  font-size: 16px;
+  background-color: black;
+  color: white;
+  resize: none;
+  overflow: hidden;
+  font-family: inherit;
+}
+
+.arrow-icon {
+  position: absolute;
+  right: 15px;
+  bottom: 15px;
+  color: white;
+  font-size: 22px;
+  user-select: none;
+}
+
+.arrow-icon:hover {
+  color: #4f4f50;
+}
+
+.arrow-icon:focus {
+  outline: none; /* Eliminar el contorno */
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+/* Media query para pantallas <= 768px */
+@media (max-width: 768px) {
+  .search-bar-container {
+    width: 90%; /* Reduce el ancho para pantallas pequeñas */
+    max-width: 500px; /* Reducimos el máximo ancho */
+  }
+
+  .search-textarea {
+    padding: 10px 40px 10px 10px; /* Ajustamos el padding para mantener proporciones */
+  }
+
+  .jarvis-icon {
+    margin-top: 8px; /* Reducimos el margen superior del icono */
+  }
+
+  .arrow-icon {
+    font-size: 18px; /* Reducimos el tamaño del icono de flecha */
+  }
+}

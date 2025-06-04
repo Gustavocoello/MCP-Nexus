@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaArrowUp } from 'react-icons/fa';
-import '../../styles/App.css'; // Asumiendo que App.css estará en la misma carpeta o en ruta correcta
+import './SearchBar.css';
+import '../../../styles/App.css';
 
 const SearchBar = ({ onSearch, showIcon }) => {
   const [query, setQuery] = useState('');
@@ -67,4 +68,3 @@ const SearchBar = ({ onSearch, showIcon }) => {
 };
 
 export default SearchBar;
-

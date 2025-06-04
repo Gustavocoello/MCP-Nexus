@@ -1,0 +1,324 @@
+/*============== HEADER ===============*/
+.jarvis-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin-top: 30px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.jarvis-logo1 {
+  width: 140px;
+  height: 80px;
+  object-fit: contain;
+}
+
+.jarvis-title {
+  font-size: 2rem;
+  font-weight: bold;
+  margin: 0;
+  white-space: nowrap;  
+  flex: 0 0 auto;
+  align-items: center; 
+  text-align: center;  
+  justify-content: center;   
+}
+
+.jarvis-subtitle {
+  margin: 5px 0 0;
+  font-weight: 500;
+  text-align: center;
+}
+
+/*============== CONTENIDO ===============*/
+.content-area {
+  overflow-y: auto;  /* solo esta parte scrollea */
+  padding-bottom: 20px; /* margen visual para mensajes */
+  overflow-x: hidden;
+  max-width: 100%;
+  box-sizing: border-box; 
+}
+
+.content-area h4 {
+  text-align: center;
+}
+
+
+/*============== MESSAGE LIST ===============*/
+/* Contenedor de la lista de mensajes - Más ancho */
+.message-list {
+  padding: 20px;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+
+/* Cada mensaje */
+.message {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* Por defecto a la izquierda */
+  margin-bottom: 10px;
+  
+}
+
+.message.user {
+  align-items: flex-end;
+}
+
+.message.jarvis {
+  align-items: flex-start;
+}
+
+/* Burbuja de cada mensaje - Más ancha */
+.message-bubble {
+  max-width: 85%;       /* Más ancha que antes */
+  padding: 16px 20px;   /* Más padding */
+  border-radius: 18px;  /* Bordes más redondeados */
+  font-size: 16px;
+  word-break: break-word;
+  line-height: 1.4; 
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  text-align: justify;
+}
+
+.message.user .message-bubble {
+  background-color: #f0f4f8; /* Color suave para usuario */
+  color: #333;
+  border-radius: 18px 18px 4px 18px;
+}
+
+.message.jarvis .message-bubble {
+  background-color: #ffffff; /* Fondo blanco para asistente */
+  color: #333;
+  border: 1px solid #eaeaea; /* Borde sutil */
+  border-radius: 18px 18px 18px 4px; /* Esquinas redondeadas */
+  text-align: left;
+}
+
+/* Contenido del mensaje */
+.message-content {
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.message-content p {
+  margin-bottom: 12px;
+}
+
+.message-content p:last-child {
+  margin-bottom: 0;
+}
+.message-bubble p {
+  margin: 0;
+}
+.typing-indicator {
+  margin: 20px auto;
+  padding: 10px 20px;
+  color: #333;
+  border-radius: 15px;
+  max-width: 70%;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* Animación opcional */
+.typing-indicator::after {
+  content: '';
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background-color: #007bff;
+  border-radius: 50%;
+  margin-left: 10px;
+  animation: blink 1s infinite;
+}
+
+/* Oculta la barra de scroll en Webkit (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* Para Firefox */
+body {
+  scrollbar-width: none;
+}
+
+/* Para IE/Edge (menos común hoy) */
+body {
+  -ms-overflow-style: none;
+}
+/* Para IE/Edge (menos común hoy) */
+body {
+  -ms-overflow-style: none;
+}
+
+/* Mejoras para código */
+.message-bubble pre {
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 12px 0;
+}
+
+/* Estilos para diferentes elementos */
+.message-bubble h1, .message-bubble h2, .message-bubble h3 {
+  margin-top: 16px;
+  margin-bottom: 12px;
+}
+
+.message-bubble ul, .message-bubble ol {
+  padding-left: 24px;
+  margin-bottom: 12px;
+}
+
+.message-bubble li {
+  margin-bottom: 6px;
+}
+
+.message-bubble blockquote {
+  border-left: 3px solid #ddd;
+  padding-left: 12px;
+  margin-left: 0;
+  color: #666;
+  font-style: italic;
+}
+@media (max-width: 768px) {
+  /* ========== HEADER ========== */
+  .jarvis-header {
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+    margin-bottom: 5px;
+    padding: 0 15px;
+  }
+
+  .jarvis-logo1 {
+    width: 100px;
+    height: auto;
+  }
+
+  .jarvis-title {
+    font-size: 1.5rem;
+    white-space: normal;
+    line-height: 1.3;
+  }
+
+  /* ========== CONTENT AREA ========== */
+  .content-area {
+    padding: 0 5px;
+    height: calc(100vh - 90px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .content-area h4 {
+    font-size: 1.1rem;
+    margin: 10px 0 15px;
+  }
+
+  /* ========== MESSAGE LIST ========== */
+  .message-list {
+    padding: 0;
+    margin: 0 auto 20px;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .message {
+    margin-bottom: 8px;
+    padding: 0 10px;
+    box-sizing: border-box;
+  }
+
+  .message-bubble {
+    max-width: 90%;
+    padding: 12px 16px;
+    font-size: 15px;
+    line-height: 1.5;
+    border-radius: 16px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  }
+
+  .message.user .message-bubble {
+    border-radius: 16px 16px 4px 16px;
+  }
+
+  .message.jarvis .message-bubble {
+    border-radius: 16px 16px 16px 4px;
+  }
+
+  /* ========== TYPING INDICATOR ========== */
+  .typing-indicator {
+    margin: 15px auto;
+    padding: 8px 16px;
+    max-width: 85%;
+    font-size: 13px;
+  }
+
+  /* ========== MENSAJES LARGOS ========== */
+  .message-content {
+    font-size: 15px;
+  }
+
+  .message-bubble pre {
+    font-size: 13px;
+    padding: 8px;
+    overflow-x: auto;
+  }
+
+  .message-bubble h1 {
+    font-size: 1.3rem;
+  }
+
+  .message-bubble h2 {
+    font-size: 1.2rem;
+  }
+
+  .message-bubble h3 {
+    font-size: 1.1rem;
+  }
+
+  .message-bubble ul,
+  .message-bubble ol {
+    padding-left: 20px;
+  }
+
+  /* ========== EFECTOS DE TRANSICIÓN ========== */
+  .message-bubble {
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+
+  .message-list > :last-child {
+    margin-bottom: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .jarvis-header {
+    margin-top: 15px;
+  }
+
+  .jarvis-title {
+    font-size: 1.4rem;
+  }
+
+  .jarvis-logo1 {
+    width: 85px;
+  }
+
+  .message-bubble {
+    max-width: 92%;
+    padding: 10px 14px;
+  }
+
+  .typing-indicator {
+    max-width: 90%;
+  }
+}
