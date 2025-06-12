@@ -212,7 +212,7 @@ body {
 
   /* ========== CONTENT AREA ========== */
   .content-area {
-    padding: 0 5px;
+    padding: 0 10px;
     height: calc(100vh - 90px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;

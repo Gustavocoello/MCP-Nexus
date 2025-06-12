@@ -434,6 +434,11 @@
     transition: margin-left 0.5s ease-in-out;
 
   }
+  .sidebar.closed {
+  width: 30px;
+  padding: 0.5rem;
+}
+
 @media (min-width: 768px) {
   .sidebar.open ~ .main-content {
     margin-left: 150px;

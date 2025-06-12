@@ -7,7 +7,7 @@ const REACT_APP = process.env.REACT_APP_URL; // Esto viene del .env
 const apiClient = axios.create({
   baseURL: REACT_APP,
   headers: {
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/json'
   },
 });
 

@@ -4,7 +4,9 @@ import Sidebar from './components/layout/Sidebar/Sidebar';
 import ChatPage from './features/chat/ChatPage';
 import DashboardPage from './pages/DashboardPage';
 import ConfigPage from './pages/ConfigPage';
+import 'highlight.js/styles/github-dark.css';
 import './styles/App.css';
+
 
 function App() {
   return (

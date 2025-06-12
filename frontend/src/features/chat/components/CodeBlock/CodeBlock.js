@@ -1,64 +1,48 @@
 import React, { useState, useRef, useEffect } from 'react';
-import Prism from 'prismjs';
-import 'prismjs/components/prism-javascript.min';
-import 'prismjs/components/prism-python.min';
-import 'prismjs/themes/prism-okaidia.min.css';
 import { FaCheck } from 'react-icons/fa';
-import { IoCopy } from "react-icons/io5";
-import './CodeBlock.css'; // Archivo CSS para estilos personalizados
+import { IoCopy } from 'react-icons/io5';
+import hljs from 'highlight.js';
+import 'highlight.js/styles/github-dark.css';
+import './CodeBlock.css';
 
 const CodeBlock = ({ code, language }) => {
   const [copied, setCopied] = useState(false);
   const codeRef = useRef(null);
 
   useEffect(() => {
-    Prism.highlightAll();
-  }, [code, language]);
+  if (codeRef.current) {
+    hljs.highlightElement(codeRef.current);
+  }
+}, [code, language]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(code);
     setCopied(true);
-    
-    // Efecto visual al copiar
+
     if (codeRef.current) {
       codeRef.current.classList.add('copied-effect');
       setTimeout(() => {
-        if (codeRef.current) {
-          codeRef.current.classList.remove('copied-effect');
-        }
+        codeRef.current.classList.remove('copied-effect');
       }, 500);
     }
-    
+
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Mapeo de nombres de lenguaje
   const languageNames = {
     js: 'JavaScript',
-    javascript: 'JavaScript',
+    jsx: 'JSX',
     py: 'Python',
-    python: 'Python',
+    ts: 'TypeScript',
     html: 'HTML',
     css: 'CSS',
     json: 'JSON',
-    xml: 'XML',
-    java: 'Java',
-    cpp: 'C++',
-    csharp: 'C#',
-    ruby: 'Ruby',
-    php: 'PHP',
-    go: 'Go',
-    sql: 'SQL',
     bash: 'Bash',
-    r: 'R',
-    kotlin: 'Kotlin',
-    swift: 'Swift',
-    typescript: 'TypeScript',
-    jsx: 'JSX',
-    // Añade más según necesites
+    sql: 'SQL',
+    // agrega más si necesitas
   };
 
-  const displayLanguage = languageNames[language] || language;
+  const displayLanguage = languageNames[language] || language || 'Code';
 
   return (
     <div className="code-block">
@@ -79,7 +63,7 @@ const CodeBlock = ({ code, language }) => {
         </button>
       </div>
       <pre className="code-content">
-        <code ref={codeRef} className={`language-${language}`}>
+        <code ref={codeRef} className={`hljs language-${language}`}>
           {code}
         </code>
       </pre>

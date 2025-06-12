@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FaArrowUp } from 'react-icons/fa';
+import { FaArrowUp, FaStop } from 'react-icons/fa';
 import './SearchBar.css';
 import '../../../styles/App.css';
 
-const SearchBar = ({ onSearch, showIcon }) => {
+const SearchBar = ({ onSearch, showIcon, isStreaming, onStop }) => {
   const [query, setQuery] = useState('');
   const textareaRef = useRef(null);
 
@@ -49,19 +49,29 @@ const SearchBar = ({ onSearch, showIcon }) => {
           rows={1}
           className={`search-textarea ${query ? 'expanded' : 'collapsed'}`}
         />
-        <FaArrowUp 
-          onClick={triggerSearch}
-          className="arrow-icon"
-          aria-label="Search"
-          role="button"
-          tabIndex={0}
-          onKeyPress={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              triggerSearch();
-            }
-          }}
-        />
+       {isStreaming ? (
+          <FaStop 
+            onClick={onStop}
+            className="stop-icon"
+            aria-label="Stop generation"
+            role="button"
+            tabIndex={0}
+          />
+        ) : (
+          <FaArrowUp 
+            onClick={triggerSearch}
+            className="arrow-icon"
+            aria-label="Search"
+            role="button"
+            tabIndex={0}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                triggerSearch();
+              }
+            }}
+          />
+        )}
       </div>
     </div>
   );

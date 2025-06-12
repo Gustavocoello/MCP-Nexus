@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import SearchBar from '../../components/ui/SearchBar/SearchBar';
-import MessageList from './components/MessageList/MessageList';
-import { TbMessagePlus } from "react-icons/tb";
+import React, { useState, useEffect, useCallback } from 'react';
 import MarkdownIt from 'markdown-it';
-//import onPrompt from '../components/service/chatService';
-import { getAllChats, getChatMessages, createChat, sendMessage } from '../../service/chatService';
+import { TbMessagePlus } from "react-icons/tb";
+import '../chat/components/CodeBlock/github-dark.css';
+import 'highlight.js/styles/github-dark.css';
+import { sendMessage } from '../../service/api_service';
+import MessageList from './components/MessageList/MessageList';
+import SearchBar from '../../components/ui/SearchBar/SearchBar';
+import { getAllChats, getChatMessages, createChat} from '../../service/chatService';
 
 const md = new MarkdownIt({
-  html: true,                   
-  linkify: true,                
-  highlight: function (str, lang) {
-    // Usaremos una clase para el formateo posterior con CSS
-    return `<pre class="code-block"><code class="language-${lang}">${md.utils.escapeHtml(str)}</code></pre>`;
-  }
+  html: true,
+  linkify: true,
+
 });
+
 
 const ChatPage = () => {
   // Funciones auxiliares
@@ -32,6 +32,9 @@ const ChatPage = () => {
   const [isJarvisTyping, setIsJarvisTyping] = useState(false);
   const [hasSentMessage, setHasSentMessage] = useState(false);
   const [activeChatId, setActiveChatId] = useState(null);
+  const [abortController, setAbortController] = useState(null);
+  const [isStreaming, setIsStreaming] = useState(false);
+
 
   // Efecto: Inicializar chat activo al cargar
   useEffect(() => {
@@ -104,82 +107,115 @@ try {
 }
 };
 
-  // Manejar nuevos mensajes
-  const handleNewMessage = async (message) => {
-  if (message.role === 'user') {
-    const jarvisTempId = `jarvis-${Date.now()}`;
+  // Para manejar el stop generation
+    const handleStopGeneration = () => {
+    if (abortController) {
+      abortController.abort();
 
-    // --- USER ---------------------------------------------------------------
-    const userContent = message.content ?? message.text ?? '';
-    const userHtml    = md.render(userContent);
-
-    setMessages(prev => [
-      ...prev,
-      { id: `user-${Date.now()}`, role: 'user', html: userHtml },
-      { id: jarvisTempId,  role: 'assistant', html: '' }
-    ]);
-
-    setHasSentMessage(true);
-    setIsJarvisTyping(true);
-
-    try {
-      // envía SIEMPRE el mismo campo al backend
-      const response   = await sendMessage(activeChatId, userContent);
-      const replyText = typeof response.reply === 'string' ? response.reply : '';
-      
-      const jarvisHtml = md.render(replyText);    
- 
-
-      // --- JARVIS -----------------------------------------------------------
-      setMessages(prev =>
-        prev.map(msg =>
-          msg.id === jarvisTempId ? { ...msg, html: jarvisHtml } : msg
-        )
-      );
-    } catch (err) {
-      console.error(err);
-      setMessages(prev =>
-        prev.map(msg =>
-          msg.id === jarvisTempId
-            ? { ...msg, html: 'Error al procesar la solicitud.' }
-            : msg
-        )
-      );
-    } finally {
+      setIsStreaming(false);
       setIsJarvisTyping(false);
     }
+  }; 
+
+  // Manejar nuevos mensajes (versión con streaming)
+const handleNewMessage = useCallback(async (message) => {
+  if (message.role !== 'user') return;
+
+  const controller = new AbortController();
+  setAbortController(controller);
+  setIsStreaming(true);
+  const userContent = message.content ?? message.text ?? '';
+  const jarvisTempId = `jarvis-${Date.now()}`;
+
+  const userHtml = md.render(userContent);
+
+  setMessages(prev => [
+    ...prev,
+    { id: `user-${Date.now()}`, role: 'user', html: userHtml },
+    { id: jarvisTempId, role: 'assistant', html: '' }
+  ]);
+
+  setHasSentMessage(true);
+  setIsJarvisTyping(true);
+
+  try {
+    let fullReply = '';
+
+    await sendMessage(activeChatId, userContent, (partial) => {
+      fullReply = partial;
+      const jarvisHtml = md.render(fullReply);
+      setMessages(prev =>
+        prev.map(msg => msg.id === jarvisTempId ? { ...msg, html: jarvisHtml } : msg)
+      );
+    },
+    controller.signal
+  );
+
+  } catch (err) {
+    if (err.name !== 'AbortError'){
+    console.error(err);
+    setMessages(prev =>
+      prev.map(msg =>
+        msg.id === jarvisTempId
+          ? { ...msg, html: 'Error al procesar la solicitud.' }
+          : msg
+      )
+    );
   }
-};
+  } finally {
+    setIsJarvisTyping(false);
+    setIsStreaming(false);
+    setAbortController(null);
+  }
+}, [activeChatId]);
+
+
+useEffect(() => {
+  return () => {
+    setMessages([]);
+    setIsJarvisTyping(false);
+  };
+}, []);
 
 
 
   return (
   <div className="page">
+    {/* Botón de nuevo chat */}
     <button className="new-chat-button" onClick={createNewChat}>
       <TbMessagePlus size={23} />
     </button>
 
+    {/* Área de contenido */}
     <div className="content-area">
+      {/* Encabezado */}
       <div className="jarvis-header">
         <img src="/icons/jarvis00.png" alt="Jarvis Icon" className="jarvis-logo1" />
         <h1 className="jarvis-title">Hi, I'm Jarvis.</h1>
       </div>
 
+      {/* Mensaje de bienvenida */}
       <h4>How can I help you today?</h4>
 
+      {/* Lista de mensajes */}
       <MessageList messages={messages || []} />
 
+      {/* Indicador de escritura */}
       {isJarvisTyping && (
         <div className="typing-indicator">Jarvis está escribiendo...</div>
       )}
     </div>
 
+    {/* Barra de búsqueda / entrada */}
     <SearchBar 
       onSearch={(userQuery) => handleNewMessage({ role: 'user', text: userQuery })}
       showIcon={hasSentMessage}
+      isStreaming={isStreaming}
+      onStop={handleStopGeneration}
     />
   </div>
 );
+
 }
 
 export default ChatPage;

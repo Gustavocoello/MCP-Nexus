@@ -69,7 +69,6 @@
   overflow-x: auto;
   word-break: break-word;
   white-space: pre-wrap;
-  background-color: #1e1e1e;
   font-size: 15px; 
   line-height: 1.4; 
 }
@@ -109,6 +108,15 @@
   font-size: 15px;
   line-height: 1;
 }
+/* CodeBlock.css */
+.hljs-variable,
+.hljs-property,
+.hljs-attr,
+.hljs-identifier,
+.hljs-params {
+  color: #e06c75; /* o el color que prefieras para variables */
+}
+
 /*========== RESPONSIVE CODE BLOCK ==========*/
 
 @media (max-width: 768px) {
