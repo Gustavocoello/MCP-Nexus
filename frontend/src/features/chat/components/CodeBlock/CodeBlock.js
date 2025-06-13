@@ -2,21 +2,29 @@ import React, { useState, useRef, useEffect } from 'react';
 import { FaCheck } from 'react-icons/fa';
 import { IoCopy } from 'react-icons/io5';
 import hljs from 'highlight.js';
+import './github-dark.css'
 import 'highlight.js/styles/github-dark.css';
 import './CodeBlock.css';
 
-const CodeBlock = ({ code, language }) => {
+const CodeBlock = ({ code, language, isHtml = false }) => {
   const [copied, setCopied] = useState(false);
   const codeRef = useRef(null);
 
   useEffect(() => {
-  if (codeRef.current) {
-    hljs.highlightElement(codeRef.current);
-  }
-}, [code, language]);
+    if (!isHtml && codeRef.current) {
+      setTimeout(() => {
+        hljs.highlightElement(codeRef.current);
+      }, 0);
+    }
+  }, [code, language, isHtml]);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(code);
+    // Si viene con highlight, eliminamos el HTML
+    const plainText = isHtml
+      ? codeRef.current?.textContent
+      : code;
+
+    navigator.clipboard.writeText(plainText || '');
     setCopied(true);
 
     if (codeRef.current) {
@@ -63,9 +71,13 @@ const CodeBlock = ({ code, language }) => {
         </button>
       </div>
       <pre className="code-content">
-        <code ref={codeRef} className={`hljs language-${language}`}>
-          {code}
-        </code>
+        <code
+          ref={codeRef}
+          className={`hljs language-${language}`}
+          {...(isHtml
+            ? { dangerouslySetInnerHTML: { __html: code } }
+            : { children: code })}
+        />
       </pre>
     </div>
   );

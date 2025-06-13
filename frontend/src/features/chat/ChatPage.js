@@ -1,20 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import MarkdownIt from 'markdown-it';
 import { TbMessagePlus } from "react-icons/tb";
-import '../chat/components/CodeBlock/github-dark.css';
-import 'highlight.js/styles/github-dark.css';
 import { sendMessage } from '../../service/api_service';
 import MessageList from './components/MessageList/MessageList';
 import SearchBar from '../../components/ui/SearchBar/SearchBar';
 import { getAllChats, getChatMessages, createChat} from '../../service/chatService';
 
+// Cambiando de Markdown a HTML
 const md = new MarkdownIt({
   html: true,
   linkify: true,
 
 });
 
-
+//  Contiene todos componentes efectos de la interfaz de Jarvis
 const ChatPage = () => {
   // Funciones auxiliares
   const loadAllChats = async () => {
@@ -117,8 +116,7 @@ try {
     }
   }; 
 
-  // Manejar nuevos mensajes (versión con streaming)
-const handleNewMessage = useCallback(async (message) => {
+  const handleNewMessage = useCallback(async (message) => {
   if (message.role !== 'user') return;
 
   const controller = new AbortController();
@@ -127,11 +125,14 @@ const handleNewMessage = useCallback(async (message) => {
   const userContent = message.content ?? message.text ?? '';
   const jarvisTempId = `jarvis-${Date.now()}`;
 
-  const userHtml = md.render(userContent);
+  // Cambio clave aquí: Para el usuario, usamos texto plano sin markdown
+  const userHtml = userContent
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;'); // <-- Eliminamos md.render() para el usuario
 
   setMessages(prev => [
     ...prev,
-    { id: `user-${Date.now()}`, role: 'user', html: userHtml },
+    { id: `user-${Date.now()}`, role: 'user', content: userContent, html: `<p>${userHtml}</p>` }, // <-- Aquí va el texto plano
     { id: jarvisTempId, role: 'assistant', html: '' }
   ]);
 
@@ -143,40 +144,29 @@ const handleNewMessage = useCallback(async (message) => {
 
     await sendMessage(activeChatId, userContent, (partial) => {
       fullReply = partial;
-      const jarvisHtml = md.render(fullReply);
+      const jarvisHtml = md.render(fullReply); // <-- Para Jarvis mantenemos markdown
       setMessages(prev =>
         prev.map(msg => msg.id === jarvisTempId ? { ...msg, html: jarvisHtml } : msg)
       );
-    },
-    controller.signal
-  );
+    }, controller.signal);
 
   } catch (err) {
-    if (err.name !== 'AbortError'){
-    console.error(err);
-    setMessages(prev =>
-      prev.map(msg =>
-        msg.id === jarvisTempId
-          ? { ...msg, html: 'Error al procesar la solicitud.' }
-          : msg
-      )
-    );
-  }
+    if (err.name !== 'AbortError') {
+      console.error(err);
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === jarvisTempId
+            ? { ...msg, html: 'Error al procesar la solicitud.' }
+            : msg
+        )
+      );
+    }
   } finally {
     setIsJarvisTyping(false);
     setIsStreaming(false);
     setAbortController(null);
   }
 }, [activeChatId]);
-
-
-useEffect(() => {
-  return () => {
-    setMessages([]);
-    setIsJarvisTyping(false);
-  };
-}, []);
-
 
 
   return (

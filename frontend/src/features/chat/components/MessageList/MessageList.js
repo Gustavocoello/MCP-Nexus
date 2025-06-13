@@ -1,7 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import CodeBlock from '../CodeBlock/CodeBlock';
 import './MessageList.css'; // Archivo CSS modificado
 import DOMPurify from 'dompurify';
+import hljs from 'highlight.js';
 
 //import { marked } from 'marked';
 
@@ -20,7 +21,18 @@ const MessageList = ({ messages = [] }) => {
       const codeEl = node.querySelector('code');
       const langClass = codeEl.className || '';
       const language = langClass.replace('language-', '') || 'plaintext';
-      return <CodeBlock key={key} language={language} code={codeEl.textContent} />;
+      // New para lo colores en el codeBlock en el streaming
+      const highlighted = hljs.highlight(codeEl.textContent, { language }).value;
+      return (
+        <CodeBlock
+          key={key}
+          code={highlighted}
+          language={language}
+          isHtml={true} // le avisa al CodeBlock que ya viene con highlight
+        />
+      );
+
+
     }
 
     return (
@@ -30,9 +42,12 @@ const MessageList = ({ messages = [] }) => {
         dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(node.outerHTML || '') }}
       />
     );
-  });
+  });  
 };
-
+  
+useEffect(() => {
+    hljs.highlightAll();
+  }, [messages]);
 
 
   return (
