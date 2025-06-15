@@ -35,3 +35,4 @@ functions/logs/
 
 # Eliminamos los archivos locales de Azure functions
 *local.settings.json
+credentials/
