@@ -1,10 +1,10 @@
 from openai import chat
 from src.services.ai_providers.utils import generate_prompt
-from src.services.ai_providers.context import completion
-from database.models.models import Chat, Message
+from src.services.ai_providers.context import completion,completion_stream
+from src.database.models.models import Chat, Message
 from extensions import db
-from flask import Blueprint, jsonify, request
-from config.logging_config import get_logger
+from flask import Blueprint, jsonify, Response, request, stream_with_context
+from src.config.logging_config import get_logger
 from datetime import datetime
 import requests
 
@@ -151,7 +151,6 @@ def send_message(chat_id):
     print("BODY RECIBIDO:", request.json)
 
     try:
-        # ---------- 1) guardar mensaje del usuario -------------
         chat = Chat.query.get(chat_id)
         if chat is None:
             chat = Chat(id=chat_id)
@@ -159,41 +158,51 @@ def send_message(chat_id):
 
         chat.updated_at = datetime.utcnow()
 
-        # Crear mensaje del usuario
         user_message = Message(chat_id=chat.id, role="user", content=user_text)
         db.session.add(user_message)
 
-        # Si el chat aún no tiene título, usar el primer mensaje como título resumido
         if not chat.title:
             palabras = user_text.split()
             resumen = " ".join(palabras[:10]) + ("..." if len(palabras) > 10 else "")
             chat.title = resumen
 
-        db.session.commit()  # 🔑 commit antes de seguir
+        db.session.commit()  # 🔑
 
-        # ---------- 2) construir prompt ------------------------
         recent = (
             Message.query
             .filter_by(chat_id=chat.id)
             .order_by(Message.created_at.desc())
             .limit(MAX_RAW)
-            .all()[::-1]  # últimos en orden cronológico
+            .all()[::-1]
         )
 
         payload = build_payload(chat, recent, user_text)
 
-        # ---------- 3) llamar al modelo ------------------------
-        assistant_reply = completion(payload)
+        # Usar stream para respuesta parcial
+        def generate():
+            try:
+                full_reply = ""
 
-        # ---------- 4) guardar respuesta del modelo ------------
-        chat.updated_at = datetime.utcnow()
-        db.session.add(Message(chat_id=chat.id, role="assistant", content=assistant_reply))
-        db.session.commit()  # commit corto
+                # Llama a tu modelo pero ahora espera que `completion()` sea un generador
+                for chunk in completion_stream(payload):  
+                    full_reply += chunk
+                    yield chunk  # Streaming real al cliente
 
-        # ---------- 5) resumen y poda --------------------------
-        summarize_and_trim(chat)  # esta función hace su propio commit
+                # Guardar respuesta completa al final
+                chat.updated_at = datetime.utcnow()
+                db.session.add(Message(chat_id=chat.id, role="assistant", content=full_reply))
+                db.session.commit()
 
-        return jsonify({"reply": assistant_reply})
+                summarize_and_trim(chat)  
+
+            except Exception as e:
+                db.session.rollback()
+                logger.exception("Error durante el stream")
+                yield "\n[ERROR] " + str(e)  # ⬅️ devolvé algo al cliente
+            finally:
+                db.session.close()
+
+        return Response(stream_with_context(generate()), content_type="text/plain")  # 🔄 cambiamos jsonify
 
     except Exception as e:
         db.session.rollback()

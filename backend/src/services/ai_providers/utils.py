@@ -1,4 +1,4 @@
-from config.logging_config import get_logger 
+from src.config.logging_config import get_logger 
 from openai import OpenAI
 from dotenv import load_dotenv
 import os 
