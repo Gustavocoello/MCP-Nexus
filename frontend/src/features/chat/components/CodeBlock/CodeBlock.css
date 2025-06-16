@@ -129,7 +129,6 @@
   }
 
   .code-header {
-    flex-direction: column;
     align-items: flex-start;
     padding: 8px 10px;
     gap: 6px;

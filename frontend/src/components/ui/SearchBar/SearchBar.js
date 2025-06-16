@@ -1,11 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FaArrowUp, FaStop } from 'react-icons/fa';
 import './SearchBar.css';
 import '../../../styles/App.css';
+import { GrLink } from "react-icons/gr";
+import { VscSettings } from "react-icons/vsc";
+import { FaArrowUp, FaStop } from 'react-icons/fa';
+import { MdOutlineAttachFile } from "react-icons/md";
+// import { CgMathPlus } from "react-icons/cg";
 
-const SearchBar = ({ onSearch, showIcon, isStreaming, onStop }) => {
+
+const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom }) => {
   const [query, setQuery] = useState('');
   const textareaRef = useRef(null);
+  const dropdownRef = useRef(null);
+  const [showMenu, setShowMenu] = useState(false);
 
   // Ajustar altura del textarea basado en contenido, con máximo de 100px
   useEffect(() => {
@@ -29,16 +36,43 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop }) => {
     }
   };
 
+  useEffect(() => {
+  const handleClickOutside = (event) => {
+    if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      setShowMenu(false);
+    }
+  };
+
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => document.removeEventListener("mousedown", handleClickOutside);
+}, []);
+
   return (
     <div className="search-bar-container">
-      {showIcon && (
+        {/*Icono de jarvis en el searchbar*/}
         <img 
           src="/icons/jarvis.png" 
           alt="Jarvis Icon" 
-          className="jarvis-icon" 
+           className={`jarvis-icon ${!showIcon ? 'invisible-placeholder' : ''}`} 
+          onClick={onScrollToBottom} 
         />
-      )}
+      
 
+      {/* Botón + */}
+      <div className="plus-menu-container" ref={dropdownRef}>
+        <VscSettings
+          className="plus-icon"
+          onClick={() => setShowMenu(!showMenu)}
+        />
+        {showMenu && (
+          <div className="dropdown-menu">
+            <MdOutlineAttachFile className="menu-icon" onClick={() => alert("developing")} />
+            <GrLink className="menu-icon" onClick={() => alert("developing")} />
+          </div>
+        )}
+      </div>
+
+      {/* Área de búsqueda */}
       <div className="textarea-container">
         <textarea
           ref={textareaRef}
@@ -49,6 +83,7 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop }) => {
           rows={1}
           className={`search-textarea ${query ? 'expanded' : 'collapsed'}`}
         />
+
        {isStreaming ? (
           <FaStop 
             onClick={onStop}

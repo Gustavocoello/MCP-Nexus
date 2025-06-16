@@ -2,24 +2,23 @@ import React, { useState, useRef, useEffect } from 'react';
 import { FaCheck } from 'react-icons/fa';
 import { IoCopy } from 'react-icons/io5';
 import hljs from 'highlight.js';
-import './github-dark.css'
+import './github-dark.css';
 import 'highlight.js/styles/github-dark.css';
 import './CodeBlock.css';
 
-const CodeBlock = ({ code, language, isHtml = false }) => {
+const CodeBlock = ({ code, language, isHtml = false, stable = false }) => {
   const [copied, setCopied] = useState(false);
   const codeRef = useRef(null);
 
   useEffect(() => {
-    if (!isHtml && codeRef.current) {
-      setTimeout(() => {
-        hljs.highlightElement(codeRef.current);
-      }, 0);
-    }
-  }, [code, language, isHtml]);
+    if (stable || isHtml || !codeRef.current) return;
+
+    setTimeout(() => {
+      hljs.highlightElement(codeRef.current);
+    }, 0);
+  }, [code, language, isHtml, stable]);
 
   const handleCopy = () => {
-    // Si viene con highlight, eliminamos el HTML
     const plainText = isHtml
       ? codeRef.current?.textContent
       : code;
@@ -47,7 +46,6 @@ const CodeBlock = ({ code, language, isHtml = false }) => {
     json: 'JSON',
     bash: 'Bash',
     sql: 'SQL',
-    // agrega más si necesitas
   };
 
   const displayLanguage = languageNames[language] || language || 'Code';
@@ -65,7 +63,7 @@ const CodeBlock = ({ code, language, isHtml = false }) => {
           ) : (
             <>
               <IoCopy className="copy-icon" />
-              <span>Copiar</span>
+              <span>Copiar código</span>
             </>
           )}
         </button>

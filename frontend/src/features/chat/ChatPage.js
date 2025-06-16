@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import MarkdownIt from 'markdown-it';
 import { TbMessagePlus } from "react-icons/tb";
 import { sendMessage } from '../../service/api_service';
@@ -33,6 +33,7 @@ const ChatPage = () => {
   const [activeChatId, setActiveChatId] = useState(null);
   const [abortController, setAbortController] = useState(null);
   const [isStreaming, setIsStreaming] = useState(false);
+  const chatBottomRef = useRef(null);
 
 
   // Efecto: Inicializar chat activo al cargar
@@ -50,11 +51,27 @@ const ChatPage = () => {
 
   const rawMessages = await getChatMessages(chatToLoad.id);
 
-  const formatted = rawMessages.map(m => ({
-    id:   m.id,
-    role: m.role,
-    html: md.render(m.content || '')   // ⬅️  misma lógica que usas en Sidebar
-  }));
+  const formatted = rawMessages.map(m => {
+  if (m.role === 'assistant') {
+    return {
+      id: m.id,
+      role: m.role,
+      html: md.render(m.content || '')
+    };
+  } else {
+    // texto plano para el usuario
+    const userHtml = (m.content || '')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;/');
+
+    return {
+      id: m.id,
+      role: m.role,
+      html: `<p>${userHtml}</p>`
+    };
+  }
+});
+
 
   setActiveChatId(chatToLoad.id);
   setMessages(formatted);
@@ -168,6 +185,13 @@ try {
   }
 }, [activeChatId]);
 
+  // Funcion para scrollear directamente al final
+  const scrollToBottom = () => {
+    if (chatBottomRef.current) {
+      chatBottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
 
   return (
   <div className="page">
@@ -189,6 +213,7 @@ try {
 
       {/* Lista de mensajes */}
       <MessageList messages={messages || []} />
+      <div ref={chatBottomRef}/>  {/*DIV vacío para controlar el scroll */ }
 
       {/* Indicador de escritura */}
       {isJarvisTyping && (
@@ -202,6 +227,7 @@ try {
       showIcon={hasSentMessage}
       isStreaming={isStreaming}
       onStop={handleStopGeneration}
+      onScrollToBottom={scrollToBottom}
     />
   </div>
 );
