@@ -10,6 +10,10 @@ import hljs from 'highlight.js';
 const MessageList = ({ messages = [] }) => {
   const messagesEndRef = useRef(null);
 
+  const filteredMessages = messages.filter(
+    msg => !msg.html?.includes('[NOTIFICATION]')
+  );
+
   const renderContent = (html, keyPrefix) => {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = html;
@@ -55,7 +59,7 @@ useEffect(() => {
 
   return (
     <div className="message-list">
-      {messages.map((msg, index) => (
+      {filteredMessages.map((msg, index) => (
         <div key={msg.id || index} className={`message ${msg.role}`}>
           <div className="message-bubble">
             {renderContent(msg.html, msg.id || index)}

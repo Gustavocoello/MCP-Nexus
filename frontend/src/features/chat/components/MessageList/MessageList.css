@@ -189,6 +189,51 @@ body {
   color: #666;
   font-style: italic;
 }
+/* =========== NOTIFICATIONS =========*/
+.notification-memory {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #202123; /* fondo oscuro similar a ChatGPT */
+  color: #d7dadc;      /* texto gris claro */
+  padding: 12px 24px;
+  border-radius: 9999px; /* muy redondeado */
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+  z-index: 9999;
+  animation: fadeInOut 4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  user-select: none;
+  pointer-events: none; /* para que no moleste al click */
+}
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  90% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+  10%, 90% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+}
+
+
 @media (max-width: 768px) {
   /* ========== HEADER ========== */
   .jarvis-header {

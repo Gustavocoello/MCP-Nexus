@@ -32,7 +32,7 @@ app.register_blueprint(chat_bp, url_prefix='/api/chat')
 
 
 with app.app_context():
-    from src.database.models.models import Chat, Message
+    from src.database.models.models import Chat, Message, UserMemory, MemoryType
     db.create_all()
 
 # Inicia el servidor Flask

@@ -8,7 +8,7 @@ import { getAllChats, getChatMessages, createChat} from '../../service/chatServi
 
 // Cambiando de Markdown a HTML
 const md = new MarkdownIt({
-  html: true,
+  html: false, // Antes True ahora False para no escaparse
   linkify: true,
 
 });
@@ -34,6 +34,8 @@ const ChatPage = () => {
   const [abortController, setAbortController] = useState(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const chatBottomRef = useRef(null);
+  const [notification, setNotification] = useState(null); 
+
 
 
   // Efecto: Inicializar chat activo al cargar
@@ -158,9 +160,23 @@ try {
 
   try {
     let fullReply = '';
-
+    
     await sendMessage(activeChatId, userContent, (partial) => {
-      fullReply = partial;
+      console.log('partial recibido:', partial);
+      
+      let cleanPartial = partial;
+      
+      // Mostrar la notificacion de memoria
+      if (partial.includes('[NOTIFICATION]')) {
+          const parts = partial.split('[NOTIFICATION]');
+          cleanPartial = parts[0].trim();            // Esto es el mensaje real (antes de la notificación)
+          const notificationText = parts[1]?.trim(); // Esto es la notificación
+          if (notificationText) {
+            showNotification(notificationText);
+          }
+        }
+      
+      fullReply = cleanPartial;
       const jarvisHtml = md.render(fullReply); // <-- Para Jarvis mantenemos markdown
       setMessages(prev =>
         prev.map(msg => msg.id === jarvisTempId ? { ...msg, html: jarvisHtml } : msg)
@@ -191,6 +207,13 @@ try {
       chatBottomRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   };
+
+  //Funcion para mostrar la notificacion del backend - Memoria-
+  const showNotification = (msg) => {
+  setNotification(msg);
+  setTimeout(() => setNotification(null), 4000); // <-- La notificación dura 4 segundos y desaparece
+  };
+
 
 
   return (
@@ -229,6 +252,12 @@ try {
       onStop={handleStopGeneration}
       onScrollToBottom={scrollToBottom}
     />
+
+    {notification && (
+    <div className="notification-memory">
+      {notification}
+    </div>
+  )}
   </div>
 );
 

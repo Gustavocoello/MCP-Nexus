@@ -1,12 +1,15 @@
+import requests
 from openai import chat
+from extensions import db
+from datetime import datetime
 from src.services.ai_providers.utils import generate_prompt
 from src.services.ai_providers.context import completion,completion_stream
 from src.database.models.models import Chat, Message
-from extensions import db
 from flask import Blueprint, jsonify, Response, request, stream_with_context
 from src.config.logging_config import get_logger
-from datetime import datetime
-import requests
+from src.api.memory.service import get_user_memory, save_memory
+from src.api.memory.utils import build_memory_context, extract_memory_from_text, calculate_priority, classify_memory
+from src.database.models.models import MemoryType, UserMemory
 
 
 logger = get_logger('routes')
@@ -47,8 +50,14 @@ MAX_TOTAL = 40
 
 # helpers (build_payload, summarize_and_trim) …
 # --------------- Helpers ----------------
-def build_payload(chat, recent, user_text):
+def build_payload(chat, recent, user_text, memory_context=None):
     messages = []
+    if memory_context:
+        messages.append({
+            "role": "system",
+            "content": f"Información útil sobre el usuario:\n{memory_context}"
+        })
+    
     if chat.summary:
         messages.append({
             "role": "system",
@@ -77,7 +86,7 @@ def summarize_and_trim(chat):
     logger.info(f"Nuevo resumen: {new_summary}")
 
     chat.summary = ((chat.summary or "") + "\n" + new_summary).strip()
-
+    db.session.add(chat)
     # borrar mensajes resumidos
     ids = [m.id for m in to_summarize]
     Message.query.filter(Message.id.in_(ids)).delete(synchronize_session=False)
@@ -175,8 +184,12 @@ def send_message(chat_id):
             .limit(MAX_RAW)
             .all()[::-1]
         )
+        
+        memories = get_user_memory(chat_id, memory_type=MemoryType.LONG_TERM)
+        memory_context = build_memory_context(memories)
 
-        payload = build_payload(chat, recent, user_text)
+        payload = build_payload(chat, recent, user_text, memory_context=memory_context)
+        
 
         # Usar stream para respuesta parcial
         def generate():
@@ -192,8 +205,32 @@ def send_message(chat_id):
                 chat.updated_at = datetime.utcnow()
                 db.session.add(Message(chat_id=chat.id, role="assistant", content=full_reply))
                 db.session.commit()
+                
+                # EXTRAER Y GUARDAR MEMORIAS DESDE EL TEXTO DEL 
+                extracted_memories = extract_memory_from_text(user_text)
+                print("[DEBUG] Memorias extraídas:", extracted_memories)
+
+                notificaciones = []
+                
+                for mem_text in extracted_memories:
+                    priority = calculate_priority(mem_text)
+                    classification = classify_memory(mem_text)  # Ej: "hecho", "preferencia", etc.
+                    key = f"{classification}:{mem_text[:30]}"  # clave compuesta
+                    save_memory(chat.id, key, mem_text, memory_type=MemoryType.LONG_TERM, priority=priority)
+                    
+                    # Notificacion para enviar al frontend
+                    if priority >= 6:
+                        notificaciones.append({
+                            "type": "memory_saved",
+                            "message": f"He recordado algo importante: \"{mem_text}\""
+                        })      
 
                 summarize_and_trim(chat)  
+                                
+                if notificaciones:
+                    for nota in notificaciones:
+                        logger.info(f"Enviando notificación: [NOTIFICATION] {nota['message']}")
+                        yield "\n\n[NOTIFICATION] 💾 Memoria actualizada\n"
 
             except Exception as e:
                 db.session.rollback()
