@@ -11,3 +11,76 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+/* ===================== TEMAS ===================== */
+
+/* Tema claro (por defecto) */
+[data-theme='light'] .app-container,
+[data-theme='light'] body,
+[data-theme='light'] .main-content {
+  background-color: white;
+  color: black;
+}
+
+/* Tema oscuro */
+[data-theme='dark'] .app-container,
+[data-theme='dark'] body,
+[data-theme='dark'] .main-content {
+  background-color: #1e1e1e; /* gris oscuro en vez de negro absoluto */
+  color: white;
+}
+/* ========== THEME: DARK MODE - MESSAGE BUBBLES ========== */
+
+[data-theme='dark'] .message.user .message-bubble {
+  background-color: #2c2c2c; /* gris oscuro para usuario */
+  color: white;
+}
+
+[data-theme='dark'] .message.jarvis .message-bubble {
+  background-color: #3a3a3a; /* gris distinto para jarvis */
+  color: white;
+  border: 1px solid #555;
+}
+
+[data-theme='dark'] .typing-indicator {
+  color: white;
+}
+/* ========== THEME: DARK MODE - ICONS ========== */
+
+[data-theme='dark'] .jarvis-logo1 {
+  background-color: white;
+  border-radius: 50px;
+}
+[data-theme='dark'] .jarvis-icon {
+  background-color: white;
+}
+
+
+/* ========== THEME: PERSONAL - ICONS ========== */
+[data-theme='custom'] .message.user .message-bubble {
+  background-color: #2c2c2c; /* gris oscuro para usuario */
+  color: white;
+}
+[data-theme="custom"] .message.assistant .message-bubble,
+[data-theme="custom"] .message.jarvis .message-bubble {
+  background-color: #3a3a3a; /* gris más claro para distinguir */
+  color: white ;
+  border: 1px solid #555;
+}
+
+[data-theme='custom'] .typing-indicator {
+  color: #3a3a3a;
+}
+[data-theme="custom"] .message.jarvis {
+  background-color: #3a3a3a;
+  color: white;
+  padding: 16px 20px;
+  border-radius: 18px;
+  border: 1px solid #555;
+}
+[data-theme='custom'] .jarvis-logo1 {
+  background-color: white;
+  border-radius: 50px;
+}
+[data-theme='custom'] .jarvis-icon {
+  background-color: white;
+}

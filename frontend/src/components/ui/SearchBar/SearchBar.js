@@ -66,8 +66,14 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom }
         />
         {showMenu && (
           <div className="dropdown-menu">
-            <MdOutlineAttachFile className="menu-icon" onClick={() => alert("developing")} />
-            <GrLink className="menu-icon" onClick={() => alert("developing")} />
+            <div className="menu-item" onClick={() => alert("developing")}>
+              <GrLink className="menu-icon" />
+              <span className="menu-label">tool Kit - MCP </span>
+            </div>
+            <div className="menu-item" onClick={() => alert("developing")}>
+              <MdOutlineAttachFile className="menu-icon" />
+              <span className="menu-label">Agregar imagenes y archivos</span>
+            </div>
           </div>
         )}
       </div>

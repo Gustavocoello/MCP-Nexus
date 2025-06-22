@@ -13,6 +13,12 @@
   width: 140px;
   height: 80px;
   object-fit: contain;
+  padding: 4px;
+  transition: background-color 0.3s ease;
+}
+[data-theme='dark'] .jarvis-logo1 {
+  background-color: white;
+  border-radius: 50px;
 }
 
 .jarvis-title {
