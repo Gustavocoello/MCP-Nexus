@@ -2,7 +2,8 @@ import requests
 from openai import chat
 from extensions import db
 from datetime import datetime
-from src.services.ai_providers.utils import generate_prompt
+from werkzeug.utils import secure_filename
+from src.services.ai_providers.utils import generate_prompt, extract_text_from_file
 from src.services.ai_providers.context import completion,completion_stream
 from src.database.models.models import Chat, Message
 from flask import Blueprint, jsonify, Response, request, stream_with_context
@@ -247,6 +248,31 @@ def send_message(chat_id):
         return jsonify({"error": str(e)}), 500
     finally:
         db.session.close()
+
+# --------------- POST (extraer texto de archivos) ---------------
+@chat_bp.route('/extract_file', methods=['POST'])
+def extract_file():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No se proporcionó ningún archivo'}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'Nombre de archivo vacío'}), 400
+
+    filename = secure_filename(file.filename)
+    
+    try:
+        file_stream = file.stream
+        text = extract_text_from_file(file_stream, filename)
+        
+        # Puedes incluir el nombre del archivo en el texto aquí
+        full_text = f"### Contenido del archivo `{filename}`\n\n{text}"
+        
+        return jsonify({'text': full_text})
+    
+    except Exception as e:
+        logger.exception("Error procesando archivo:")
+        return jsonify({'error': str(e)}), 500
         
 # --------------- PUT ---------------
 @chat_bp.route('/<chat_id>/title', methods=['PUT'])

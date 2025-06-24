@@ -1,7 +1,12 @@
-from src.config.logging_config import get_logger 
+import os 
+import xlrd
+import magic
+import PyPDF2
+import docx2txt
+from io import BytesIO
 from openai import OpenAI
 from dotenv import load_dotenv
-import os 
+from src.config.logging_config import get_logger 
 
 # Configuración de logging
 logger = get_logger(__name__)
@@ -115,4 +120,45 @@ def generate_prompt(prompt_data, retry_count=0):
             current_provider_index += 1
             return generate_prompt(prompt_data, 0)
         
-        
+
+
+# Función para extraer texto de archivos
+def allowed_file(filename, allowed_extensions):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
+
+def extract_text_from_file(file_stream, filename):
+    file_stream.seek(0)
+    file_type = magic.from_buffer(file_stream.read(1024), mime=True)
+    file_stream.seek(0)
+
+    logger.info(f"Procesando archivo: {filename} con MIME: {file_type}")
+
+    # PDF
+    if 'pdf' in file_type or filename.endswith('.pdf'):
+        reader = PyPDF2.PdfReader(file_stream)
+        text = "\n".join([page.extract_text() or '' for page in reader.pages])
+    
+    # Word moderno
+    elif 'word' in file_type or filename.endswith('.docx'):
+        text = docx2txt.process(file_stream)
+
+    # Excel
+    elif 'excel' in file_type or filename.endswith(('.xlsx', '.xls')):
+        workbook = xlrd.open_workbook(file_contents=file_stream.read())
+        text = ""
+        for sheet in workbook.sheets():
+            for row in range(sheet.nrows):
+                text += "\t".join(str(cell) for cell in sheet.row_values(row)) + "\n"
+
+    # Texto plano
+    elif file_type.startswith('text') or filename.endswith(('.txt', '.csv')):
+        content = file_stream.read().decode('utf-8', errors='ignore')
+        text = content
+
+    # Archivos no soportados
+    else:
+        logger.warning(f"Tipo de archivo no soportado: {filename} ({file_type})")
+        raise ValueError("Formato de archivo no soportado")
+
+    logger.info(f"Texto extraído de {filename} (longitud: {len(text)} caracteres)")
+    return text

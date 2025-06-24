@@ -213,3 +213,10 @@
   }
 }
 
+
+/*====== Ventana Emergente de Archivos ==============*/
+
+/* Para el input oculto - ya está implementado con style inline */
+input[type="file"] {
+  display: none;
+}

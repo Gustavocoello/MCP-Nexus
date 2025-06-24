@@ -34,8 +34,8 @@ const ChatPage = () => {
   const [abortController, setAbortController] = useState(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const chatBottomRef = useRef(null);
-  const [notification, setNotification] = useState(null); 
-
+  const [notification, setNotification] = useState(null);
+  const [pendingContext, setPendingContext] = useState('');
 
 
   // Efecto: Inicializar chat activo al cargar
@@ -135,25 +135,36 @@ try {
     }
   }; 
 
-  const handleNewMessage = useCallback(async (message) => {
+  const handleNewMessage = useCallback(async (message, contextFromFile = '') => {
   if (message.role !== 'user') return;
-
+  
+  const combinedContext = contextFromFile || pendingContext;  
   const controller = new AbortController();
   setAbortController(controller);
   setIsStreaming(true);
   const userContent = message.content ?? message.text ?? '';
   const jarvisTempId = `jarvis-${Date.now()}`;
+  const fullPrompt = contextFromFile
+    ? `Archivo recibido:\n${contextFromFile}\n\nPregunta del usuario:\n${userContent}`
+    : userContent;
 
   // Cambio clave aquí: Para el usuario, usamos texto plano sin markdown
   const userHtml = userContent
   .replace(/</g, '&lt;')
   .replace(/>/g, '&gt;'); // <-- Eliminamos md.render() para el usuario
 
-  setMessages(prev => [
-    ...prev,
-    { id: `user-${Date.now()}`, role: 'user', content: userContent, html: `<p>${userHtml}</p>` }, // <-- Aquí va el texto plano
-    { id: jarvisTempId, role: 'assistant', html: '' }
-  ]);
+  if (userContent) {
+    setMessages(prev => [
+      ...prev,
+      { id: `user-${Date.now()}`, role: 'user', content: userContent, html: `<p>${userHtml}</p>` },
+      { id: jarvisTempId, role: 'assistant', html: '' }
+    ]);
+  } else {
+    setMessages(prev => [
+      ...prev,
+      { id: jarvisTempId, role: 'assistant', html: '' }
+    ]);
+  }
 
   setHasSentMessage(true);
   setIsJarvisTyping(true);
@@ -161,7 +172,7 @@ try {
   try {
     let fullReply = '';
     
-    await sendMessage(activeChatId, userContent, (partial) => {
+    await sendMessage(activeChatId, fullPrompt, (partial) => {
       console.log('partial recibido:', partial);
       
       let cleanPartial = partial;
@@ -198,8 +209,11 @@ try {
     setIsJarvisTyping(false);
     setIsStreaming(false);
     setAbortController(null);
+    setPendingContext(''); 
   }
-}, [activeChatId]);
+}, [activeChatId, pendingContext]);
+
+
 
   // Funcion para scrollear directamente al final
   const scrollToBottom = () => {
@@ -246,7 +260,9 @@ try {
 
     {/* Barra de búsqueda / entrada */}
     <SearchBar 
-      onSearch={(userQuery) => handleNewMessage({ role: 'user', text: userQuery })}
+      onSearch={(userQuery, context) => handleNewMessage({ role: 'user', text: userQuery }, context)}
+      onContextExtracted={(contextText) => setPendingContext(contextText)}
+      pendingContext={pendingContext}
       showIcon={hasSentMessage}
       isStreaming={isStreaming}
       onStop={handleStopGeneration}

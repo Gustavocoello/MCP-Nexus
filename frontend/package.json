@@ -11,8 +11,10 @@
     "dayjs": "^1.11.13",
     "dompurify": "^3.2.6",
     "highlight.js": "^11.11.1",
+    "mammoth": "^1.9.1",
     "markdown-it": "^14.1.0",
     "marked": "^15.0.12",
+    "pdf-lib": "^1.17.1",
     "prismjs": "^1.30.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -20,7 +22,8 @@
     "react-router-dom": "^7.5.3",
     "react-scripts": "^5.0.1",
     "react-window": "^1.8.11",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "xlsx": "^0.18.5"
   },
   "scripts": {
     "start": "react-scripts start",

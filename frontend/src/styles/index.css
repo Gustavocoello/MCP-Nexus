@@ -84,3 +84,9 @@ code {
 [data-theme='custom'] .jarvis-icon {
   background-color: white;
 }
+[data-theme='custom'] .jarvis-title {
+  color: white;
+}
+[data-theme='custom'] .content-area h4 {
+  color: white;
+}

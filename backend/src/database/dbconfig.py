@@ -4,7 +4,6 @@ from mysql.connector import Error
 from dotenv import load_dotenv
 import mysql.connector
 from json import load
-import pandas as pd 
 import os 
 
 load_dotenv()
