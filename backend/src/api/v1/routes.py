@@ -3,7 +3,7 @@ from openai import chat
 from extensions import db
 from datetime import datetime
 from werkzeug.utils import secure_filename
-from src.services.ai_providers.utils import generate_prompt, extract_text_from_file
+from src.services.ai_providers.utils import generate_prompt, extract_text_from_file, analyze_image_with_azure
 from src.services.ai_providers.context import completion,completion_stream
 from src.database.models.models import Chat, Message
 from flask import Blueprint, jsonify, Response, request, stream_with_context
@@ -167,6 +167,14 @@ def send_message(chat_id):
             db.session.add(chat)
 
         chat.updated_at = datetime.utcnow()
+        
+        hidden_context = request.json.get("hidden_context", "").strip()
+
+        if hidden_context:
+            Message.query.filter_by(chat_id=chat.id, role="context").delete()
+            # Guardar como mensaje oculto (contexto), no será mostrado en frontend
+            context_msg = Message(chat_id=chat.id, role="context", content=hidden_context)
+            db.session.add(context_msg)
 
         user_message = Message(chat_id=chat.id, role="user", content=user_text)
         db.session.add(user_message)
@@ -180,7 +188,7 @@ def send_message(chat_id):
 
         recent = (
             Message.query
-            .filter_by(chat_id=chat.id)
+            .filter(Message.chat_id == chat.id, Message.role != "context")
             .order_by(Message.created_at.desc())
             .limit(MAX_RAW)
             .all()[::-1]
@@ -260,8 +268,19 @@ def extract_file():
         return jsonify({'error': 'Nombre de archivo vacío'}), 400
 
     filename = secure_filename(file.filename)
+    content_type = file.content_type
     
     try:
+        if content_type.startswith("image/"):
+            image_bytes = file.read()
+            try:
+                extracted_text = analyze_image_with_azure(image_bytes)
+                logger.info(f"Texto extraído de la imagen {filename} (longitud: {len(extracted_text)} caracteres)")
+                return jsonify({"text": f"🖼️ Imagen `{filename}`:\n\n{extracted_text}"})
+            except Exception as e:
+                logger.error(f"Error al analizar imagen con Azure Vision: {str(e)}")
+                return jsonify({"error": f"Error en Azure Vision: {str(e)}"}), 500
+        
         file_stream = file.stream
         text = extract_text_from_file(file_stream, filename)
         

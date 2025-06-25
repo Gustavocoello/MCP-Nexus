@@ -1,12 +1,17 @@
-import os 
+import os
+from re import A 
 import xlrd
 import magic
 import PyPDF2
+import time
 import docx2txt
 from io import BytesIO
 from openai import OpenAI
 from dotenv import load_dotenv
 from src.config.logging_config import get_logger 
+from azure.cognitiveservices.vision.computervision import ComputerVisionClient
+from azure.cognitiveservices.vision.computervision.models import VisualFeatureTypes
+from msrest.authentication import CognitiveServicesCredentials
 
 # Configuración de logging
 logger = get_logger(__name__)
@@ -19,6 +24,9 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 QWEN3_API_KEY = os.getenv("QWEN3_KEY")
 
+
+AZURE_ENDPOINT = os.getenv("AZURE_VISION_ENDPOINT")
+AZURE_KEY = os.getenv("AZURE_KEY1")
 
 
 API_PROVIDERS = [
@@ -122,7 +130,7 @@ def generate_prompt(prompt_data, retry_count=0):
         
 
 
-# Función para extraer texto de archivos
+# =============== Función para extraer texto de archivos ==================
 def allowed_file(filename, allowed_extensions):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
@@ -162,3 +170,69 @@ def extract_text_from_file(file_stream, filename):
 
     logger.info(f"Texto extraído de {filename} (longitud: {len(text)} caracteres)")
     return text
+
+
+
+# ====================== Funcion para extraer texto de imagenes Azure AI Vision========================
+def analyze_image_with_azure(image_bytes):
+    endpoint = AZURE_ENDPOINT
+    key = AZURE_KEY
+
+    if not endpoint or not key:
+        raise ValueError("Azure Vision endpoint o key no definidos.")
+
+    client = ComputerVisionClient(endpoint, CognitiveServicesCredentials(key))
+    stream = BytesIO(image_bytes)
+
+    # --- Parte 1: Análisis Visual (colores, descripción, etiquetas) ---
+    analysis = client.analyze_image_in_stream(
+        stream,
+        visual_features=[
+            VisualFeatureTypes.description,
+            VisualFeatureTypes.color,
+            VisualFeatureTypes.tags
+        ]
+    )
+
+    description = analysis.description.captions[0].text if analysis.description.captions else "Sin descripción."
+    colors = {
+        "fondo": analysis.color.dominant_color_background,
+        "frente": analysis.color.dominant_color_foreground,
+        "acentos": analysis.color.accent_color
+    }
+    tags = [tag.name for tag in analysis.tags][:5]
+
+    visual_summary = f"""🖼️ **Descripción de la imagen**: {description}
+🎨 **Colores**: Fondo: {colors['fondo']}, Frente: {colors['frente']}, Acento: #{colors['acentos']}
+🏷️ **Etiquetas**: {', '.join(tags)}"""
+
+    # --- Parte 2: OCR (texto de la imagen) ---
+    ocr_stream = BytesIO(image_bytes)
+    result = client.read_in_stream(ocr_stream, raw=True)
+    operation_location = result.headers["Operation-Location"]
+    operation_id = operation_location.split("/")[-1]
+
+    while True:
+        read_result = client.get_read_result(operation_id)
+        if read_result.status.lower() in ["succeeded", "failed"]:
+            break
+        time.sleep(0.5)
+
+    if read_result.status.lower() != "succeeded":
+        raise ValueError("Error procesando imagen con Azure Vision OCR")
+
+    ocr_lines = []
+    for page in read_result.analyze_result.read_results:
+        for line in page.lines:
+            ocr_lines.append(line.text)
+
+    ocr_text = "\n".join(ocr_lines) if ocr_lines else "Sin texto detectado en la imagen."
+
+    # --- Unión final del contexto enriquecido ---
+    full_context = f"""{visual_summary}
+
+📄 **Texto en la imagen (OCR)**:
+{ocr_text}
+"""
+
+    return full_context

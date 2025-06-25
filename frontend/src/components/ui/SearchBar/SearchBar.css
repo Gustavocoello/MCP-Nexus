@@ -50,6 +50,7 @@
   overflow: hidden;
   min-width: 0px;
   max-width: 150px;  /*Funciona para que no se desborde por muchos archivos*/
+  position: relative;
 }
 
 
@@ -57,7 +58,7 @@
   width: 24px;
   height: 24px;
   border-radius: 4px;
-  object-fit: cover;
+  object-fit: contain;
   margin-right: 8px;
 }
 
@@ -228,6 +229,39 @@
 .file-preview-container-horizontal::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Edge */
 }
+.circular-progress-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 30px;
+  height: 30px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.circle-bg {
+  fill: none;
+  stroke: #333; /* fondo gris oscuro */
+  stroke-width: 3;
+}
+
+.circle {
+  fill: none;
+  stroke: #aaa;  /* gris claro para el progreso */
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.3s ease;
+}
+
+.percentage {
+  fill: #ccc;         /* gris claro para texto */
+  font-size: 0.4em;
+  text-anchor: middle;
+  dominant-baseline: middle;
+}
+
+
 
 /* Media query para pantallas <= 768px */
 @media (max-width: 768px) {

@@ -176,7 +176,11 @@ try {
   try {
     let fullReply = '';
     
-    await sendMessage(activeChatId, fullPrompt, (partial) => {
+    await sendMessage({
+      chatId: activeChatId,
+      text: userContent,
+      hidden_context: combinedContext  // ← aquí van los archivos o contexto que no quieres guardar
+    }, (partial) => {
       console.log('partial recibido:', partial);
       
       let cleanPartial = partial;

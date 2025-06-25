@@ -23,7 +23,7 @@ const onPrompt = async (promptText) => {
   export default onPrompt;
 
 
-export const sendMessage = async (chatId, text, onPartialResponse = null, signal) => {
+export const sendMessage = async ({chatId, text, hidden_context = ''}, onPartialResponse = null, signal) => {
   try {
     // Verificamos si la señal ya fue abortada antes de iniciar la petición
     if (signal?.aborted) {
@@ -33,7 +33,7 @@ export const sendMessage = async (chatId, text, onPartialResponse = null, signal
 const response = await fetch(`${REACT_APP}/api/chat/${chatId}/message`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ text }),
+  body: JSON.stringify({ text, hidden_context }),
   signal, // Pasamos el signal al fetch para que pueda ser abortado
 });
 

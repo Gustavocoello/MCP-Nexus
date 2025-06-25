@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import './SearchBar.css';
 import '../../../styles/App.css';
 import { GrLink } from "react-icons/gr";
@@ -17,6 +17,8 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
   const fileInputRef = useRef(null);
   const [showMenu, setShowMenu] = useState(false);
   const [pendingFilePreview, setPendingFilePreview] = useState([]);
+  
+
 
 
   // Ajustar altura del textarea basado en contenido, con máximo de 100px
@@ -47,56 +49,76 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
   };
 
   const handleFileChange = async (e) => {
-  const files = Array.from(e.target.files);
-  if (files.length === 0) return;
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
 
-  setShowMenu(false); // cerrar el menú automáticamente
+    const allAreImages = files.every(file => file.type.startsWith("image/"));
 
-  const previews = [];
-
-  for (const file of files) {
-    const fileType = file.type;
-    let icon = '📎';
-    if (fileType.includes('pdf')) icon = '📄';
-    else if (fileType.includes('spreadsheet') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) icon = '📊';
-    else if (fileType.includes('image')) icon = '🖼️';
-
-    let previewUrl = null;
-    if (fileType.includes('image')) {
-      previewUrl = URL.createObjectURL(file);
+    if (allAreImages) {
+      await handleImageUploadOnly(files);
+      e.target.value = null;
+      return;
     }
 
-    previews.push({
-      name: file.name,
-      type: fileType,
-      icon,
-      previewUrl,
-    });
+    setShowMenu(false);
 
-    const formData = new FormData();
-    formData.append('file', file);
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const fileType = file.type;
 
-    try {
-      const res = await fetch(`${REACT_APP}/api/chat/extract_file`, {
-        method: 'POST',
-        body: formData,
-      });
+      let icon = '📎';
+      if (fileType.includes('pdf')) icon = '📄';
+      else if (fileType.includes('spreadsheet') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) icon = '📊';
+      else if (fileType.includes('image')) icon = '🖼️';
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al extraer el archivo');
-      if (data.text) {
-        onContextExtracted({ name: file.name, text: data.text });
+      const previewUrl = fileType.includes('image') ? URL.createObjectURL(file) : null;
+
+      const fileState = {
+        name: file.name,
+        type: fileType,
+        icon,
+        previewUrl,
+        progress: 0,
+        loading: true
+      };
+
+      setPendingFilePreview(prev => [...prev, fileState]);
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch(`${REACT_APP}/api/chat/extract_file`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al extraer archivo');
+
+        if (data.text) {
+          onContextExtracted({ name: file.name, text: data.text });
+        }
+
+        setPendingFilePreview(prev =>
+          prev.map(f =>
+            f.name === file.name ? { ...f, progress: 100, loading: false } : f
+          )
+        );
+      } catch (err) {
+        console.error('Error al procesar archivo:', err.message);
+        alert('Error al procesar archivo: ' + err.message);
+
+        setPendingFilePreview(prev =>
+          prev.map(f =>
+            f.name === file.name ? { ...f, progress: 100, loading: false } : f
+          )
+        );
       }
-    } catch (err) {
-      console.error('Error al procesar archivo:', err.message);
-      alert('Error al procesar archivo: ' + err.message);
     }
-  }
 
-  // Agrega todos los previews nuevos
-  setPendingFilePreview(prev => [...prev, ...previews]);
-  e.target.value = null;
-};
+    e.target.value = null;
+  };
 
 
 
@@ -110,6 +132,81 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const handleImageUploadOnly = useCallback(async (images) => {
+    setShowMenu(false); 
+    for (let i = 0; i < images.length; i++) {
+      const file = images[i];
+      if (!file.type.startsWith("image/")) continue;
+
+      const previewUrl = URL.createObjectURL(file);
+
+      const fileState = {
+        name: file.name,
+        type: file.type,
+        icon: '🖼️',
+        previewUrl,
+        progress: 0,
+        loading: true
+      };
+
+      setPendingFilePreview(prev => [...prev, fileState]);
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch(`${REACT_APP}/api/chat/extract_file`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error al extraer archivo');
+        if (data.text) {
+          onContextExtracted({ name: file.name, text: data.text });
+        }
+
+        setPendingFilePreview(prev =>
+          prev.map(f =>
+            f.name === file.name ? { ...f, progress: 100, loading: false } : f
+          )
+        );
+      } catch (err) {
+        console.error('Error al subir imagen:', err.message);
+        alert('Error al subir imagen: ' + err.message);
+
+        setPendingFilePreview(prev =>
+          prev.map(f =>
+            f.name === file.name ? { ...f, progress: 100, loading: false } : f
+          )
+        );
+      }
+    }
+  }, [onContextExtracted]);
+
+
+
+
+  // Para pasar imagenes desde el portapapeles
+  useEffect(() => {
+  const handlePaste = async (event) => {
+    const items = event.clipboardData?.items;
+    if (!items) return;
+
+    const imageItems = Array.from(items).filter(item => item.type.startsWith("image/"));
+    if (imageItems.length === 0) return;
+
+    const files = imageItems.map(item => item.getAsFile()).filter(Boolean);
+    if (files.length > 0) {
+      await handleImageUploadOnly(files);
+    }
+  };
+
+  document.addEventListener("paste", handlePaste);
+  return () => document.removeEventListener("paste", handlePaste);
+}, [handleImageUploadOnly]);
+
 
   
   return (
@@ -146,11 +243,30 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
             >
               <IoCloseOutline size={18} />
             </button>
+            {file.loading && (
+              <div className="circular-progress-overlay">
+                <svg className="circular-progress" viewBox="0 0 36 36">
+                  <path
+                    className="circle-bg"
+                    d="M18 2.0845
+                      a 15.9155 15.9155 0 0 1 0 31.831
+                      a 15.9155 15.9155 0 0 1 0 -31.831"
+                  />
+                  <path
+                    className="circle"
+                    strokeDasharray={`${file.progress}, 100`}
+                    d="M18 2.0845
+                      a 15.9155 15.9155 0 0 1 0 31.831
+                      a 15.9155 15.9155 0 0 1 0 -31.831"
+                  />
+                  <text x="18" y="20.35" className="percentage">{file.progress}%</text>
+                </svg>
+              </div>
+            )}
           </div>
         ))}
       </div>
     )}
-
     {/* Campo de búsqueda */}
 
 
@@ -199,6 +315,7 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
       onChange={handleFileChange}
       style={{ display: 'none' }}
       accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.ppt,.pptx"
+      multiple
     />
   </div>
 </div>
