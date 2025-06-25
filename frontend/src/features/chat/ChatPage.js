@@ -35,7 +35,7 @@ const ChatPage = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const chatBottomRef = useRef(null);
   const [notification, setNotification] = useState(null);
-  const [pendingContext, setPendingContext] = useState('');
+  const [pendingContext, setPendingContext] = useState([]);
 
 
   // Efecto: Inicializar chat activo al cargar
@@ -137,16 +137,20 @@ try {
 
   const handleNewMessage = useCallback(async (message, contextFromFile = '') => {
   if (message.role !== 'user') return;
-  
-  const combinedContext = contextFromFile || pendingContext;  
+   
   const controller = new AbortController();
   setAbortController(controller);
   setIsStreaming(true);
   const userContent = message.content ?? message.text ?? '';
   const jarvisTempId = `jarvis-${Date.now()}`;
-  const fullPrompt = contextFromFile
-    ? `Archivo recibido:\n${contextFromFile}\n\nPregunta del usuario:\n${userContent}`
-    : userContent;
+  const combinedContext = Array.isArray(contextFromFile)
+  ? contextFromFile.map(c => `🗂️ ${c.name}:\n${c.text}`).join('\n\n')
+  : contextFromFile;
+
+  const fullPrompt = combinedContext
+  ? `Archivo recibido:\n${combinedContext}\n\nPregunta del usuario:\n${userContent}`
+  : userContent;
+
 
   // Cambio clave aquí: Para el usuario, usamos texto plano sin markdown
   const userHtml = userContent
@@ -209,9 +213,9 @@ try {
     setIsJarvisTyping(false);
     setIsStreaming(false);
     setAbortController(null);
-    setPendingContext(''); 
+    setPendingContext([]); 
   }
-}, [activeChatId, pendingContext]);
+}, [activeChatId]);
 
 
 
@@ -227,6 +231,16 @@ try {
   setNotification(msg);
   setTimeout(() => setNotification(null), 4000); // <-- La notificación dura 4 segundos y desaparece
   };
+
+  // Funcion para limpiar el contexto pendiente
+  const clearPendingContext = () => {
+  setPendingContext([]);
+};
+  // Funcion para eliminar un contexto pendiente por nombre
+  const removeContextByName = (name) => {
+  setPendingContext(prev => prev.filter(ctx => ctx.name !== name));
+};
+
 
 
 
@@ -261,7 +275,9 @@ try {
     {/* Barra de búsqueda / entrada */}
     <SearchBar 
       onSearch={(userQuery, context) => handleNewMessage({ role: 'user', text: userQuery }, context)}
-      onContextExtracted={(contextText) => setPendingContext(contextText)}
+      onContextExtracted={(entry) => setPendingContext(prev => [...prev, entry])}
+      onClearContext={clearPendingContext}
+      onRemoveContext={removeContextByName}
       pendingContext={pendingContext}
       showIcon={hasSentMessage}
       isStreaming={isStreaming}
