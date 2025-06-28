@@ -1,11 +1,13 @@
-from flask import Config, Flask, request, jsonify, Request
+from flask import Flask
 from flask_cors import CORS
+import os 
+from src.config.config import Config
+
+from extensions import db
 from src.config.logging_config import get_logger
 from src.api.v1.routes import search_bp, chat_bp
-from src.config.config import Config
-from extensions import db
+from src.database.config.connection import get_engine
 from dotenv import load_dotenv
-import os 
 
 # Cargar las variables de entorno desde el archivo .env
 load_dotenv()
@@ -20,6 +22,11 @@ logger = get_logger('app')
 # Inicializamos la aplicación Flask
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
+
+# 💡 Usa la URL directamente del engine dinámico
+engine = get_engine()
+app.config["SQLALCHEMY_DATABASE_URI"] = str(engine.url)
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 app.config.from_object(Config)
 

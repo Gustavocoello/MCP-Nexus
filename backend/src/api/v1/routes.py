@@ -1,3 +1,4 @@
+from email import message
 import requests
 from openai import chat
 from extensions import db
@@ -51,21 +52,38 @@ MAX_TOTAL = 40
 
 # helpers (build_payload, summarize_and_trim) …
 # --------------- Helpers ----------------
-def build_payload(chat, recent, user_text, memory_context=None):
-    messages = []
+def build_payload(chat, recent, user_text, memory_context=None, hidden_context=None):
+    messages = [] 
     if memory_context:
         messages.append({
             "role": "system",
-            "content": f"Información útil sobre el usuario:\n{memory_context}"
+            "content": f"Here is helpful user information:\n{memory_context}"
         })
-    
+
+    if hidden_context:
+        messages.append({
+            "role": "system",
+            "content": (
+                "You will now receive text extracted via OCR from an image or "
+                "content from an uploaded file. This is *textual* information only, "
+                "not a visual. Use this information to respond to the user's question. "
+                "Do not mention inability to see images."
+            )
+        })
+        messages.append({
+            "role": "system",
+            "content": hidden_context
+        })
+
     if chat.summary:
         messages.append({
             "role": "system",
-            "content": f"Resumen de la conversación hasta ahora:\n{chat.summary}"
+            "content": f"Conversation summary so far:\n{chat.summary}"
         })
+
     for m in recent:
         messages.append({"role": m.role, "content": m.content})
+
     messages.append({"role": "user", "content": user_text})
     return messages
 
@@ -168,13 +186,6 @@ def send_message(chat_id):
 
         chat.updated_at = datetime.utcnow()
         
-        hidden_context = request.json.get("hidden_context", "").strip()
-
-        if hidden_context:
-            Message.query.filter_by(chat_id=chat.id, role="context").delete()
-            # Guardar como mensaje oculto (contexto), no será mostrado en frontend
-            context_msg = Message(chat_id=chat.id, role="context", content=hidden_context)
-            db.session.add(context_msg)
 
         user_message = Message(chat_id=chat.id, role="user", content=user_text)
         db.session.add(user_message)
@@ -196,9 +207,18 @@ def send_message(chat_id):
         
         memories = get_user_memory(chat_id, memory_type=MemoryType.LONG_TERM)
         memory_context = build_memory_context(memories)
-
-        payload = build_payload(chat, recent, user_text, memory_context=memory_context)
         
+        hidden_context = request.json.get("hidden_context", "").strip()
+
+        if hidden_context:
+            Message.query.filter_by(chat_id=chat.id, role="context").delete()
+            # Guardar como mensaje oculto (contexto), no será mostrado en frontend
+            context_msg = Message(chat_id=chat.id, role="context", content=hidden_context)
+            db.session.add(context_msg)
+
+        payload = build_payload(chat, recent, user_text, memory_context=memory_context, hidden_context=hidden_context)
+        print("🔍 PAYLOAD ANTES DEL MODELO:", payload)
+
 
         # Usar stream para respuesta parcial
         def generate():

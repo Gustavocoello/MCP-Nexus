@@ -2,7 +2,6 @@ import uuid
 from enum import Enum
 from extensions import db
 from datetime import datetime
-from sqlalchemy.dialects.mysql import LONGTEXT
 
 class Chat(db.Model):
     __tablename__ = 'chat'
@@ -21,7 +20,7 @@ class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     chat_id = db.Column(db.String(64), db.ForeignKey('chat.id'), nullable=False)
     role = db.Column(db.String(16), nullable=False)  # 'user' o 'assistant'
-    content = db.Column(LONGTEXT, nullable=False)
+    content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 # Modelo de memoria para el LLM - método avanzado
