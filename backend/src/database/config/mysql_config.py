@@ -9,17 +9,22 @@ from extensions import db  # Flask SQLAlchemy instance
 
 load_dotenv()
 
-# Configuración desde .env
-HOST_DB = os.getenv("ROOT_BD")
-USER_DB = os.getenv("USER_BD")
-PASS_DB = os.getenv("PASS_BD")
-NAME_DB = os.getenv("NAME_BD")
 
-# Esta URL sirve para SQLAlchemy
-MYSQL_URL = f"mysql+mysqlconnector://{USER_DB}:{PASS_DB}@{HOST_DB}:3306/{NAME_DB}"
+def get_mysql_engine():
+    # Configuración desde .env
+    HOST_DB = os.getenv("ROOT_BD")
+    USER_DB = os.getenv("USER_BD")
+    PASS_DB = os.getenv("PASS_BD")
+    NAME_DB = os.getenv("NAME_BD")
 
-# Esta URL sirve para conectarse sin especificar base para crearla si no existe
-MYSQL_ROOT_URL = f"mysql+mysqlconnector://{USER_DB}:{PASS_DB}@{HOST_DB}:3306"
+    # Esta URL sirve para SQLAlchemy
+    MYSQL_URL = f"mysql+mysqlconnector://{USER_DB}:{PASS_DB}@{HOST_DB}:3306/{NAME_DB}"
+
+    # Esta URL sirve para conectarse sin especificar base para crearla si no existe
+    MYSQL_ROOT_URL = f"mysql+mysqlconnector://{USER_DB}:{PASS_DB}@{HOST_DB}:3306"
+    
+    """Devuelve el engine SQLAlchemy apuntando a la base específica"""
+    return create_engine(MYSQL_URL)
 
 def create_database_if_not_exists():
     """Crea la base de datos si no existe."""
@@ -35,10 +40,6 @@ def create_database_if_not_exists():
         conn.close()
     except mysql.connector.Error as err:
         print(f"Error al verificar/crear la base de datos: {err}")
-
-def get_mysql_engine():
-    """Devuelve el engine SQLAlchemy apuntando a la base específica"""
-    return create_engine(MYSQL_URL)
 
 def init_mysql():
     """Inicializa la base de datos y las tablas con Alembic ya listo"""
