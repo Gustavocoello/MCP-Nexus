@@ -12,7 +12,7 @@ logger = get_logger("backend.engine")
 MAX_RETRIES = 2  # Número de reintentos adicionales
 RETRY_DELAY = 5  # Segundos de espera entre reintentos
 
-def get_engine():
+def get_database_url():
     env = os.getenv("ENV", "dev").lower()
     logger.info(f"Valor real de ENV: {os.getenv('ENV')}")
 
@@ -24,7 +24,7 @@ def get_engine():
                 with engine.connect() as conn:
                     conn.execute(text("SELECT 1"))
                 logger.info(f"✅ Conexión a {name} exitosa.")
-                return (engine)
+                return engine.url
             except Exception as e:
                 logger.warning(f"Falló conexión a {name}. Intento {attempt + 1} de {MAX_RETRIES + 1}")
                 logger.debug(f"{name} error: {e}")
@@ -45,7 +45,7 @@ def get_engine():
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         logger.info("✅ Conexión a MySQL exitosa.")
-        return (engine)
+        return engine.url
 
     except (OperationalError, mysql.connector.Error, Exception) as e:
         logger.warning("Falló conexión a MySQL, intentando fallback a Azure...")

@@ -10,7 +10,7 @@ from src.config.config import Config
 from extensions import db
 from src.config.logging_config import get_logger
 from src.api.v1.routes import search_bp, chat_bp
-from src.database.config.connection import get_engine
+from src.database.config.connection import get_database_url
 from dotenv import load_dotenv
 
 # Cargar las variables de entorno desde el archivo .env
@@ -31,9 +31,7 @@ CORS(app, supports_credentials=True)
 app.config.from_object(Config)
 
 # Configuración de la base de datos MYSQL o AZURE SQL
-engine = get_engine()
-app.config["SQLALCHEMY_DATABASE_URI"] = str(engine.url)
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SQLALCHEMY_DATABASE_URI"] = get_database_url()  # Usar la función para obtener la URL de conexión
 
 db.init_app(app)
 
