@@ -2,10 +2,11 @@
 
 import os
 import mysql.connector
+from sqlalchemy import text
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
-from extensions import db  # Flask SQLAlchemy instance
+
 
 load_dotenv()
 
@@ -17,14 +18,19 @@ def get_mysql_engine():
     PASS_DB = os.getenv("PASS_BD")
     NAME_DB = os.getenv("NAME_BD")
 
-    # Esta URL sirve para SQLAlchemy
     MYSQL_URL = f"mysql+mysqlconnector://{USER_DB}:{PASS_DB}@{HOST_DB}:3306/{NAME_DB}"
-
-    # Esta URL sirve para conectarse sin especificar base para crearla si no existe
-    MYSQL_ROOT_URL = f"mysql+mysqlconnector://{USER_DB}:{PASS_DB}@{HOST_DB}:3306"
     
-    """Devuelve el engine SQLAlchemy apuntando a la base específica"""
-    return create_engine(MYSQL_URL)
+    engine = create_engine(MYSQL_URL)
+    # Forzar conexión inmediata para validar credenciales
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        print("✅ Conexión validada en get_mysql_engine()")
+    except Exception as e:
+        print(f"Error validando conexión en get_mysql_engine(): {e}")
+        raise e
+
+    return engine
 
 def create_database_if_not_exists():
     """Crea la base de datos si no existe."""

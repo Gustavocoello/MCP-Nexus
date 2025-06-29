@@ -1,6 +1,10 @@
+from pickle import FALSE
 from flask import Flask
 from flask_cors import CORS
-import os 
+import os
+
+from httpx import get
+from sqlalchemy import true 
 from src.config.config import Config
 
 from extensions import db
@@ -23,25 +27,24 @@ logger = get_logger('app')
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
 
-# 💡 Usa la URL directamente del engine dinámico
+# Configuración de la aplicación Flask
+app.config.from_object(Config)
+
+# Configuración de la base de datos MYSQL o AZURE SQL
 engine = get_engine()
 app.config["SQLALCHEMY_DATABASE_URI"] = str(engine.url)
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-app.config.from_object(Config)
-
 db.init_app(app)
+
 # Registrar los blueprints de las rutas
 """Mensajes de la IA sin memoria"""
 app.register_blueprint(search_bp, url_prefix='/api/search')
 """Mensajes de la IA con memoria"""
 app.register_blueprint(chat_bp, url_prefix='/api/chat')
 
-
-with app.app_context():
-    from src.database.models.models import Chat, Message, UserMemory, MemoryType
-    db.create_all()
+pass
 
 # Inicia el servidor Flask
 if __name__ == "__main__":
-    app.run(debug=True, host=HOST, port=PORT)
+    app.run(debug=True, host=HOST, port=PORT) # Poner debug=False en producción
