@@ -11,7 +11,7 @@ sys.path.insert(0, str(backend_dir))
 # --- Imports ---
 from extensions import db
 from src.database.config.azure_config import get_azure_engine
-from src.database.models.models import Message, Chat, UserMemory
+from src.database.models.models import *
 
 def run_migration():
     engine = get_azure_engine()

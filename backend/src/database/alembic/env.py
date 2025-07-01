@@ -1,64 +1,62 @@
-from logging.config import fileConfig
-
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
-from alembic import context
+import os
 import sys
+import urllib.parse
 from pathlib import Path
+from logging.config import fileConfig
+from alembic import context
+from sqlalchemy import create_engine
+from dotenv import load_dotenv
 
-# Asegurarse de que src/ esté en el path para poder importar correctamente
+# --- Cargar entorno ---
+load_dotenv()
+
+# --- Fix sys.path para imports ---
 current_dir = Path(__file__).resolve().parent
 backend_dir = current_dir.parent.parent.parent
 sys.path.insert(0, str(backend_dir))
 
-from src.database.config.mysql_config import get_mysql_engine
+# --- Importa modelos y metadata ---
+from src.database.models import *
 from extensions import db
 
-# this is the Alembic Config object, which provides
-# access to the values within the .ini file in use.
+# Alembic Config
 config = context.config
-
-# Interpret the config file for Python logging.
-# This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
+# --- Metadata de modelos ---
 target_metadata = db.metadata
+print("🧠 Tablas activas para Alembic:", db.metadata.tables.keys())
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+# --- Importa los engines directamente ---
+from src.database.config.mysql_config import get_mysql_engine
+from src.database.config.azure_config import get_azure_engine
 
+# --- Funciones de migración ---
+def run_migrations_online():
+    engines = {
+        "MYSQL": get_mysql_engine(),
+        "AZURE": get_azure_engine()
+    }
+
+    for label, engine in engines.items():
+        with engine.connect() as connection:
+            print(f"\n🚀 Ejecutando migraciones para: {label}")
+            context.configure(
+                connection=connection,
+                target_metadata=target_metadata,
+                compare_type=True,
+                render_as_batch=True,
+                include_object=lambda obj, name, type_, reflected, compare_to:
+                    not (type_ == "table" and compare_to is None)  # evita DROP de tablas nuevas
+            )
+            with context.begin_transaction():
+                context.run_migrations()
 
 def run_migrations_offline():
-    raise NotImplementedError("Solo soportamos migraciones en modo online")
+    raise NotImplementedError("Solo soportamos migraciones online.")
 
-def run_migrations_online():
-    connectable = get_mysql_engine()
-
-    with connectable.connect() as connection:
-        context.configure(
-        connection=connection,
-        target_metadata=target_metadata,
-        compare_type=True,
-        render_as_batch=True,
-        **{
-            "include_object": lambda obj, name, type_, reflected, compare_to:
-                not (type_ == "table" and compare_to is None)  # <-- evitamos el DROP
-        }
-    )
-
-        with context.begin_transaction():
-            context.run_migrations()
-
-
-
+# --- Dispatcher ---
 if context.is_offline_mode():
     run_migrations_offline()
 else:

@@ -1,10 +1,13 @@
 import os
 import urllib.parse
 from sqlalchemy import text
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from src.config.logging_config import get_logger
 
 logger = get_logger("backend.engine")
+
+load_dotenv()
 
 def get_azure_engine():
     USER_AZURE = os.getenv("USER_BD_AZURE")
@@ -16,16 +19,17 @@ def get_azure_engine():
     logger.info("🔌 Intentando conexión a Azure SQL con params_migrations...")
 
     try:
-        params_migrations = urllib.parse.quote_plus(
+        params_migrations = (
             f"DRIVER={{ODBC Driver 18 for SQL Server}};"
             f"SERVER=tcp:{ROOT_AZURE};"
             f"DATABASE={BASE_AZURE};"
             f"UID={USER_AZURE};"
-            f"PWD={urllib.parse.quote_plus(USER_PASS)};"
+            f"PWD={USER_PASS};"
             "Encrypt=yes;"
             "TrustServerCertificate=no;"
             "Connection Timeout=30;"
         )
+        params_migrations = urllib.parse.quote_plus(params_migrations)
         engine = create_engine(f"mssql+pyodbc:///?odbc_connect={params_migrations}")
         # test connection
         with engine.connect() as conn:
