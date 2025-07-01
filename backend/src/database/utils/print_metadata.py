@@ -28,7 +28,7 @@ with app.app_context():
     from src.database.models import User
     from src.database.models import Chat
     from src.database.models import Message
-    from src.database.models import GoogleAuthToken
+    from src.database.models import UserToken
     from src.database.models import UserMemory
 
     print("✅ Modelos cargados correctamente.")

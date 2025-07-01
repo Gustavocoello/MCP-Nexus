@@ -3,8 +3,9 @@ from flask import Flask
 from flask_cors import CORS
 import os
 
-from httpx import get
-from sqlalchemy import true 
+from pydantic_core import Url
+
+from src.api.mcp.calendar.routes import mcp_bp
 from src.config.config import Config
 
 from extensions import db
@@ -38,10 +39,12 @@ db.init_app(app)
 # Registrar los blueprints de las rutas
 """Mensajes de la IA sin memoria"""
 app.register_blueprint(search_bp, url_prefix='/api/search')
+
 """Mensajes de la IA con memoria"""
 app.register_blueprint(chat_bp, url_prefix='/api/chat')
 
-pass
+"""Rutas de MCP (Google Calendar, etc)"""
+app.register_blueprint(mcp_bp, url_prefix='/api/mcp/calendar')
 
 # Inicia el servidor Flask
 if __name__ == "__main__":

@@ -1,16 +1,21 @@
 import os
 import pytz
 from pathlib import Path
-from typing import Union, List, Tuple
+from typing import Optional, Union, List, Tuple
 from dateutil.parser import parse as parse_dt
 from datetime import datetime, timezone, timedelta
 
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
+from sqlalchemy import all_
 
-from mcps.core.models import Event
+try: # Para el app.py
+    from src.mcps.core.models import Event
+except ImportError: # Para el MCP inspector
+    from mcps.core.models import Event
 
 # Ruta al archivo de credenciales y token
 CREDENTIALS_PATH = Path("D:/Personal/Documentos/Work/Python/AI agent/AI/mcp-nexus/mcp-scratch/backend/src/config/credentials/credentials_google_calendar.json")
@@ -42,28 +47,43 @@ class GoogleCalendarConnector:
         """
         Autenticación OAuth2 con Google Calendar API.
         Guarda/recupera token para evitar autenticación repetida.
+        Elimnar el tokens si se quiere forzar una nueva autenticación.
         """
+        creds = None
+        # 1. Intenta cargar el token existente
         if TOKEN_PATH.exists():
-            self.creds = Credentials.from_authorized_user_file(str(TOKEN_PATH), SCOPES)
+            try:
+                creds = Credentials.from_authorized_user_file(str(TOKEN_PATH), SCOPES)
+            except Exception as e:
+                print(f"⚠️ Token inválido o corrupto: {e}. Eliminando archivo...")
+                TOKEN_PATH.unlink(missing_ok=True)
+                creds = None
 
-        # Si no hay token o es inválido, iniciar flujo OAuth
-        if not self.creds or not self.creds.valid:
-            if self.creds and self.creds.expired and self.creds.refresh_token:
-                self.creds.refresh(Request())
-            else:
+        # 2. Si el token es inválido o no existe, intenta refrescar o reautenticar
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                try:
+                    creds.refresh(Request())
+                except RefreshError as e:
+                    print(f"⚠️ Error al refrescar token: {e}. Eliminando y reautenticando...")
+                    TOKEN_PATH.unlink(missing_ok=True)
+                    creds = None
+
+            # Si aún no hay credenciales válidas, inicia flujo OAuth
+            if not creds or not creds.valid:
+                print("🔐 Iniciando flujo OAuth...")
                 flow = InstalledAppFlow.from_client_secrets_file(
                     str(CREDENTIALS_PATH), SCOPES
                 )
-                self.creds = flow.run_local_server(port=0)
+                creds = flow.run_local_server(port=0)
 
-            # Guardar token para futuro uso
-            TOKEN_PATH.parent.mkdir(parents=True, exist_ok=True)
-            with open(TOKEN_PATH, "w") as token_file:
-                token_file.write(self.creds.to_json())
+                # Guarda nuevo token
+                TOKEN_PATH.parent.mkdir(parents=True, exist_ok=True)
+                with open(TOKEN_PATH, "w") as token_file:
+                    token_file.write(creds.to_json())
 
-        # Construir servicio de Google Calendar
+        self.creds = creds
         return build("calendar", "v3", credentials=self.creds)
-
     # ============= OBTENCIÓN DE EVENTOS POR RANGO FECHAS ===============
     def get_events_by_range(self, calendar_id: str, start: Union[str, datetime], end: Union[str, datetime]):
         if isinstance(start, str):
@@ -317,7 +337,24 @@ class GoogleCalendarConnector:
             return []
         
     # ============= RESUMEN DE EVENTOS =============
-    def get_summary(self, calendar_id: str, range_type: str = "daily", timezone: str = "UTC") -> str:
+    def list_calendars(self) -> List[str]:
+        """
+        Devuelve los IDs de todos los calendarios disponibles para el usuario autenticado.
+        """
+        try:
+            calendars_result = self.service.calendarList().list().execute()
+            return [
+                {
+                    "id": cal["id"],
+                    "name": cal.get("summary", "Sin nombre")
+                }
+                for cal in calendars_result.get("items", [])
+            ]
+        except Exception as e:
+            print(f"Error al listar calendarios: {e}")
+            return []
+
+    def get_summary(self, calendar_id: Optional[str] = None, range_type: str = "daily", timezone: str = "UTC") -> str:
         """
         Genera un resumen de eventos para hoy o la semana.
 
@@ -343,33 +380,45 @@ class GoogleCalendarConnector:
                 title = f"📅 Resumen de eventos para la semana ({start.strftime('%d/%m')} - {end.strftime('%d/%m')}):"
             else:
                 return "⚠️ Tipo de resumen no válido. Usa 'daily' o 'weekly'."
+            
+            calendar_ids = [calendar_id] if calendar_id else self.list_calendars()
+            all_summaries = []
+            
+            for cid in calendar_ids:
+                try:
+                    time_min = start.isoformat()
+                    time_max = end.isoformat()
 
-            time_min = start.isoformat()
-            time_max = end.isoformat()
+                    events = self.service.events().list(
+                        calendarId=cid,
+                        timeMin=time_min,
+                        timeMax=time_max,
+                        singleEvents=True,
+                        orderBy="startTime"
+                    ).execute().get("items", [])
 
-            events = self.service.events().list(
-                calendarId=calendar_id,
-                timeMin=time_min,
-                timeMax=time_max,
-                singleEvents=True,
-                orderBy="startTime"
-            ).execute().get("items", [])
+                    if not events:
+                        all_summaries.append(f"📅 [{cid}] Sin eventos.")
+                        continue
+                    
+                    lines = []
+                    for ev in events:
+                        start_time = ev["start"].get("dateTime", ev["start"].get("date"))
+                        parsed_start = datetime.fromisoformat(start_time).astimezone(tz)
+                        hora = parsed_start.strftime('%H:%M')
+                        fecha = parsed_start.strftime('%d/%m/%Y')
+                        summary = ev.get("summary", "Sin título")
+                        location = ev.get("location", "")
+                        loc_str = f" en {location}" if location else ""
+                        lines.append(f"• {fecha} a las {hora}: {summary}{loc_str}")
+                        
+                    summary = f"📅 [{cid}] {range_type.capitalize()} Summary:\n" + "\n".join(lines)
+                        
+                    all_summaries.append(summary)
+                except Exception as e:
+                    all_summaries.append(f"⚠️ Error al obtener eventos del calendario '{cid}': {e}")
 
-            if not events:
-                return title + "\n\n✅ No hay eventos programados."
-
-            lines = []
-            for ev in events:
-                start_time = ev["start"].get("dateTime", ev["start"].get("date"))
-                parsed_start = datetime.fromisoformat(start_time).astimezone(tz)
-                hora = parsed_start.strftime('%H:%M')
-                fecha = parsed_start.strftime('%d/%m/%Y')
-                summary = ev.get("summary", "Sin título")
-                location = ev.get("location", "")
-                loc_str = f" en {location}" if location else ""
-                lines.append(f"• {fecha} a las {hora}: {summary}{loc_str}")
-
-            return title + "\n\n" + "\n".join(lines)
+            return title + "\n\n" + "\n".join(all_summaries)
 
         except Exception as e:
             return f"Error al generar el resumen: {e}"
