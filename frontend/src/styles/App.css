@@ -54,7 +54,6 @@ html, body {
 /* Bloques de código */
 pre, code {
   word-break: break-word;
-  white-space: pre-wrap;
   overflow-x: auto;
   max-width: 100%;
 }

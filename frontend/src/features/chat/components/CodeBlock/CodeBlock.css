@@ -56,65 +56,59 @@
 .copy-icon.copied {
   color: #4ade80;
 }
+/* SOLUCIÓN PARA SCROLL HORIZONTAL */
 .code-content {
   overflow-x: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
+  font-size: 12px;
+  line-height: 1.4;
   max-width: 100%;
 }
 
-.code-content {
+.code-content pre {
+  display: inline-block;
+  min-width: 100%;
   margin: 0;
-  padding: 10px;
+  padding: 0;
+  word-wrap: normal;
   overflow-x: auto;
-  word-break: break-word;
-  white-space: pre-wrap;
-  font-size: 15px; 
-  line-height: 1.4; 
 }
+.code-content,
+.code-content code {
+  tab-size: 2;
+}
+
 
 /* Animación al copiar */
 .copied-effect {
   animation: highlight 0.5s ease;
 }
 
-/* Estilos compactos para la barra de desplazamiento */
+/* Estilos para la barra de desplazamiento */
 .code-content::-webkit-scrollbar {
-  height: 5px;
+  height: 6px;
 }
 
 .code-content::-webkit-scrollbar-track {
   background: #2a2a2a;
-  border-radius: 2px;
+  border-radius: 4px;
 }
 
 .code-content::-webkit-scrollbar-thumb {
   background: #555;
-  border-radius: 2px;
+  border-radius: 4px;
 }
 
 .code-content::-webkit-scrollbar-thumb:hover {
   background: #666;
 }
 
-/* Estilos para el contenido del código */
-.code-content pre {
-  margin: 0;
-  padding: 0;
-}
-
-.code-content code {
-  font-family: 'Fira Code', 'Consolas', monospace;
-  font-size: 15px;
-  line-height: 1;
-}
-/* CodeBlock.css */
+/* Estilos de sintaxis */
 .hljs-variable,
 .hljs-property,
 .hljs-attr,
 .hljs-identifier,
 .hljs-params {
-  color: #e06c75; /* o el color que prefieras para variables */
+  color: #e06c75;
 }
 
 /*========== RESPONSIVE CODE BLOCK ==========*/
@@ -125,7 +119,6 @@
     margin: 12px auto;
     border-radius: 10px;
     box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
-    font-size: 14px;
   }
 
   .code-header {
@@ -143,19 +136,12 @@
   .code-content {
     padding: 8px;
     font-size: 13.5px;
-    line-height: 1.5;
-  }
-
-  .code-content code {
-    font-size: 13.5px;
-    line-height: 1.3;
   }
 }
 
 @media (max-width: 480px) {
   .code-block {
     max-width: 92%;
-    font-size: 13px;
   }
 
   .code-content {
