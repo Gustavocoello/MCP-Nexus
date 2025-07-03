@@ -143,6 +143,7 @@ try {
   setIsStreaming(true);
   const userContent = message.content ?? message.text ?? '';
   const jarvisTempId = `jarvis-${Date.now()}`;
+  
   const combinedContext = Array.isArray(contextFromFile)
   ? contextFromFile.map(c => `🗂️ ${c.name}:\n${c.text}`).join('\n\n')
   : contextFromFile;
@@ -153,9 +154,13 @@ try {
 
 
   // Cambio clave aquí: Para el usuario, usamos texto plano sin markdown
-  const userHtml = userContent
-  .replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;'); // <-- Eliminamos md.render() para el usuario
+  const escapeHtml = (text) =>
+  text
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>');
+
+  const userHtml = `<p>${escapeHtml(userContent)}</p>`;
 
   if (userContent) {
     setMessages(prev => [
@@ -189,18 +194,27 @@ try {
       if (partial.includes('[NOTIFICATION]')) {
           const parts = partial.split('[NOTIFICATION]');
           cleanPartial = parts[0].trim();            // Esto es el mensaje real (antes de la notificación)
-          const notificationText = parts[1]?.trim(); // Esto es la notificación
+          const notificationText = parts[1]?.trim(); // Esto es la notificación para la memoria
           if (notificationText) {
             showNotification(notificationText);
           }
         }
-      
-      fullReply = cleanPartial;
-      const jarvisHtml = md.render(fullReply); // <-- Para Jarvis mantenemos markdown
-      setMessages(prev =>
-        prev.map(msg => msg.id === jarvisTempId ? { ...msg, html: jarvisHtml } : msg)
-      );
-    }, controller.signal);
+
+        fullReply = cleanPartial;
+
+        setMessages(prev =>
+          prev.map(msg => {
+            if (msg.id !== jarvisTempId) return msg;
+
+            return {
+              ...msg,
+              content: fullReply,
+              html: '',
+              stable: false
+            };
+          })
+        );
+      }, controller.signal);
 
   } catch (err) {
     if (err.name !== 'AbortError') {
@@ -208,7 +222,10 @@ try {
       setMessages(prev =>
         prev.map(msg =>
           msg.id === jarvisTempId
-            ? { ...msg, html: 'Error al procesar la solicitud.' }
+            ? { ...msg,
+              stable:true,
+               html: 'Error al procesar la solicitud.'
+              }
             : msg
         )
       );
@@ -217,7 +234,14 @@ try {
     setIsJarvisTyping(false);
     setIsStreaming(false);
     setAbortController(null);
-    setPendingContext([]); 
+    setPendingContext([]);
+    setMessages(prev =>
+    prev.map(msg =>
+      msg.id === jarvisTempId
+        ? { ...msg, stable: true }
+        : msg
+    )
+  ); 
   }
 }, [activeChatId]);
 

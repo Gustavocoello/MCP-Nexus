@@ -11,12 +11,22 @@ const CodeBlock = ({ code, language, isHtml = false, stable = false }) => {
   const codeRef = useRef(null);
 
   useEffect(() => {
-    if (stable || isHtml || !codeRef.current) return;
+    console.log(`[CodeBlock] useEffect run: stable=${stable}, isHtml=${isHtml}`);
+    if (!codeRef.current) return;
 
-    setTimeout(() => {
-      hljs.highlightElement(codeRef.current);
-    }, 0);
+     const el = codeRef.current;
+
+    // ✅ Evita resaltar dos veces
+    if (stable && !el.dataset.highlighted) {
+      hljs.highlightElement(el);
+      el.dataset.highlighted = 'true';
+      console.log(`[CodeBlock] Highlight aplicado al final:`, el);
+    }
   }, [code, language, isHtml, stable]);
+
+  useEffect(() => {
+    console.log(`[CodeBlock] Render - language: ${language} | stable: ${stable}`);
+  }, [code, stable, language]);
 
   const handleCopy = () => {
     const plainText = isHtml
@@ -50,6 +60,22 @@ const CodeBlock = ({ code, language, isHtml = false, stable = false }) => {
 
   const displayLanguage = languageNames[language] || language || 'Code';
 
+  // 🎯 BONUS: lógica separada y clara
+  const renderCode = () => {
+    const className = `hljs language-${language}`;
+    return isHtml ? (
+      <code
+        ref={codeRef}
+        className={className}
+        dangerouslySetInnerHTML={{ __html: code }}
+      />
+    ) : (
+      <code ref={codeRef} className={className}>
+        {code}
+      </code>
+    );
+  };
+
   return (
     <div className="code-block">
       <div className="code-header">
@@ -68,17 +94,10 @@ const CodeBlock = ({ code, language, isHtml = false, stable = false }) => {
           )}
         </button>
       </div>
-      <pre className="code-content">
-        <code
-          ref={codeRef}
-          className={`hljs language-${language}`}
-          {...(isHtml
-            ? { dangerouslySetInnerHTML: { __html: code } }
-            : { children: code })}
-        />
-      </pre>
+      <pre className="code-content">{renderCode()}</pre>
     </div>
   );
 };
 
 export default CodeBlock;
+

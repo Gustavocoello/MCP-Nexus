@@ -3,6 +3,7 @@ import CodeBlock from '../CodeBlock/CodeBlock';
 import './MessageList.css'; // Archivo CSS modificado
 import DOMPurify from 'dompurify';
 import hljs from 'highlight.js';
+import MarkdownRenderer from '../../utils/MarkdownRenderer';
 
 //import { marked } from 'marked';
 
@@ -14,33 +15,51 @@ const MessageList = ({ messages = [] }) => {
     msg => !msg.html?.includes('[NOTIFICATION]')
   );
 
-  const renderContent = (html, keyPrefix) => {
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = html;
+  const renderContent = (msg, keyPrefix) => {
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = msg.html;
 
-    return Array.from(tempDiv.childNodes).map((node, i) => {
-      const key = `${keyPrefix}-${i}`;
+  return Array.from(tempDiv.childNodes).map((node, i) => {
+    const key = `${keyPrefix}-${i}`;
 
-      if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'PRE' && node.querySelector('code')) {
-        const codeEl = node.querySelector('code');
-        const langClass = codeEl.className || '';
-        let language = langClass.replace('language-', '') || 'plaintext';
-        
-        if (!hljs.getLanguage(language)) {
-            language = 'plaintext'; 
-        }
-        // New para lo colores en el codeBlock en el streaming
-        const highlighted = hljs.highlight(codeEl.textContent, { language }).value;
+    if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'PRE') {
+      const codeEl = node.querySelector('code');
+      if (!codeEl) {
         return (
-          <CodeBlock
+          <div
             key={key}
-            code={highlighted}
-            language={language}
-            isHtml={true} 
-            stable={true} // le avisa al CodeBlock que ya viene con highlight
+            className="message-html"
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(node.outerHTML || '') }}
           />
         );
       }
+
+      const content = codeEl.textContent.trim();
+      const isProbablyInline = content.length < 30 && !content.includes('\n');
+      if (isProbablyInline) {
+        return <code key={key} className="inline-fix">{content}</code>;
+      }
+
+      const langClass = codeEl.getAttribute('class') || '';
+      let language = langClass.replace('language-', '') || 'plaintext';
+
+      if (!hljs.getLanguage(language)) language = 'plaintext';
+
+      // ✅ IMPORTANTE: solo resaltar si msg.stable es false
+      const highlighted = msg.stable
+        ? content // ya está procesado por hljs
+        : hljs.highlight(content, { language }).value;
+
+      return (
+        <CodeBlock
+          key={key}
+          code={highlighted}
+          language={language}
+          isHtml={!msg.stable}
+          stable={msg.stable ?? true}
+        />
+      );
+    }
 
     return (
       <div
@@ -49,8 +68,10 @@ const MessageList = ({ messages = [] }) => {
         dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(node.outerHTML || '') }}
       />
     );
-  });  
+  });
 };
+
+
 /*  
 useEffect(() => {
     hljs.highlightAll();
@@ -62,7 +83,14 @@ useEffect(() => {
       {filteredMessages.map((msg, index) => (
         <div key={msg.id || index} className={`message ${msg.role}`}>
           <div className="message-bubble">
-            {renderContent(msg.html, msg.id || index)}
+              {msg.role === 'assistant' && msg.content ? (
+                <MarkdownRenderer 
+                content={msg.content}
+                stable={msg.stable ?? false}
+                />
+              ) : (
+                renderContent(msg, msg.id || index)
+              )}
           </div>
         </div>
       ))}
