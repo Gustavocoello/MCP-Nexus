@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 import pytz
 from pathlib import Path
 from typing import Optional, Union, List, Tuple
@@ -11,20 +12,27 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
 from sqlalchemy import all_
+from src.services.auth.token_crypto import decrypt_token, encrypt_token
+from src.database.models import UserToken
+from extensions import db
 
 try: # Para el app.py
     from src.mcps.core.models import Event
 except ImportError: # Para el MCP inspector
     from mcps.core.models import Event
+    
+load_dotenv()
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
 # Ruta al archivo de credenciales y token
 CREDENTIALS_PATH = Path("D:/Personal/Documentos/Work/Python/AI agent/AI/mcp-nexus/mcp-scratch/backend/src/config/credentials/credentials_google_calendar.json")
-TOKEN_PATH = Path("D:/Personal/Documentos/Work/Python/AI agent/AI/mcp-nexus/mcp-scratch/backend/src/config/credentials/token_google_calendar.json")
-
 # Scopes necesarios para acceder al calendario
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 SCOPES_READONLY = ["https://www.googleapis.com/auth/calendar.readonly"]
 SCOPES_WRITE = ["https://www.googleapis.com/auth/calendar.events"]
+
+load_dotenv()
 
 # Seguridad para evitar que el LLM selecione fechas muy futuras o pasadas
 def validate_range(start: datetime, end: datetime):
@@ -39,9 +47,9 @@ def ensure_aware(dt):
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 class GoogleCalendarConnector:
-    def __init__(self):
+    def __init__(self, user_id):
+        self.user_id = user_id
         self.creds = None
-        self.service = self.authenticate()
 
     def authenticate(self):
         """
@@ -49,38 +57,35 @@ class GoogleCalendarConnector:
         Guarda/recupera token para evitar autenticación repetida.
         Elimnar el tokens si se quiere forzar una nueva autenticación.
         """
-        creds = None
-        # 1. Intenta cargar el token existente
-        if TOKEN_PATH.exists():
-            try:
-                creds = Credentials.from_authorized_user_file(str(TOKEN_PATH), SCOPES)
-            except Exception as e:
-                print(f"⚠️ Token inválido o corrupto: {e}. Eliminando archivo...")
-                TOKEN_PATH.unlink(missing_ok=True)
-                creds = None
+        token_entry = UserToken.query.filter_by(user_id=self.user_id, provider="google_calendar").first()
+        if not token_entry:
+            raise Exception("🔐 No se encontró token para este usuario. ¿Autenticó con Google?")
 
-        # 2. Si el token es inválido o no existe, intenta refrescar o reautenticar
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                try:
-                    creds.refresh(Request())
-                except RefreshError as e:
-                    print(f"⚠️ Error al refrescar token: {e}. Eliminando y reautenticando...")
-                    TOKEN_PATH.unlink(missing_ok=True)
-                    creds = None
+        access_token = decrypt_token(token_entry.access_token)
+        refresh_token = decrypt_token(token_entry.refresh_token) if token_entry.refresh_token else None
 
-            # Si aún no hay credenciales válidas, inicia flujo OAuth
-            if not creds or not creds.valid:
-                print("🔐 Iniciando flujo OAuth...")
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    str(CREDENTIALS_PATH), SCOPES
-                )
-                creds = flow.run_local_server(port=0)
+        # Construye el objeto de credenciales
+        creds = Credentials(
+            token=access_token,
+            refresh_token=refresh_token,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=os.getenv("GOOGLE_CLIENT_ID"),
+            client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+            scopes=[
+                "https://www.googleapis.com/auth/calendar",
+                "https://www.googleapis.com/auth/calendar.readonly",
+                "openid", "email", "profile"
+            ]
+        )
 
-                # Guarda nuevo token
-                TOKEN_PATH.parent.mkdir(parents=True, exist_ok=True)
-                with open(TOKEN_PATH, "w") as token_file:
-                    token_file.write(creds.to_json())
+        # Si está expirado pero tiene refresh_token, refresca
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+
+            # 🛡️ Opcional: actualiza el nuevo access_token en base de datos
+            token_entry.access_token = encrypt_token(creds.token)
+            token_entry.expires_at = datetime.utcnow() + creds.expiry if creds.expiry else None
+            db.session.commit()
 
         self.creds = creds
         return build("calendar", "v3", credentials=self.creds)
@@ -478,9 +483,6 @@ class GoogleCalendarConnector:
             self.fetch_events_by_range(current, end_of_day),
             key=lambda e: e.start_time
         )
-
-        def ensure_aware(dt: datetime) -> datetime:
-            return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
         free_slots = []
 

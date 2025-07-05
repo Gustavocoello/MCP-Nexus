@@ -9,9 +9,10 @@ from src.services.ai_providers.context import completion,completion_stream
 from src.database.models.models import Chat, Message
 from flask import Blueprint, jsonify, Response, request, stream_with_context
 from src.config.logging_config import get_logger
-from src.api.memory.service import get_user_memory, save_memory
-from src.api.memory.utils import build_memory_context, extract_memory_from_text, calculate_priority, classify_memory
+from src.services.memory.service import get_user_memory, save_memory
+from src.services.memory.utils import build_memory_context, extract_memory_from_text, calculate_priority, classify_memory
 from src.database.models.models import MemoryType, UserMemory
+from flask_login import login_required, current_user
 
 
 logger = get_logger('routes')
@@ -116,8 +117,9 @@ def summarize_and_trim(chat):
 
 # ----------------- GET ---------------------
 @chat_bp.route('', methods=['GET'], strict_slashes=False)
+@login_required
 def get_all_chats():
-    chats = Chat.query.order_by(Chat.updated_at.desc()).all()
+    chats = Chat.query.filter_by(user_id=current_user.id).order_by(Chat.updated_at.desc()).all()
     return jsonify([{
         "id": chat.id,
         "created_at": chat.created_at.isoformat(),
@@ -127,7 +129,11 @@ def get_all_chats():
     } for chat in chats])
 
 @chat_bp.route('/<chat_id>/messages', methods=['GET'])
+@login_required
 def get_chat_messages(chat_id):
+    chat = Chat.query.get(chat_id)
+    if not chat or chat.user_id != current_user.id:
+        return jsonify({'error': 'Acceso denegado'}), 403
     messages = (Message.query
                 .filter_by(chat_id=chat_id)
                 .order_by(Message.created_at.asc())
@@ -142,10 +148,11 @@ def get_chat_messages(chat_id):
 # ----------------- DELETE -------------------
     
 @chat_bp.route('/<chat_id>', methods=['DELETE'])
+@login_required
 def delete_chat(chat_id):
     chat = Chat.query.get(chat_id)
-    if not chat:
-        return jsonify({"error": "Chat no encontrado"}), 404
+    if not chat or chat.user_id != current_user.id:
+        return jsonify({"error": "Acceso denegado"}), 403
 
     db.session.delete(chat)
     db.session.commit()
@@ -155,9 +162,10 @@ def delete_chat(chat_id):
 # ----------------- POST ---------------------    
     
 @chat_bp.route('', methods=['POST'], strict_slashes=False)
+@login_required
 def create_chat():
     try:
-        chat = Chat()
+        chat = Chat(user_id=current_user.id)
         db.session.add(chat)
         db.session.commit()
         
@@ -171,7 +179,17 @@ def create_chat():
 
 
 @chat_bp.route('/<chat_id>/message', methods=['POST'], strict_slashes=False)
+@login_required
 def send_message(chat_id):
+    chat = Chat.query.get(chat_id)
+
+    if not chat:
+        # Si no existe, crearlo y asignarlo al usuario actual
+        chat = Chat(id=chat_id, user_id=current_user.id)
+        db.session.add(chat)
+    elif chat.user_id != current_user.id:
+        return jsonify({"error": "Acceso denegado"}), 403
+    
     user_text = (request.json.get("text") or "").strip()
     if not user_text:
         return jsonify({"error": "Texto vacío"}), 400
@@ -224,7 +242,7 @@ def send_message(chat_id):
         def generate():
             try:
                 full_reply = ""
-
+                                       
                 # Llama a tu modelo pero ahora espera que `completion()` sea un generador
                 for chunk in completion_stream(payload):  
                     full_reply += chunk
@@ -279,6 +297,7 @@ def send_message(chat_id):
 
 # --------------- POST (extraer texto de archivos) ---------------
 @chat_bp.route('/extract_file', methods=['POST'])
+@login_required
 def extract_file():
     if 'file' not in request.files:
         return jsonify({'error': 'No se proporcionó ningún archivo'}), 400
@@ -315,13 +334,14 @@ def extract_file():
         
 # --------------- PUT ---------------
 @chat_bp.route('/<chat_id>/title', methods=['PUT'])
+@login_required
 def update_chat_title(chat_id):
+    chat = Chat.query.get(chat_id)
+    if not chat or chat.user_id != current_user.id:
+        return jsonify({'error': 'Acceso denegado'}), 403
+    
     data = request.get_json()
     new_title = data.get('title')
-
-    chat = Chat.query.get(chat_id)
-    if not chat:
-        return jsonify({'error': 'Chat no encontrado'}), 404
 
     chat.title = new_title
     db.session.commit()

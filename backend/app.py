@@ -1,16 +1,23 @@
+import os
 from pickle import FALSE
 from flask import Flask
 from flask_cors import CORS
-import os
+from flask_login import LoginManager
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 from pydantic_core import Url
 
+from src.services.auth.user_loader import load_user
 from src.api.mcp.calendar.routes import mcp_bp
 from src.config.config import Config
 
 from extensions import db
 from src.config.logging_config import get_logger
-from src.api.v1.routes import search_bp, chat_bp
+from src.api.v1.chat.routes import search_bp, chat_bp
+from src.api.v1.auth.github_routes import github_auth_bp
+from src.api.v1.auth.google_routes import google_auth_bp
+from src.api.v1.auth.routes import auth_bp
 from src.database.config.connection import get_database_url
 from dotenv import load_dotenv
 
@@ -20,12 +27,18 @@ load_dotenv()
 # Configuración de las variables
 PORT = os.getenv("PORT", 5000)
 HOST = os.getenv("HOST", "0.0.0.0")
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 # Configurar logging
 logger = get_logger('app')
 
 # Inicializamos la aplicación Flask
 app = Flask(__name__)
+app.secret_key = SECRET_KEY
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.user_loader(load_user)
 CORS(app, supports_credentials=True)
 
 # Configuración de la aplicación Flask
@@ -33,6 +46,9 @@ app.config.from_object(Config)
 
 # Configuración de la base de datos MYSQL o AZURE SQL
 app.config["SQLALCHEMY_DATABASE_URI"] = get_database_url()  # Usar la función para obtener la URL de conexión
+app.config['SESSION_COOKIE_SECURE'] = True        # Solo HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True      # No accesible desde JS
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'     # Protección CSRF
 
 db.init_app(app)
 
@@ -45,6 +61,23 @@ app.register_blueprint(chat_bp, url_prefix='/api/chat')
 
 """Rutas de MCP (Google Calendar, etc)"""
 app.register_blueprint(mcp_bp, url_prefix='/api/mcp/calendar')
+
+"""Rutas para login con google"""
+app.register_blueprint(google_auth_bp)
+
+"""Autenticación de usuario con github"""
+app.register_blueprint(github_auth_bp)
+
+"""Autenticación de usuario"""
+app.register_blueprint(auth_bp)
+
+
+# Limitar - login -
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"]  # puedes ajustar a voluntad
+)
 
 # Inicia el servidor Flask
 if __name__ == "__main__":

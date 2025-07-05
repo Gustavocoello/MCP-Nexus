@@ -4,8 +4,13 @@ from src.mcps.core.models import Event
 from src.mcps.sources.calendar.google_calendar import GoogleCalendarConnector
 
 class ContextManager:
-    def __init__(self, calendar: bool = True):
-        self.calendar_client = GoogleCalendarConnector() if calendar else None
+    def __init__(self, user_id: str = None, calendar: bool = True):
+        if calendar:
+            if not user_id:
+                raise ValueError("Debe proporcionar un user_id para el calendario.")
+            self.calendar_client = GoogleCalendarConnector(user_id)
+        else:
+            self.calendar_client = None
 
     def fetch_events(self, start_date: datetime, end_date: datetime) -> List[Event]:
         """

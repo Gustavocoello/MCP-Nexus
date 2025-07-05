@@ -39,3 +39,4 @@ functions/logs/
 *local.settings.json
 credentials/
 *backup.sql
+*.sql

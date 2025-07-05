@@ -4,18 +4,29 @@ from extensions import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
+class AuthProvider(Enum):
+    LOCAL = "local"
+    GOOGLE = "google"
+    GITHUB = "github"
+
 class User(db.Model):
     __tablename__ = 'user'
 
     id = db.Column(db.String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
     email = db.Column(db.String(255), unique=True, nullable=True)
     name = db.Column(db.String(255))
-    password_hash = db.Column(db.String(255), nullable=True)  # 🔐 Hashed password
+    password_hash = db.Column(db.String(255), nullable=True)  # 🔐 Solo si LOCAL
     is_admin = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
+    auth_provider = db.Column(db.Enum(AuthProvider, values_callable=lambda x: [e.value for e in x]), default=AuthProvider.LOCAL.value, nullable=False)
+    email_verified = db.Column(db.Boolean, default=False)
+    google_id = db.Column(db.String(128), unique=True, nullable=True)
+    picture = db.Column(db.String(255), nullable=True)
+    locale = db.Column(db.String(10), nullable=True)
 
+    # Relaciones existentes
     chats = db.relationship('Chat', backref='user', cascade="all, delete-orphan")
     tokens = db.relationship('UserToken', backref='user', cascade="all, delete-orphan")
 
