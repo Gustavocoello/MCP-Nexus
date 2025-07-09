@@ -6,7 +6,6 @@ from flask_login import LoginManager
 from flask_session import Session
 
 from redis import Redis
-from regex import F
 
 from src.services.auth.user_loader import load_user
 from src.api.mcp.calendar.routes import mcp_bp
@@ -17,7 +16,7 @@ from extensions import db
 from src.config.logging_config import get_logger
 from src.api.v1.chat.routes import search_bp, chat_bp
 from src.api.v1.auth.github_routes import github_auth_bp
-from src.api.v1.auth.google_routes import FRONTEND_URL, google_auth_bp
+from src.api.v1.auth.google_routes import google_auth_bp
 from src.api.v1.auth.routes import auth_bp
 from src.database.config.connection import get_database_url
 from dotenv import load_dotenv
@@ -81,4 +80,8 @@ limiter.init_app(app)
 
 # Inicia el servidor Flask
 if __name__ == "__main__":
-    app.run(debug=True, host=HOST, port=PORT) # Poner debug=False en producción
+    is_prod = os.getenv("RENDER", True)
+    
+    if not is_prod:
+        app.run(debug=True, host=HOST, port=PORT) # Poner debug=False en producción
+
