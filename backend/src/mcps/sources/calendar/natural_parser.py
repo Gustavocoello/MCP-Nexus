@@ -4,7 +4,7 @@ from typing import Optional
 import pytz
 import dateparser
 from dateparser.search import search_dates
-from mcps.core.models import Event
+from src.mcps.core.models import Event
 
 def parse_natural_language_to_event(input_text: str) -> Optional[Event]:
     """

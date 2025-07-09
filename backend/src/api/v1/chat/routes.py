@@ -7,7 +7,7 @@ from werkzeug.utils import secure_filename
 from src.services.ai_providers.utils import generate_prompt, extract_text_from_file, analyze_image_with_azure
 from src.services.ai_providers.context import completion,completion_stream
 from src.database.models.models import Chat, Message
-from flask import Blueprint, jsonify, Response, request, stream_with_context
+from flask import Blueprint, jsonify, Response, request, stream_with_context, session
 from src.config.logging_config import get_logger
 from src.services.memory.service import get_user_memory, save_memory
 from src.services.memory.utils import build_memory_context, extract_memory_from_text, calculate_priority, classify_memory
@@ -23,25 +23,46 @@ search_bp = Blueprint('search', __name__, url_prefix='/api/search')
 
 @search_bp.route("/prompt", methods=["POST"])
 def handle_search_prompt():
+    # Si el usuario está logueado, lo redirigimos al endpoint de memoria
+    if current_user.is_authenticated:
+        return jsonify({
+            "error": "Este endpoint es solo para usuarios no registrados.",
+            "use": "/api/chat/<chat_id>/message"
+        }), 403
+
+    # Limitar a 5 intentos por sesión para usuarios anónimos
+    counter = session.get('anon_prompt_count', 0)
+
+    if counter >= 5:
+        return jsonify({
+            "error": "Has alcanzado el límite de 5 mensajes de prueba.",
+            "login_required": True
+        }), 403
+
+    session['anon_prompt_count'] = counter + 1
+    logger.debug(f'print:{counter}')
     try:
         data = request.json
+
         if not data or 'prompt' not in data:
             logger.error("No prompt received in request")
-            return jsonify({"error": "Prompt is required"}), 400
+            return jsonify({"error": "Se requiere un prompt"}), 400
 
-        logger.debug(f"Search prompt received: {data['prompt']}")
+        logger.debug(f"Search prompt recibido: {data['prompt']}")
         
-        # Process prompt using utils functions
         result = generate_prompt({"description": data['prompt']})
-        
+
         if result == "Todos los servicios de IA no estan disponibles actualmente.":
-            return jsonify({"error": result}), 500
-            
-        return jsonify({"result": result})
-    
+            return jsonify({"error": result}), 503
+        
+        return jsonify({
+            "result": result,
+            "remaining": max(0, 5 - session['anon_prompt_count'])
+        })
+
     except Exception as e:
-        error_msg = f"Error processing search prompt: {str(e)}"
-        logger.error(error_msg)
+        error_msg = f"Error al procesar prompt: {str(e)}"
+        logger.exception(error_msg)
         return jsonify({"error": error_msg}), 500
 
 
@@ -164,11 +185,15 @@ def delete_chat(chat_id):
 @chat_bp.route('', methods=['POST'], strict_slashes=False)
 @login_required
 def create_chat():
+    if not current_user.is_authenticated or not current_user.get_id():
+        return jsonify({"error": "Usuario no autenticado o ID inválido"}), 401
+
     try:
-        chat = Chat(user_id=current_user.id)
+        chat = Chat(user_id=current_user.get_id())
         db.session.add(chat)
         db.session.commit()
         
+        print(f"[DEBUG] current_user: {current_user}, ID: {current_user.get_id()}")
         return jsonify({
             "id": chat.id,
             "created_at": chat.created_at.isoformat()

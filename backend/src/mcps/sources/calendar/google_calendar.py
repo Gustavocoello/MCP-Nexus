@@ -1,4 +1,5 @@
 import os
+import sys
 from dotenv import load_dotenv
 import pytz
 from pathlib import Path
@@ -12,15 +13,21 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
 from sqlalchemy import all_
-from src.services.auth.token_crypto import decrypt_token, encrypt_token
-from src.database.models import UserToken
-from extensions import db
 
 try: # Para el app.py
     from src.mcps.core.models import Event
 except ImportError: # Para el MCP inspector
     from mcps.core.models import Event
     
+# --- Fix Paths ---
+current_dir = Path(__file__).resolve().parent
+backend_dir = current_dir.parent.parent.parent.parent
+sys.path.insert(0, str(backend_dir))
+
+from src.services.auth.token_crypto import decrypt_token, encrypt_token
+from src.database.models import UserToken
+from extensions import db
+
 load_dotenv()
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
@@ -47,7 +54,9 @@ def ensure_aware(dt):
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 class GoogleCalendarConnector:
-    def __init__(self, user_id):
+    def __init__(self, user_id=None):
+        if not user_id:
+            raise ValueError("Falta el user_id (obligatorio en producción)")
         self.user_id = user_id
         self.creds = None
 
@@ -88,7 +97,8 @@ class GoogleCalendarConnector:
             db.session.commit()
 
         self.creds = creds
-        return build("calendar", "v3", credentials=self.creds)
+        self.service = build("calendar", "v3", credentials=self.creds)
+        return self.service
     # ============= OBTENCIÓN DE EVENTOS POR RANGO FECHAS ===============
     def get_events_by_range(self, calendar_id: str, start: Union[str, datetime], end: Union[str, datetime]):
         if isinstance(start, str):
@@ -342,24 +352,20 @@ class GoogleCalendarConnector:
             return []
         
     # ============= RESUMEN DE EVENTOS =============
-    def list_calendars(self) -> List[str]:
-        """
-        Devuelve los IDs de todos los calendarios disponibles para el usuario autenticado.
-        """
+    def list_calendars(self) -> List[dict]:
+        if not hasattr(self, "service"):
+            self.authenticate()
         try:
-            calendars_result = self.service.calendarList().list().execute()
+            calendars = self.service.calendarList().list().execute()
             return [
-                {
-                    "id": cal["id"],
-                    "name": cal.get("summary", "Sin nombre")
-                }
-                for cal in calendars_result.get("items", [])
+                {"id": c["id"], "name": c.get("summary", "Sin nombre")}
+                for c in calendars.get("items", [])
             ]
         except Exception as e:
             print(f"Error al listar calendarios: {e}")
             return []
 
-    def get_summary(self, calendar_id: Optional[str] = None, range_type: str = "daily", timezone: str = "UTC") -> str:
+    def get_summary(self, calendar_id=None, range_type: str = "daily", timezone: str = "UTC") -> str:
         """
         Genera un resumen de eventos para hoy o la semana.
 
@@ -371,6 +377,8 @@ class GoogleCalendarConnector:
         Returns:
             str: Resumen textual de los eventos.
         """
+        if not hasattr(self, "service"):
+            self.authenticate()
         try:
             tz = pytz.timezone(timezone)
             now = datetime.now(tz)
@@ -386,9 +394,14 @@ class GoogleCalendarConnector:
             else:
                 return "⚠️ Tipo de resumen no válido. Usa 'daily' o 'weekly'."
             
-            calendar_ids = [calendar_id] if calendar_id else self.list_calendars()
-            all_summaries = []
+            if calendar_id is None or calendar_id == "":
+                calendar_ids = [c["id"] for c in self.list_calendars()]
+                if not calendar_ids:
+                    return f"{title}\n\n⚠️ No se encontraron calendarios disponibles."
+            else:
+                calendar_ids = [calendar_id]
             
+            all_summaries = []
             for cid in calendar_ids:
                 try:
                     time_min = start.isoformat()

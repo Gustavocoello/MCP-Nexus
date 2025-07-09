@@ -9,7 +9,7 @@ logger = logging.getLogger("__name__")
 OPEN_ROUTER_0  = os.getenv("OPEN_ROUTER_0")
 OPEN_ROUTER_1 = os.getenv("OPEN_ROUTER_1")
 OPEN_ROUTER_2  = os.getenv("OPEN_ROUTER_2")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 API_PROVIDERS = [
     {
@@ -32,7 +32,7 @@ API_PROVIDERS = [
     },
     {
         "name": "gemini",
-        "client": OpenAI(api_key=OPENAI_API_KEY,
+        "client": OpenAI(api_key=GEMINI_API_KEY,
                          base_url="https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"),
         "model": "gemini-pro"
     }

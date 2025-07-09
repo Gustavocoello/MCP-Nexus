@@ -3,14 +3,14 @@ from pickle import FALSE
 from flask import Flask
 from flask_cors import CORS
 from flask_login import LoginManager
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
+from flask_session import Session
 
-from pydantic_core import Url
+from redis import Redis
 
 from src.services.auth.user_loader import load_user
 from src.api.mcp.calendar.routes import mcp_bp
 from src.config.config import Config
+from src.services.extensions.limiter import limiter
 
 from extensions import db
 from src.config.logging_config import get_logger
@@ -39,16 +39,17 @@ app.secret_key = SECRET_KEY
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.user_loader(load_user)
-CORS(app, supports_credentials=True)
+CORS(app, supports_credentials=True, origins=["http://localhost:3000"])
 
 # Configuración de la aplicación Flask
 app.config.from_object(Config)
 
 # Configuración de la base de datos MYSQL o AZURE SQL
-app.config["SQLALCHEMY_DATABASE_URI"] = get_database_url()  # Usar la función para obtener la URL de conexión
-app.config['SESSION_COOKIE_SECURE'] = True        # Solo HTTPS
-app.config['SESSION_COOKIE_HTTPONLY'] = True      # No accesible desde JS
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'     # Protección CSRF
+app.config["SQLALCHEMY_DATABASE_URI"] = get_database_url()
+# Configuración Redis para sesiones
+app.config['SESSION_TYPE'] = 'redis'
+app.config['SESSION_REDIS'] = Redis.from_url(app.config["REDIS_URL"])
+Session(app)
 
 db.init_app(app)
 
@@ -73,11 +74,8 @@ app.register_blueprint(auth_bp)
 
 
 # Limitar - login -
-limiter = Limiter(
-    get_remote_address,
-    app=app,
-    default_limits=["200 per day", "50 per hour"]  # puedes ajustar a voluntad
-)
+limiter.init_app(app)
+
 
 # Inicia el servidor Flask
 if __name__ == "__main__":

@@ -1,23 +1,14 @@
 import re
 import spacy
-from transformers import pipeline
 
 # Cargar modelos una sola vez (lazy loading)
 _nlp = None
-_classifier = None
 
 def get_nlp():
     global _nlp
     if _nlp is None:
         _nlp = spacy.load("es_core_news_sm")
     return _nlp
-
-def get_classifier():
-    global _classifier
-    if _classifier is None:
-        _classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
-    return _classifier
-
 
 def build_memory_context(memories):
     """Construye el contexto de memoria como string legible para el LLM."""
@@ -75,8 +66,16 @@ def extract_entities(text):
 
 
 def classify_memory(memory_text):
-    """Clasifica la memoria en una de varias categorías posibles."""
-    classifier = get_classifier()
-    candidate_labels = ["preferencia", "hecho", "persona", "evento"]
-    result = classifier(memory_text, candidate_labels)
-    return result["labels"][0]  # Etiqueta más probable
+    """Clasificación heurística ligera sin modelos pesados."""
+    text = memory_text.lower()
+
+    if any(kw in text for kw in ["me gusta", "prefiero", "odio", "encanta"]):
+        return "preferencia"
+    elif any(kw in text for kw in ["nació", "vive", "es", "trabaja"]):
+        return "persona"
+    elif any(kw in text for kw in ["el", "la", "un", "una", "es", "son", "fue", "estuvo"]):
+        return "hecho"
+    elif any(kw in text for kw in ["evento", "concierto", "reunión", "cumpleaños"]):
+        return "evento"
+    else:
+        return "hecho"  # fallback

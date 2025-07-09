@@ -19,10 +19,10 @@ logger = get_logger(__name__)
 # Cargar las variables de entorno desde el archivo .env
 load_dotenv()
 
-DEEP_API_KEY = os.getenv("DEEP_API_KEY")
+DEEP_API_KEY = os.getenv("OPEN_ROUTER_2")
+QWEN_API_KEY = os.getenv("OPEN_ROUTER_1")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-QWEN3_API_KEY = os.getenv("QWEN3_KEY")
 
 
 AZURE_ENDPOINT = os.getenv("AZURE_VISION_ENDPOINT")
@@ -44,7 +44,7 @@ API_PROVIDERS = [
         'name'     : 'qwen-3',
         'client'   : OpenAI(
             base_url="https://openrouter.ai/api/v1",
-            api_key= QWEN3_API_KEY),
+            api_key= QWEN_API_KEY),
         'handler'  : lambda client, prompt: client.chat.completions.create(
             model = 'qwen/qwen3-235b-a22b:free',
             messages = [{'role' : 'user', 'content' : prompt}]

@@ -2,14 +2,16 @@ import uuid
 from enum import Enum
 from extensions import db
 from datetime import datetime
+from flask_login import UserMixin
+from sqlalchemy.types import Enum as SQLAlchemyEnum
 from werkzeug.security import generate_password_hash, check_password_hash
 
-class AuthProvider(Enum):
+class AuthProvider(str, Enum):
     LOCAL = "local"
     GOOGLE = "google"
     GITHUB = "github"
 
-class User(db.Model):
+class User(UserMixin,db.Model):
     __tablename__ = 'user'
 
     id = db.Column(db.String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -20,12 +22,12 @@ class User(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
-    auth_provider = db.Column(db.Enum(AuthProvider, values_callable=lambda x: [e.value for e in x]), default=AuthProvider.LOCAL.value, nullable=False)
+    auth_provider = db.Column(SQLAlchemyEnum(AuthProvider, values_callable=lambda x: [e.value for e in x]), nullable=False)
     email_verified = db.Column(db.Boolean, default=False)
     google_id = db.Column(db.String(128), unique=True, nullable=True)
     picture = db.Column(db.String(255), nullable=True)
     locale = db.Column(db.String(10), nullable=True)
-
+    
     # Relaciones existentes
     chats = db.relationship('Chat', backref='user', cascade="all, delete-orphan")
     tokens = db.relationship('UserToken', backref='user', cascade="all, delete-orphan")
@@ -37,7 +39,18 @@ class User(db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
-
+    def get_id(self):
+        return str(self.id)
+    
+    def to_dict(self):
+        return {
+            "id": str(self.id),
+            "email": self.email,
+            "name": self.name,
+            "auth_provider": self.auth_provider.value if self.auth_provider else None,
+            "picture": self.picture
+        }
+    
 class Chat(db.Model):
     __tablename__ = 'chat'
     id = db.Column(db.String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -76,7 +89,7 @@ class Message(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 # Modelo de memoria para el LLM - método avanzado
-class MemoryType(Enum):
+class MemoryType(str, Enum):
     SESSION = "session"
     SHORT_TERM = "short_term"
     LONG_TERM = "long_term"
@@ -88,6 +101,7 @@ class UserMemory(db.Model):
     chat_id = db.Column(db.String(64), db.ForeignKey('chat.id'), nullable=False)
     key = db.Column(db.String(255), nullable=False)
     value = db.Column(db.Text, nullable=False)
-    type = db.Column(db.Enum(MemoryType, values_callable=lambda x: [e.value for e in x]), default=MemoryType.LONG_TERM.value)
+    type = db.Column(
+    SQLAlchemyEnum(MemoryType, values_callable=lambda x: [e.value for e in x]), default=MemoryType.LONG_TERM.value)
     priority = db.Column(db.Integer, default=3)
     last_updated = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

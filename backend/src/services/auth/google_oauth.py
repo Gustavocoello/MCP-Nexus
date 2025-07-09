@@ -18,11 +18,16 @@ load_dotenv()
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
+os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+
 GOOGLE_SCOPES = [
+    "openid",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
     "https://www.googleapis.com/auth/calendar",
-    "https://www.googleapis.com/auth/calendar.readonly",
-    "openid", "email", "profile"
+    "https://www.googleapis.com/auth/calendar.readonly"
 ]
+
 
 # Puedes hacer esto dinámico luego si agregas más proveedores
 PROVIDER_NAME = "google_calendar"
