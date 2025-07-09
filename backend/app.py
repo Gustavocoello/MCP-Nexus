@@ -6,6 +6,7 @@ from flask_login import LoginManager
 from flask_session import Session
 
 from redis import Redis
+from regex import F
 
 from src.services.auth.user_loader import load_user
 from src.api.mcp.calendar.routes import mcp_bp
@@ -16,7 +17,7 @@ from extensions import db
 from src.config.logging_config import get_logger
 from src.api.v1.chat.routes import search_bp, chat_bp
 from src.api.v1.auth.github_routes import github_auth_bp
-from src.api.v1.auth.google_routes import google_auth_bp
+from src.api.v1.auth.google_routes import FRONTEND_URL, google_auth_bp
 from src.api.v1.auth.routes import auth_bp
 from src.database.config.connection import get_database_url
 from dotenv import load_dotenv
@@ -28,6 +29,7 @@ load_dotenv()
 PORT = os.getenv("PORT", 5000)
 HOST = os.getenv("HOST", "0.0.0.0")
 SECRET_KEY = os.getenv("SECRET_KEY")
+FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 # Configurar logging
 logger = get_logger('app')
@@ -39,7 +41,7 @@ app.secret_key = SECRET_KEY
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.user_loader(load_user)
-CORS(app, supports_credentials=True, origins=["http://localhost:3000"])
+CORS(app, supports_credentials=True, origins=[FRONTEND_URL])
 
 # Configuración de la aplicación Flask
 app.config.from_object(Config)
