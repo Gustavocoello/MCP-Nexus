@@ -6,6 +6,7 @@ import MarkdownIt from 'markdown-it';
 import { CgMoreAlt } from "react-icons/cg";
 import AnimatedJarvis from '../../ui/AnimatedJarvis';
 import ChatMenu from '../../../features/chat/components/ChatMenu/ChatMenu';
+import useCurrentUser from '../../../features/auth/components/context/useCurrentUser';
 import '../Sidebar/Sidebar.css';
 
 // Servicios
@@ -19,7 +20,7 @@ const Sidebar = () => {
   const [chats, setChats] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
-
+  const { user, loading } = useCurrentUser();
   // Cargar los chats desde localStorage
   const fetchAndSetChats = async () => {
   try {
@@ -34,6 +35,17 @@ const Sidebar = () => {
     console.error('Error cargando chats:', error);
   }
 };
+
+useEffect(() => {
+  window.dispatchEvent(new CustomEvent('sidebar-toggled', { detail: { isOpen } }));
+}, [isOpen]);
+
+useEffect(() => {
+  if (user && !loading) {
+    fetchAndSetChats();
+  }
+}, [user, loading]);
+
 
 useEffect(() => {
   fetchAndSetChats();

@@ -1,0 +1,40 @@
+.login-button {
+  position: fixed;
+  top: 24px;
+  left: 70px;
+  background-color: #151413;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 16px;
+  cursor: pointer;
+  z-index: 1001;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  font-family: inherit; /* usa la fuente global definida */
+  opacity: 1;
+  transform: translateY(0); 
+}
+
+/* Hover */
+.login-button:hover {
+  background-color: #333;
+  transform: scale(1.03); /* efecto suave */
+}
+/* Ocultar suavemente */
+.login-button.hidden {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+}
+
+/* Responsive: en móviles o pantallas pequeñas */
+@media (max-width: 600px) {
+  .login-button {
+    left: 16px;
+    top: 24px;
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+}

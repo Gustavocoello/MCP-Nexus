@@ -274,6 +274,62 @@ body {
   100% { opacity: 0; transform: translateX(-50%) translateY(20px); }
 }
 
+/*============ LINK =============*/
+/* Enlace estilizado tipo chip */
+.message-html a {
+  display: inline-block;
+  background-color: #e0e0e0; /* gris claro */
+  color: #333; /* texto oscuro */
+  padding: 4px 10px;
+  border-radius: 12px;
+  text-decoration: none;
+  font-size: 0.9em;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.2s ease;
+}
+
+/* Hover efecto */
+.message-html a:hover {
+  background-color: #ccc;
+}
+
+/* Tooltip */
+.message-html a::after {
+  content: attr(href);
+  position: absolute;
+  left: 0;
+  bottom: 125%;
+  background-color: #222;
+  color: #fff;
+  padding: 6px 10px;
+  font-size: 0.75em;
+  white-space: nowrap;
+  border-radius: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 10;
+}
+
+/* Mostrar tooltip en hover */
+.message-html a:hover::after {
+  opacity: 1;
+}
+.loading-screen {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-size: 1.2rem;
+  color: var(--text-color, #555);
+}
+
+
 
 @media (max-width: 768px) {
   /* ========== HEADER ========== */

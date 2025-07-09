@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import MarkdownIt from 'markdown-it';
 import { TbMessagePlus } from "react-icons/tb";
-import { sendMessage } from '../../service/api_service';
+import { sendMessage, sendAnonymousMessage} from '../../service/api_service';
 import MessageList from './components/MessageList/MessageList';
 import SearchBar from '../../components/ui/SearchBar/SearchBar';
 import { getAllChats, getChatMessages, createChat} from '../../service/chatService';
+import useAuthStatus from '../../service/useAuthStatus';
+import LoginButton from '../../components/layout/LoginButton/LoginButton';
+import useCurrentUser from '../../features/auth/components/context/useCurrentUser';
 
 // Cambiando de Markdown a HTML
 const md = new MarkdownIt({
@@ -36,8 +39,9 @@ const ChatPage = () => {
   const chatBottomRef = useRef(null);
   const [notification, setNotification] = useState(null);
   const [pendingContext, setPendingContext] = useState([]);
-
-
+  const isAuthenticated = useAuthStatus();
+  const { user, loading } = useCurrentUser();
+  
   // Efecto: Inicializar chat activo al cargar
   useEffect(() => {
   const initChat = async () => {
@@ -180,42 +184,80 @@ try {
 
   try {
     let fullReply = '';
-    
-    await sendMessage({
-      chatId: activeChatId,
-      text: userContent,
-      hidden_context: combinedContext  // ← aquí van los archivos o contexto que no quieres guardar
-    }, (partial) => {
-      console.log('partial recibido:', partial);
-      
-      let cleanPartial = partial;
-      
-      // Mostrar la notificacion de memoria
-      if (partial.includes('[NOTIFICATION]')) {
+
+    let res;
+    // Mensajes para usuarios no logeados
+    if (isAuthenticated === false) {
+      const anonCount = parseInt(localStorage.getItem('anonMessageCount') || '0', 10);
+
+      if (anonCount >= 5) {
+        fullReply = "Has alcanzado el límite de 5 mensajes gratuitos. Por favor inicia sesión para continuar.";
+
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.id === jarvisTempId
+            ? { ...msg, content: fullReply, html: '', stable: false }
+            : msg
+          )
+        );
+
+        showNotification("Has alcanzado el límite de mensajes gratuitos. Inicia sesión para continuar.");
+        setIsJarvisTyping(false);
+        setIsStreaming(false);
+        return;
+      }
+
+      // ✅ Solo se hace la solicitud si no ha alcanzado el límite
+      res = await sendAnonymousMessage(fullPrompt);
+
+      // Incrementar contador después de la respuesta
+      localStorage.setItem('anonMessageCount', String(anonCount + 1));
+      console.log('Mensajes de usuarios no registrados:', anonCount );
+
+      if (res.result) {
+        fullReply = res.result;
+      } else if (res.error) {
+        fullReply = res.error;
+      }
+
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === jarvisTempId
+            ? { ...msg, content: fullReply, html: '', stable: false }
+            : msg
+        )
+      );
+    // Mensajes para usuarios logeados
+    } else {
+      res = await sendMessage({
+        chatId: activeChatId,
+        text: userContent,
+        hidden_context: combinedContext
+      }, (partial) => {
+        // streaming parcial para usuarios logueados
+        console.log('partial recibido:', partial);
+        
+
+        let cleanPartial = partial;
+
+        if (partial.includes('[NOTIFICATION]')) {
           const parts = partial.split('[NOTIFICATION]');
-          cleanPartial = parts[0].trim();            // Esto es el mensaje real (antes de la notificación)
-          const notificationText = parts[1]?.trim(); // Esto es la notificación para la memoria
+          cleanPartial = parts[0].trim();
+          const notificationText = parts[1]?.trim();
           if (notificationText) {
             showNotification(notificationText);
           }
         }
 
-        fullReply = cleanPartial;
-
         setMessages(prev =>
-          prev.map(msg => {
-            if (msg.id !== jarvisTempId) return msg;
-
-            return {
-              ...msg,
-              content: fullReply,
-              html: '',
-              stable: false
-            };
-          })
+          prev.map(msg =>
+            msg.id === jarvisTempId
+              ? { ...msg, content: cleanPartial, html: '', stable: false }
+              : msg
+          )
         );
       }, controller.signal);
-
+    }
   } catch (err) {
     if (err.name !== 'AbortError') {
       console.error(err);
@@ -230,6 +272,7 @@ try {
         )
       );
     }
+
   } finally {
     setIsJarvisTyping(false);
     setIsStreaming(false);
@@ -243,7 +286,7 @@ try {
     )
   ); 
   }
-}, [activeChatId]);
+}, [activeChatId, isAuthenticated]);
 
 
 
@@ -256,25 +299,36 @@ try {
 
   //Funcion para mostrar la notificacion del backend - Memoria-
   const showNotification = (msg) => {
-  setNotification(msg);
-  setTimeout(() => setNotification(null), 4000); // <-- La notificación dura 4 segundos y desaparece
-  };
+    setNotification(msg);
+    setTimeout(() => setNotification(null), 4000); // <-- La notificación dura 4 segundos y desaparece
+    };
 
   // Funcion para limpiar el contexto pendiente
   const clearPendingContext = () => {
-  setPendingContext([]);
-};
+    setPendingContext([]);
+  };
   // Funcion para eliminar un contexto pendiente por nombre
   const removeContextByName = (name) => {
-  setPendingContext(prev => prev.filter(ctx => ctx.name !== name));
-};
+    setPendingContext(prev => prev.filter(ctx => ctx.name !== name));
+  };
 
+  useEffect(() => {
+    if (isAuthenticated === true) {
+      localStorage.removeItem('anonMessageCount');
+    }
+  }, [isAuthenticated]);
 
+  if (loading) {
+    console.log('Usuario actual:', user);
+    return <div className="loading-screen">Cargando usuario...</div>;
 
+  }
 
   return (
   <div className="page">
     {/* Botón de nuevo chat */}
+    <LoginButton /> {/* ⬅ Aquí va el botón para iniciar sesion */}
+
     <button className="new-chat-button" onClick={createNewChat}>
       <TbMessagePlus size={23} />
     </button>

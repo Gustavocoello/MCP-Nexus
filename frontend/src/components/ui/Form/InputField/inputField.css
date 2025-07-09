@@ -1,0 +1,22 @@
+.input-group {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.input {
+  width: 100%;
+  padding: 0.55rem 0.9rem;
+  font-size: 1rem;
+  border-radius: 8px;
+  border: 1px solid #d1d5db; /* Gris claro */
+  background-color: #f9fafb;
+  color: #111827; /* Gris oscuro */
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.input:focus {
+  border-color: #000205;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(24, 25, 27, 0.2);
+}

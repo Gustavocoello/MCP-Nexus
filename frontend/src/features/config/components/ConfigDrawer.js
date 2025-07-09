@@ -2,9 +2,10 @@
 import { useState } from 'react';
 import ThemeTab from './tabs/Theme/ThemeTab';
 import MemoryTab from './tabs/MemoryTab/MemoryTab';
+import GeneralTab from './tabs/General/GeneralTab';
 
 const ConfigDrawer = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState('tema'); // 'tema' o 'memoria'
+  const [activeTab, setActiveTab] = useState('general');
 
   return (
     <div className="drawer-backdrop" onClick={onClose}>
@@ -15,6 +16,12 @@ const ConfigDrawer = ({ onClose }) => {
         </div>
 
         <div className="drawer-tabs">
+          <button
+            className={activeTab === 'general' ? 'active' : ''}
+            onClick={() => setActiveTab('general')}
+          >
+            General
+          </button>
           <button
             className={activeTab === 'tema' ? 'active' : ''}
             onClick={() => setActiveTab('tema')}
@@ -32,6 +39,7 @@ const ConfigDrawer = ({ onClose }) => {
         <div className="drawer-divider" />
 
         <div className="drawer-content">
+          {activeTab === 'general' && <GeneralTab />}
           {activeTab === 'tema' && <ThemeTab />}
           {activeTab === 'memoria' && <MemoryTab />}
         </div>

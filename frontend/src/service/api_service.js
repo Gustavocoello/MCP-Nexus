@@ -5,7 +5,7 @@ const REACT_APP = process.env.REACT_APP_URL; // Localhost:5000 o la URL de tu ba
 //const REACT_APP_URL = process.env.REACT_APP_URL_AZURE_PROMPT; // Azure Functions Nube
 
 
-const onPrompt = async (promptText) => {
+export const sendAnonymousMessage = async (promptText) => {
     try {
       const response = await axios.post(`${REACT_APP}/api/search/prompt`, { 
         prompt: promptText
@@ -20,7 +20,6 @@ const onPrompt = async (promptText) => {
     }
   };
    
-  export default onPrompt;
 
 
 export const sendMessage = async ({chatId, text, hidden_context = ''}, onPartialResponse = null, signal) => {
@@ -33,6 +32,7 @@ export const sendMessage = async ({chatId, text, hidden_context = ''}, onPartial
 const response = await fetch(`${REACT_APP}/api/chat/${chatId}/message`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
   body: JSON.stringify({ text, hidden_context }),
   signal, // Pasamos el signal al fetch para que pueda ser abortado
 });
@@ -91,4 +91,22 @@ try {
 throw new Error(`Error sending message: ${error.message}`);
 
   }
+};
+export const extractFileContent = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${REACT_APP}/api/chat/extract_file`, {
+    method: 'POST',
+    credentials: 'include', // ✅ agregado como pediste
+    body: formData,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Error al extraer archivo');
+  }
+
+  return data;
 };

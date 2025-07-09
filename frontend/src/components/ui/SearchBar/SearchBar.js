@@ -6,9 +6,8 @@ import { VscSettings } from "react-icons/vsc";
 import { FaArrowUp, FaStop } from 'react-icons/fa';
 import { MdOutlineAttachFile } from "react-icons/md";
 import { IoCloseOutline } from "react-icons/io5";
+import { extractFileContent } from '../../../service/api_service';
 
-
-const REACT_APP = process.env.REACT_APP_URL;
 
 const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, onImageUpload , onContextExtracted, pendingContext, onClearContext, onRemoveContext,}) => {
   const [query, setQuery] = useState('');
@@ -88,13 +87,8 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
       formData.append('file', file);
 
       try {
-        const res = await fetch(`${REACT_APP}/api/chat/extract_file`, {
-          method: 'POST',
-          body: formData,
-        });
 
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Error al extraer archivo');
+        const data = await extractFileContent(file)
 
         if (data.text) {
           onContextExtracted({ name: file.name, text: data.text });
@@ -156,13 +150,8 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
       formData.append('file', file);
 
       try {
-        const res = await fetch(`${REACT_APP}/api/chat/extract_file`, {
-          method: 'POST',
-          body: formData,
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Error al extraer archivo');
+        
+        const data = await extractFileContent(file);
         if (data.text) {
           onContextExtracted({ name: file.name, text: data.text });
         }

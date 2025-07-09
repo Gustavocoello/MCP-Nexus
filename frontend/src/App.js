@@ -1,16 +1,15 @@
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Sidebar from './components/layout/Sidebar/Sidebar';
 import ChatPage from './features/chat/ChatPage';
 import DashboardPage from './pages/DashboardPage';
 import ConfigPage from './features/config/ConfigPage';
 import BackgroundTechPattern from './features/config/components/tabs/Theme/BackgroundTechPattern';
-import 'highlight.js/styles/github-dark.css';
+import LoginPage from './features/auth/components/LoginPage/LoginPage'; 
+import RegisterPage from './features/auth/components/RegisterPage/RegisterPage'; 
 import './styles/App.css';
 
-
 function App() {
-
   const [theme, setTheme] = useState(document.documentElement.getAttribute('data-theme'));
 
   useEffect(() => {
@@ -27,15 +26,15 @@ function App() {
   return (
     <Router>
       <div className="app-container">
-        {theme === 'custom' && <BackgroundTechPattern />} {/* Fondo dinámico */}
+        {theme === 'custom' && <BackgroundTechPattern />}
         <Sidebar />
-
-        {/* Contenido principal */}
         <div className="main-content">
           <Routes>
             <Route path="/" element={<ChatPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/login" element={<LoginPage />} />
             <Route path="/config" element={<ConfigPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
           </Routes>
         </div>
       </div>
