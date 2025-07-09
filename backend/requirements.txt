@@ -45,7 +45,6 @@ httpcore==1.0.9
 httplib2==0.22.0
 httpx==0.28.1
 httpx-sse==0.4.1
-huggingface-hub==0.33.0
 idna==3.10
 iniconfig==2.1.0
 isodate==0.7.2
@@ -93,7 +92,7 @@ PyPDF2==3.0.1
 pytest==8.4.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.0
-python-magic==0.4.14
+python-magic
 python-multipart==0.0.20
 pytz==2025.2
 PyYAML==6.0.2
