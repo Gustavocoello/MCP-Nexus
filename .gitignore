@@ -28,6 +28,7 @@ yarn-error.log*
 # Archivos de configuración de entorno y locales
 /.env
 /frontend/.env
+/backend/.env
 /__pycache__
 __pycache__/
 
