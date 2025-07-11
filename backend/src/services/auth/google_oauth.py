@@ -32,6 +32,15 @@ GOOGLE_SCOPES = [
 # Puedes hacer esto dinámico luego si agregas más proveedores
 PROVIDER_NAME = "google_calendar"
 CREDENTIALS_PATH = Path("src/config/credentials/credentials_google_calendar.json")
+if not CREDENTIALS_PATH.exists():
+    credentials_json = os.getenv("GOOGLE_CLIENT_SECRET_JSON")
+    if not credentials_json:
+        raise Exception("Falta GOOGLE_CLIENT_SECRET_JSON en entorno")
+
+    CREDENTIALS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with open(CREDENTIALS_PATH, "w") as f:
+        f.write(credentials_json)
+
 
 
 def get_flow():
