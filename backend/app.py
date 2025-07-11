@@ -28,7 +28,6 @@ load_dotenv()
 PORT = os.getenv("PORT", 5000)
 HOST = os.getenv("HOST", "0.0.0.0")
 SECRET_KEY = os.getenv("SECRET_KEY")
-FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 # Configurar logging
 logger = get_logger('app')
@@ -40,7 +39,16 @@ app.secret_key = SECRET_KEY
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.user_loader(load_user)
-CORS(app, supports_credentials=True, origins=[FRONTEND_URL])
+CORS(app, supports_credentials=True, resources={
+    r"/api/*": {
+        "origins": [
+            "https://mcp-nexus-h6y32pgox-gustavo-coellos-projects.vercel.app",
+            "https://mcp-nexus.vercel.app",
+            "https://mcp-nexus.onrender.com"
+        ]
+    }
+})
+
 
 # Configuración de la aplicación Flask
 app.config.from_object(Config)
