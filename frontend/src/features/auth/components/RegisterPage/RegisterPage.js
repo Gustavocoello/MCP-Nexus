@@ -14,6 +14,8 @@ const RegisterPage = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const { setUser } = useCurrentUser();
+
 
   const handleChange = (e) => {
     setFormData(prev => ({
@@ -29,8 +31,9 @@ const RegisterPage = () => {
 
     try {
       const res = await registerUser(formData);
+      setUser(res.user); // ✅ actualiza el contexto
       console.log('User registered:', res.user);
-      navigate('/');
+      navigate('/');      
     } catch (err) {
       console.error(err);
       setError(err?.response?.data?.error || 'Registration failed');

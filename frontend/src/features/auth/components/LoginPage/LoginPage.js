@@ -8,6 +8,7 @@ import { FaGoogle } from 'react-icons/fa';
 import './LoginPage.css';
 
 const LoginPage = () => {
+  const { setUser } = useCurrentUser();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -19,6 +20,7 @@ const LoginPage = () => {
     try {
       await loginUser(email, password);
       const user = await getCurrentUser();
+      setUser(user);
       console.log('Usuario autenticado:', user);
       navigate('/');
     } catch (err) {

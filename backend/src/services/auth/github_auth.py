@@ -1,12 +1,16 @@
+from re import A
+from flask_login import login_user
 import requests
 from flask import redirect, request, session, url_for
 from urllib.parse import urlencode
-from src.database.models.models import User
+from src.database.models.models import User, AuthProvider
 from extensions import db
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
+
+FRONTEND_URL = os.getenv("FRONTEND_URL")
 
 GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
 GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
@@ -56,9 +60,11 @@ def github_callback():
     # Buscar o crear usuario
     user = User.query.filter_by(email=email).first()
     if not user:
-        user = User(email=email)
+        user = User(email=email,
+                    name=name,
+                    auth_provider=AuthProvider.GITHUB.value,)
         db.session.add(user)
         db.session.commit()
 
-    session["user_id"] = user.id
-    return redirect("/") 
+    login_user(user)
+    return redirect(f"{FRONTEND_URL}/")
