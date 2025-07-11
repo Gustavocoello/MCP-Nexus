@@ -12,7 +12,7 @@ class AuthProvider(str, Enum):
     GITHUB = "github"
 
 class User(UserMixin,db.Model):
-    __tablename__ = 'user'
+    __tablename__ = 'users'
 
     id = db.Column(db.String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
     email = db.Column(db.String(255), unique=True, nullable=True)
@@ -54,7 +54,7 @@ class User(UserMixin,db.Model):
 class Chat(db.Model):
     __tablename__ = 'chat'
     id = db.Column(db.String(64), primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = db.Column(db.String(64), db.ForeignKey('user.id'), nullable=True)  # 🔥 clave foránea
+    user_id = db.Column(db.String(64), db.ForeignKey('users.id'), nullable=True)  # 🔥 clave foránea
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     summary = db.Column(db.Text)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -68,7 +68,7 @@ class UserToken(db.Model):
     __tablename__ = "user_token"
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    user_id = db.Column(db.String(64), db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.String(64), db.ForeignKey('users.id'), nullable=False)
     provider = db.Column(db.String(50), nullable=False)  # ej: 'google_calendar', 'notion'
     access_token = db.Column(db.Text, nullable=False)
     refresh_token = db.Column(db.Text)
