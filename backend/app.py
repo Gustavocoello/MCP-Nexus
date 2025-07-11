@@ -39,15 +39,11 @@ app.secret_key = SECRET_KEY
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.user_loader(load_user)
-CORS(app, supports_credentials=True, resources={
-    r"/api/*": {
-        "origins": [
-            "https://mcp-nexus-h6y32pgox-gustavo-coellos-projects.vercel.app",
-            "https://mcp-nexus.vercel.app",
-            "https://mcp-nexus.onrender.com"
-        ]
-    }
-})
+CORS(app, supports_credentials=True, origins=[
+    "https://mcp-nexus-h6y32pgox-gustavo-coellos-projects.vercel.app",
+    "https://mcp-nexus.vercel.app",
+    "https://mcp-nexus.onrender.com"
+])
 
 
 # Configuración de la aplicación Flask
