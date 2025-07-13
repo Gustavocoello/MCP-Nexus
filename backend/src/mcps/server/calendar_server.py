@@ -5,7 +5,6 @@ from mcp.server import Server
 from datetime import datetime
 import sys
 import os
-import uvicorn
 
 from pathlib import Path
 
@@ -126,14 +125,12 @@ def parsear_evento_desde_texto(texto_usuario: str) -> dict:
         "description": event.description
     }
 
-
+""" # Para utilizarlo en local
 if __name__ == "__main__":
     print(tool_with_log.__name__)
-    tools = mcp.list_tools()
-    print(tools)
     
     with app.app_context():
         mcp.run(
             transport="streamable-http",
         )
-        
+"""       
