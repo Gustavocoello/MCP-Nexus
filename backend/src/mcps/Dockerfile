@@ -23,5 +23,5 @@ COPY ../../.. .
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # Calendar Server normalmente no expone puertos
-CMD ["uvicorn", "src.mcps.server.serve_mcp_http:app", "--host", "0.0.0.0", "--port", "10000"]
+CMD ["python", "src/mcps/server/calendar_server.py"]
 

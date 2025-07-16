@@ -12,5 +12,5 @@ limiter = Limiter(
     key_func=get_remote_address,
     storage_uri=REDIS_URL,
     strategy="fixed-window",
-    default_limits=["900 per day", "500 per hour"]
+    default_limits=["1000 per day", "500 per hour"]
 )
