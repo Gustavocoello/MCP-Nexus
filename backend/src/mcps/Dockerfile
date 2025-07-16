@@ -4,7 +4,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Instala dependencias necesarias (como en el otro Dockerfile)
 RUN apt-get update && apt-get install -y \
-    curl gnupg gcc g++ unixodbc unixodbc-dev \
+    curl gnupg git gcc g++ unixodbc unixodbc-dev \
     libpq-dev libssl-dev libffi-dev libxml2-dev \
     libxslt1-dev libsasl2-dev libldap2-dev \
     libcurl4-openssl-dev \
