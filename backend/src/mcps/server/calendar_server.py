@@ -153,5 +153,7 @@ if __name__ == "__main__":
     with flask_app.app_context():
         mcp.run(
             transport="http",
+            host="0.0.0.0",
+            port=8000
         )
 #"""       
