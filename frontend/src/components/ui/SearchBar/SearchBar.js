@@ -9,15 +9,13 @@ import { IoCloseOutline } from "react-icons/io5";
 import { extractFileContent } from '../../../service/api_service';
 
 
-const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, onImageUpload , onContextExtracted, pendingContext, onClearContext, onRemoveContext,}) => {
+const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, onContextExtracted, pendingContext, onRemoveContext,}) => {
   const [query, setQuery] = useState('');
   const textareaRef = useRef(null);
   const dropdownRef = useRef(null);
   const fileInputRef = useRef(null);
   const [showMenu, setShowMenu] = useState(false);
   const [pendingFilePreview, setPendingFilePreview] = useState([]);
-  
-
 
 
   // Ajustar altura del textarea basado en contenido, con máximo de 100px
@@ -36,12 +34,21 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
   };
 
   const triggerSearch = () => {
-    if (query.trim()) {
-      onSearch(query, pendingContext);
-      setQuery('');
-      setPendingFilePreview([]);
+    const lastUploadedImage = localStorage.getItem('lastUploadedImage');
+    const shouldSendImage = pendingFilePreview.length > 0 && lastUploadedImage;
+
+    const imageToSend = shouldSendImage ? lastUploadedImage : null;
+
+    if (query.trim() || imageToSend) {
+      onSearch(query, pendingContext, imageToSend);
     }
-  };
+
+    setQuery('');
+    setPendingFilePreview([]);
+    localStorage.removeItem('lastUploadedImage');
+};
+
+
 
   const handleFileSelect = () => {
     fileInputRef.current.click();
@@ -128,53 +135,58 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
   }, []);
 
   const handleImageUploadOnly = useCallback(async (images) => {
-    setShowMenu(false); 
+    setShowMenu(false);
+
     for (let i = 0; i < images.length; i++) {
       const file = images[i];
       if (!file.type.startsWith("image/")) continue;
 
-      const previewUrl = URL.createObjectURL(file);
+      const reader = new FileReader();
 
-      const fileState = {
-        name: file.name,
-        type: file.type,
-        icon: '🖼️',
-        previewUrl,
-        progress: 0,
-        loading: true
+      reader.onloadend = async () => {
+        const base64Image = reader.result;
+
+        // Guarda temporalmente en localStorage
+        localStorage.setItem('lastUploadedImage', base64Image);
+
+        const fileState = {
+          name: file.name,
+          type: file.type,
+          icon: '🖼️',
+          previewUrl: base64Image,
+          file,
+          progress: 0,
+          loading: false
+        };
+
+        // Actualiza los estados visuales
+        setPendingFilePreview(prev => [...prev, fileState]);
+
+        try {
+          const data = await extractFileContent(file);
+          if (data.text) {
+            onContextExtracted({ name: file.name, text: data.text });
+          }
+
+          setPendingFilePreview(prev =>
+            prev.map(f =>
+              f.name === file.name ? { ...f, progress: 100, loading: false } : f
+            )
+          );
+        } catch (err) {
+          console.error('Error al subir imagen:', err.message);
+          alert('Error al subir imagen: ' + err.message);
+        }
       };
 
-      setPendingFilePreview(prev => [...prev, fileState]);
-
-      const formData = new FormData();
-      formData.append('file', file);
-
-      try {
-        
-        const data = await extractFileContent(file);
-        if (data.text) {
-          onContextExtracted({ name: file.name, text: data.text });
-        }
-
-        setPendingFilePreview(prev =>
-          prev.map(f =>
-            f.name === file.name ? { ...f, progress: 100, loading: false } : f
-          )
-        );
-      } catch (err) {
-        console.error('Error al subir imagen:', err.message);
-        alert('Error al subir imagen: ' + err.message);
-
-        setPendingFilePreview(prev =>
-          prev.map(f =>
-            f.name === file.name ? { ...f, progress: 100, loading: false } : f
-          )
-        );
-      }
+      reader.readAsDataURL(file);
     }
   }, [onContextExtracted]);
 
-
+  useEffect(() => {
+    // Por si quedó algo colgado
+    localStorage.removeItem('lastUploadedImage');
+  }, []);
 
 
   // Para pasar imagenes desde el portapapeles
@@ -227,6 +239,8 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
                 const fileToRemove = pendingFilePreview[index];
                 setPendingFilePreview(prev => prev.filter((_, i) => i !== index));
                 onRemoveContext(fileToRemove.name);
+                // Limpiar del localstorage
+                localStorage.removeItem('lastUploadedImage');
               }}
               aria-label="Eliminar archivo"
             >

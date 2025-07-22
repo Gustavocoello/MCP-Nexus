@@ -78,25 +78,34 @@ useEffect(() => {
   }, [messages]);
 */
 
-  return (
-    <div className="message-list">
-      {filteredMessages.map((msg, index) => (
-        <div key={msg.id || index} className={`message ${msg.role}`}>
-          <div className="message-bubble">
-              {msg.role === 'assistant' && msg.content ? (
-                <MarkdownRenderer 
-                content={msg.content}
-                stable={msg.stable ?? false}
-                />
-              ) : (
-                renderContent(msg, msg.id || index)
-              )}
-          </div>
+return (
+  <div className="message-list">
+    {filteredMessages.map((msg, index) => (
+      <div key={msg.id || index} className={`message ${msg.role}`}>
+        <div className="message-bubble">
+          {/* 🖼️ Renderizar imágenes base64 directamente */}
+          {msg.type === 'image' ? (
+            <img
+              src={msg.imageUrl || msg.content}
+              alt="Imagen enviada"
+              className="chat-image-upload"
+            />
+          ) : msg.role === 'assistant' && msg.content ? (
+            // 📄 Mensajes del asistente con Markdown
+            <MarkdownRenderer
+              content={msg.content}
+              stable={msg.stable ?? false}
+            />
+          ) : (
+            // 🧱 Otros mensajes con HTML o código
+            renderContent(msg, msg.id || index)
+          )}
         </div>
-      ))}
-      <div ref={messagesEndRef} />
-    </div>
-  );
+      </div>
+    ))}
+    <div ref={messagesEndRef} />
+  </div>
+);
 };
 
 export default MessageList;

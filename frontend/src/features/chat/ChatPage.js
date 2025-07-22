@@ -41,7 +41,7 @@ const ChatPage = () => {
   const [pendingContext, setPendingContext] = useState([]);
   const isAuthenticated = useAuthStatus();
   const { user, loading } = useCurrentUser();
-  
+
   // Efecto: Inicializar chat activo al cargar
   useEffect(() => {
   const initChat = async () => {
@@ -139,7 +139,7 @@ try {
     }
   }; 
 
-  const handleNewMessage = useCallback(async (message, contextFromFile = '') => {
+  const handleNewMessage = useCallback(async (message, contextFromFile = '', image = null) => {
   if (message.role !== 'user') return;
    
   const controller = new AbortController();
@@ -165,19 +165,40 @@ try {
     .replace(/\n/g, '<br>');
 
   const userHtml = `<p>${escapeHtml(userContent)}</p>`;
+  const timestamp = Date.now();
+  const htmlParts = [];
 
-  if (userContent) {
-    setMessages(prev => [
-      ...prev,
-      { id: `user-${Date.now()}`, role: 'user', content: userContent, html: `<p>${userHtml}</p>` },
-      { id: jarvisTempId, role: 'assistant', html: '' }
-    ]);
-  } else {
-    setMessages(prev => [
-      ...prev,
-      { id: jarvisTempId, role: 'assistant', html: '' }
-    ]);
+  const currentImage = image
+
+  if (currentImage) {
+    htmlParts.push(`<img src="${currentImage}" class="chat-image-upload" />`);
   }
+
+ if (userContent) {
+   htmlParts.push(`<p>${escapeHtml(userContent)}</p>`);
+ }
+
+ const combinedHtml = htmlParts.join('<br><br>');
+
+ const newMessages = [];
+
+ if (htmlParts.length > 0) {
+   newMessages.push({
+     id: `user-${timestamp}`,
+     role: 'user',
+     type: 'html',
+     content: userContent,
+     html: combinedHtml,
+   });
+ }
+
+ newMessages.push({
+   id: jarvisTempId,
+   role: 'assistant',
+   html: '',
+ });
+
+setMessages(prev => [...prev, ...newMessages]);
 
   setHasSentMessage(true);
   setIsJarvisTyping(true);
@@ -356,7 +377,7 @@ try {
 
     {/* Barra de búsqueda / entrada */}
     <SearchBar 
-      onSearch={(userQuery, context) => handleNewMessage({ role: 'user', text: userQuery }, context)}
+      onSearch={(userQuery, context, image) => handleNewMessage({ role: 'user', text: userQuery }, context, image)}
       onContextExtracted={(entry) => setPendingContext(prev => [...prev, entry])}
       onClearContext={clearPendingContext}
       onRemoveContext={removeContextByName}
