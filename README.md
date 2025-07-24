@@ -132,7 +132,7 @@ If you have any questions, suggestions, or feedback, please don't hesitate to re
 
 You can contact me through my:
 > - [GitHub profile](https://github.com/Gustavocoello) 
-> - [LinkdIn](www.linkedin.com/in/gustavo-coello-01039b270)
+> - [LinkdIn](https://www.linkedin.com/in/gustavocoelloo/)
 > - [Gmail](coellog634@gmail.com)
 
 Thank you for visiting my repository! I hope you find my projects interesting and informative.

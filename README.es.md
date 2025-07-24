@@ -121,7 +121,7 @@ Si estás interesado en contribuir a alguno de estos proyectos, siéntete libre 
 Si tienes alguna pregunta, sugerencia o comentario, no dudes en ponerte en contacto. ¡Si deseas usarlo localmente, puedo ayudarte!Puedes contactarme a través de mi:
 
 > - [Perfil de GitHub](https://github.com/Gustavocoello)
-> - [LinkedIn](www.linkedin.com/in/gustavo-coello-01039b270)
+> - [LinkedIn](https://www.linkedin.com/in/gustavocoelloo/)
 > - [Gmail](coellog634@gmail.com)
 
 ¡Gracias por visitar mi repositorio! Espero que encuentres mis proyectos interesantes e informativos.
