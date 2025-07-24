@@ -5,7 +5,7 @@
 The project aims to **help developers become more productive** through an intelligent conversational interface. It also enables anyone to access a **ChatGPT-like generative AI for free and unlimited**, running entirely **locally**.
 
 <p align="center">
-  <img src="./public/icons/theme/jarvis001.png" alt="jarvis001" width="200"/>
+  <img src="./frontend/public/icons/theme/jarvis001.png" alt="jarvis001" width="200"/>
 </p>
 
 
