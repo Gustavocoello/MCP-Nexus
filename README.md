@@ -1,70 +1,134 @@
-# Getting Started with Create React App
+# 🧠 What is the MCP-Nexus Project?
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+> 🇪🇸 ¿Prefieres leer en español? [Click aquí para la versión en español](./README.es.md)
 
-## Available Scripts
+The project aims to **help developers become more productive** through an intelligent conversational interface. It also enables anyone to access a **ChatGPT-like generative AI for free and unlimited**, running entirely **locally**.
 
-In the project directory, you can run:
+![jarvis001](./frontend/public/icons//theme/jarvis001.png)
 
-### `npm start`
+> **Important:** We're not building a language model (LLM) ourselves. We use OpenRouter as a gateway to access existing models for free.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+We use modern technologies like:
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- **MCP** (Model Context Protocol)
+- **Azure AI Vision**
+- **SQL databases**
+- **File readers (PDF, Markdown, etc.)**
+- **Smart flows with memory**, using automatic summarization
 
-### `npm test`
+---
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## 📸 Jarvis Interface
 
-### `npm run build`
+![interface](./frontend/public/icons/interface.png)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+---
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 🤖 What’s the name of this generative AI?
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+We named it **JARVIS**, inspired by Iron Man’s intelligent assistant.
 
-### `npm run eject`
+---
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## ✅ JARVIS Features
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### 💬 Messages
+- Real-time streaming responses
+- Memory-supported chats (summary + recent messages)
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### 🖼️ Images
+- Image preview in the conversation
+- Embedded images in model responses
+- Auto-scroll with new messages or images
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+### 📎 Files
+- Upload support for images, PDF, Markdown, and more
+- Files are processed and added to model context
 
-## Learn More
+### 📅 MCP Integration (Model Context Protocol)
+- Currently integrated with **Google Calendar**
+- Plans to expand to Notion, Slack, Gmail, and more
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+---
 
-### Code Splitting
+## 🧠 Contextual Memory Plan
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+Proposed architecture to maintain effective memory:
 
-### Analyzing the Bundle Size
+- All messages are stored in the database
+- If history grows, everything is summarized except the 10 most recent messages
+- Always sent as context: `summary + last messages + current input`
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
 
-### Making a Progressive Web App
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## 🗃️ Database Structure
 
-### Advanced Configuration
+- `Chat` model: stores accumulated summaries
+- `Message` model: stores each message with role (user / assistant)
+- Model `users`: contains the users
+- Model `UserToken`: stores the tokens for login with Google and the MCP- Model
+- `UserMemory`: serves for the memory of the LLM
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+---
 
-### Deployment
+## 👥 MCP Multiuser Support
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+The system uses OAuth 2.0 with per-user tokens. Each user:
 
-### `npm run build` fails to minify
+- Connects their personal Google account
+- Tokens are securely encrypted
+- Calendar events are queried securely and privately
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+---
+
+## 🧩 Technical Infrastructure
+
+- **Frontend**: React + CSS + MarkdownIt
+- **Backend**: Flask (Auth) + FastAPI (MCP/OpenRouter)
+- **Database**: MYSQL (local) → Azure Database
+- **OAuth**: Google with per-user token
+- **LLM**: OpenRouter (DeepSeek, Qwen3, etc.) with streaming
+- **Containers**: Docker + Render
+
+---
+
+
+## 🧪 Technologies Used
+
+- Python
+- JavaScript
+- CSS
+- Docker
+- Azure AI Vision
+- Azure Database
+- MCP
+- MYSQL
+- SQL
+
+---
+
+## 👨‍💻 Built with love by:
+
+```bash
+npm install Gustavocoello  # author!!
+
+## 🤝 How to Contribute
+If you are interested in contributing to any of these projects, feel free to fork the repository and submit pull requests. Contributions are always welcome and appreciated!
+
+1. Clone the repository:
+```bash
+git clone https://github.com/Gustavocoello/MCP-Nexus
+```
+
+
+## 📬 Contact
+If you have any questions, suggestions, or feedback, please don't hesitate to reach out. If you want to use it locally, I can help you!
+
+You can contact me through my:
+> - [GitHub profile](https://github.com/Gustavocoello) 
+> - [LinkdIn](www.linkedin.com/in/gustavo-coello-01039b270)
+> - [Gmail](coellog634@gmail.com)
+
+Thank you for visiting my repository! I hope you find my projects interesting and informative.
