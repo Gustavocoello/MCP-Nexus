@@ -116,6 +116,7 @@ The system uses OAuth 2.0 with per-user tokens. Each user:
 
 ```bash
 npm install Gustavocoello  # author!!
+```
 
 ## 🤝 How to Contribute
 If you are interested in contributing to any of these projects, feel free to fork the repository and submit pull requests. Contributions are always welcome and appreciated!
