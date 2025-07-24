@@ -4,7 +4,10 @@
 
 The project aims to **help developers become more productive** through an intelligent conversational interface. It also enables anyone to access a **ChatGPT-like generative AI for free and unlimited**, running entirely **locally**.
 
-![jarvis001](./frontend/public/icons//theme/jarvis001.png)
+<p align="center">
+  <img src="./public/icons/theme/jarvis001.png" alt="jarvis001" width="200"/>
+</p>
+
 
 > **Important:** We're not building a language model (LLM) ourselves. We use OpenRouter as a gateway to access existing models for free.
 
@@ -20,7 +23,7 @@ We use modern technologies like:
 
 ## 📸 Jarvis Interface
 
-![interface](./frontend/public/icons/interface.png)
+![interface](./frontend/public/icons/interface01.png)
 
 ---
 
