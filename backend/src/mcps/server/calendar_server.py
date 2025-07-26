@@ -5,7 +5,7 @@ import anyio
 from pathlib import Path
 from fastmcp import FastMCP, Context
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 # --- Fix Paths ---
 current_dir = Path(__file__).resolve().parent
@@ -82,6 +82,7 @@ async def actualizar_evento(context: dict, calendar_id: str, event_id: str, summ
 
     return gcal.update_event(calendar_id, event_id, cambios)
 
+
 # ───────────────────── INFORMACIÓN ─────────────────────
 
 @mcp.tool
@@ -119,25 +120,63 @@ async def eventos_por_titulo(context: dict, calendar_id: str, keyword: str) -> l
     """
     gcal = get_connector(context)
     
-    time_min = datetime.now().isoformat()
+    time_min = datetime.now(timezone.utc).isoformat()
     return gcal.filter_events_by_title(calendar_id, keyword, time_min=time_min)
 
-# ───────────────────── NLP → EVENT ─────────────────────
-
-@mcp.tool()
-async def parsear_evento_desde_texto(texto_usuario: str) -> dict:
+@mcp.tool(name="Listar calendarios del usuario")
+async def listar_calendarios(context: dict) -> list:
     """
-    Transforma texto natural en un evento estructurado.
-    """    
+    Lista todos los calendarios disponibles del usuario.
+    """
+    gcal = get_connector(context)
+    calendarios = gcal.list_calendars()
+    return [
+        {"id": c["id"], "nombre": c["name"]}
+        for c in calendarios
+    ]
+# ───────────────────── NLP → EVENT ─────────────────────
+@mcp.tool(name="Crear evento desde texto natural")
+async def crear_evento_desde_texto(context: dict, texto_usuario: str, calendar_id: str = None) -> dict:
+    """
+    Convierte texto en evento y lo crea en el calendario.
+    """
+    gcal = get_connector(context)
     event = parse_natural_language_to_event(texto_usuario)
+
     if not event:
         return {"error": "No se pudo parsear el evento"}
+
+    calendar_id = calendar_id or context.get("calendar_id", "primary")
+    creado = gcal.create_event(calendar_id, event)
     return {
-        "title": event.title,
-        "start_time": event.start_time.isoformat(),
-        "end_time": event.end_time.isoformat(),
-        "description": event.description
+        "mensaje": "Evento creado con éxito",
+        "evento": creado
     }
+
+@mcp.tool(name="Eventos por rango")
+async def eventos_por_rango(context: dict, calendar_id: str, start_date: str, end_date: str) -> list:
+    """
+    Recupera eventos de un calendario específico dentro de un rango de fechas.
+    """
+    gcal = get_connector(context)
+    start = datetime.fromisoformat(start_date)
+    end = datetime.fromisoformat(end_date)
+    events = gcal.get_events_by_range(calendar_id, start, end)
+    return [event.dict() for event in events]
+
+
+@mcp.tool(name="Eventos de todos los calendarios por rango")
+async def eventos_todos_calendarios_rango(context: dict, start_date: str, end_date: str) -> list:
+    """
+    Recupera eventos de todos los calendarios del usuario en un rango de fechas.
+    """
+    gcal = get_connector(context)
+    start = datetime.fromisoformat(start_date)
+    end = datetime.fromisoformat(end_date)
+    events = gcal.fetch_events_by_range(start, end)
+    return [event.dict() for event in events]
+
+
 
 #print(tool_with_log.__name__)
 
