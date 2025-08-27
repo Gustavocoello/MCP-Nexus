@@ -1,0 +1,83 @@
+/* Contenedor raíz: ocupa todo el área padre */
+/* Reactive3DObject.css */
+.r3d-root {
+  position: absolute; /* para cubrir todo el page */
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none; /* para que la UI encima funcione */
+  z-index: 0; /* atrás de otros elementos */
+}
+.rs3d-root canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+
+/* Controles posicionados bottom-right */
+.rs3d-controls {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  display: flex;
+  gap: 12px;
+  z-index: 40;
+  pointer-events: none; /* evita capturar clicks en el contenedor, el botón si acepta clicks */
+}
+
+/* Botón circular estilo 'hardware' */
+.rs3d-mic-btn {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.25));
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6), inset 0 -2px 6px rgba(255,255,255,0.02);
+  color: #e6e6e6;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  backdrop-filter: blur(6px) saturate(120%);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  outline: none;
+}
+
+/* Hover / focus */
+.rs3d-mic-btn:hover,
+.rs3d-mic-btn:focus {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.7), inset 0 -1px 8px rgba(255,255,255,0.03);
+}
+
+/* Estado 'listening' con pulso sutil y color más marcado */
+.rs3d-mic-btn.listening {
+  background: linear-gradient(180deg, rgba(220,220,220,0.06), rgba(80,80,80,0.35));
+  border: 1px solid rgba(200,200,200,0.12);
+  color: #1a1a1a;
+  box-shadow: 0 14px 40px rgba(0,0,0,0.7), 0 0 18px rgba(190,190,190,0.06);
+  animation: rs3d-pulse 1.6s infinite;
+}
+
+@keyframes rs3d-pulse {
+  0% { transform: translateY(-1px) scale(1); }
+  50% { transform: translateY(-6px) scale(1.03); }
+  100% { transform: translateY(-1px) scale(1); }
+}
+
+/* Icon size y centrado (por si acaso) */
+.rs3d-mic-btn svg {
+  display: block;
+  width: 22px;
+  height: 22px;
+}
+
+/* Ajustes responsive: reduce tamaño en pantallas pequeñas */
+@media (max-width: 640px) {
+  .rs3d-controls { right: 14px; bottom: 14px; }
+  .rs3d-mic-btn { width: 48px; height: 48px; }
+}

@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import MarkdownIt from 'markdown-it';
-import { TbMessagePlus } from "react-icons/tb";
-import { sendMessage, sendAnonymousMessage} from '../../service/api_service';
 import MessageList from './components/MessageList/MessageList';
 import SearchBar from '../../components/ui/SearchBar/SearchBar';
-import { getAllChats, getChatMessages, createChat} from '../../service/chatService';
-import useAuthStatus from '../../service/useAuthStatus';
 import LoginButton from '../../components/layout/LoginButton/LoginButton';
 import useCurrentUser from '../../features/auth/components/context/useCurrentUser';
+import { TbMessagePlus } from "react-icons/tb";
+import { sendMessage, sendAnonymousMessage} from '../../service/api_service';
+import useChatMessages from '../chat/hooks/useChatMessages';
+import { getAllChats, createChat} from '../../service/chatService';
 
 // Cambiando de Markdown a HTML
 const md = new MarkdownIt({
@@ -30,7 +31,7 @@ const ChatPage = () => {
 };
 
   // Estados
-  const [messages, setMessages] = useState([]);
+  const [localMessages, setLocalMessages] = useState([]);
   const [isJarvisTyping, setIsJarvisTyping] = useState(false);
   const [hasSentMessage, setHasSentMessage] = useState(false);
   const [activeChatId, setActiveChatId] = useState(null);
@@ -39,67 +40,71 @@ const ChatPage = () => {
   const chatBottomRef = useRef(null);
   const [notification, setNotification] = useState(null);
   const [pendingContext, setPendingContext] = useState([]);
-  const isAuthenticated = useAuthStatus();
   const { user, loading } = useCurrentUser();
+  const isAuthenticated = !!user;
+  const location = useLocation();
+  const isConfigOpen = location.pathname.endsWith("/config");
 
-  // Efecto: Inicializar chat activo al cargar
+  const isChatRoute = location.pathname === '/' || location.pathname.startsWith('/chat');
+
+  const {
+    messages: cachedMessages,
+    appendMessageToCache,
+    updateMessageInCache,
+    prependMessagesToCache,
+  } = useChatMessages(activeChatId, {
+    enabled: isChatRoute && !!activeChatId,   // <- 'enabled' correcto
+  });
+
+  
   useEffect(() => {
-  const initChat = async () => {
-    const allChats = await loadAllChats();
-    if (allChats.length === 0) return;
-
-    const savedChatId = localStorage.getItem('activeChatId');
-    let chatToLoad = allChats.find(chat => chat.id === savedChatId);
-
-    if (!chatToLoad) {
-      chatToLoad = allChats[0]; // fallback: primer chat si no se encontró el guardado
-    }
-
-  const rawMessages = await getChatMessages(chatToLoad.id);
-
-  const formatted = rawMessages.map(m => {
-  if (m.role === 'assistant') {
-    return {
-      id: m.id,
-      role: m.role,
-      html: md.render(m.content || '')
-    };
-  } else {
-    // texto plano para el usuario
-    const userHtml = (m.content || '')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;/');
-
-    return {
-      id: m.id,
-      role: m.role,
-      html: `<p>${userHtml}</p>`
-    };
-  }
-});
+    const formatted = cachedMessages.map(m => {
+      if (m.role === 'assistant') {
+        return { ...m, html: md.render(m.content || '') };
+      } else {
+        const userHtml = (m.content || '')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+        return { ...m, html: `<p>${userHtml}</p>` };
+      }
+    });
+    setLocalMessages(formatted);
+  }, [cachedMessages]);
 
 
-  setActiveChatId(chatToLoad.id);
-  setMessages(formatted);
-    localStorage.setItem('activeChatId', chatToLoad.id); // aseguramos persistencia
-  };
-
-  initChat();
-}, []);
-
-  // Efecto: Escuchar eventos de carga de chat
+  // Efecto: Inicializar chat activo, solo seteamos activeChatId, NO mensajes
   useEffect(() => {
-  const handleChatLoaded = (event) => {
-    const { chatId, messages } = event.detail; // Listo los mensajes
+    const initChat = async () => {
+      const allChats = await loadAllChats();
+      if (allChats.length === 0) return;
 
-    setActiveChatId(chatId);
-    setMessages(messages); 
-    localStorage.setItem('activeChatId', chatId); // Guardar el ID del chat activo
-  };
+      const savedChatId = localStorage.getItem('activeChatId');
+      let chatToLoad = allChats.find(chat => chat.id === savedChatId);
 
-  window.addEventListener('chat-loaded', handleChatLoaded);
-  return () => window.removeEventListener('chat-loaded', handleChatLoaded);
-}, []);
+      if (!chatToLoad) {
+        chatToLoad = allChats[0]; // fallback: primer chat si no se encontró el guardado
+      }
+
+      // Eliminamos la carga manual de mensajes y el setMessages
+      setActiveChatId(chatToLoad.id);
+      localStorage.setItem('activeChatId', chatToLoad.id);
+    };
+
+    initChat();
+  }, []);
+
+  // Efecto para escuchar eventos de carga chat, solo setActiveChatId
+  useEffect(() => {
+    const handleChatLoaded = (event) => {
+      const { chatId /*, messages */ } = event.detail;
+      setActiveChatId(chatId);
+      // No usamos setMessages porque el hook lo hace
+      localStorage.setItem('activeChatId', chatId);
+    };
+
+    window.addEventListener('chat-loaded', handleChatLoaded);
+    return () => window.removeEventListener('chat-loaded', handleChatLoaded);
+  }, []);
 
   // Cada vez que cambia el chat activo, actualiza localStorage
   useEffect(() => {
@@ -108,26 +113,25 @@ const ChatPage = () => {
     }
   }, [activeChatId]);
 
-// Función para crear nuevo chat
-const createNewChat = async () => {
-try {
-  const newChat = await createChat({}); // Backend genera el ID
-  const emptyMessages = [];
 
-  setActiveChatId(newChat.id);
-  localStorage.setItem('activeChatId', newChat.id);
-  setMessages(emptyMessages);
-  setHasSentMessage(false);
+  // Función para crear nuevo chat
+  const createNewChat = async () => {
+    try {
+      const newChat = await createChat({}); // Backend genera el ID
+      setActiveChatId(newChat.id);
+      localStorage.setItem('activeChatId', newChat.id);
+      setHasSentMessage(false);
 
-  // Notificar cambios
-  window.dispatchEvent(new CustomEvent('chats-updated', {
-  detail: { newChatId: newChat.id }
-  }));
+      // Ya no seteamos setMessages([]) porque el hook cargará vacío
 
-} catch (error) {
-  console.error('Error creando chat:', error);
-}
-};
+      window.dispatchEvent(new CustomEvent('chats-updated', {
+        detail: { newChatId: newChat.id }
+      }));
+
+    } catch (error) {
+      console.error('Error creando chat:', error);
+    }
+  };
 
   // Para manejar el stop generation
     const handleStopGeneration = () => {
@@ -137,9 +141,10 @@ try {
       setIsStreaming(false);
       setIsJarvisTyping(false);
     }
-  }; 
+  };
 
-  const handleNewMessage = useCallback(async (message, contextFromFile = '', image = null) => {
+  // Función para manejar nuevos mensajes
+  const handleNewMessage = useCallback(async (message, contextFromFile = '', image = null, tool = '') => {
   if (message.role !== 'user') return;
    
   const controller = new AbortController();
@@ -151,6 +156,8 @@ try {
   const combinedContext = Array.isArray(contextFromFile)
   ? contextFromFile.map(c => `🗂️ ${c.name}:\n${c.text}`).join('\n\n')
   : contextFromFile;
+
+  console.log("🔧 Tool seleccionada:", tool); // hay que eliminar
 
   const fullPrompt = combinedContext
   ? `Archivo recibido:\n${combinedContext}\n\nPregunta del usuario:\n${userContent}`
@@ -198,7 +205,7 @@ try {
    html: '',
  });
 
-setMessages(prev => [...prev, ...newMessages]);
+setLocalMessages(prev => [...prev, ...newMessages]);
 
   setHasSentMessage(true);
   setIsJarvisTyping(true);
@@ -214,7 +221,7 @@ setMessages(prev => [...prev, ...newMessages]);
       if (anonCount >= 5) {
         fullReply = "Has alcanzado el límite de 5 mensajes gratuitos. Por favor inicia sesión para continuar.";
 
-        setMessages(prev =>
+        setLocalMessages(prev =>
           prev.map(msg =>
             msg.id === jarvisTempId
             ? { ...msg, content: fullReply, html: '', stable: false }
@@ -241,7 +248,7 @@ setMessages(prev => [...prev, ...newMessages]);
         fullReply = res.error;
       }
 
-      setMessages(prev =>
+      setLocalMessages(prev =>
         prev.map(msg =>
           msg.id === jarvisTempId
             ? { ...msg, content: fullReply, html: '', stable: false }
@@ -253,7 +260,8 @@ setMessages(prev => [...prev, ...newMessages]);
       res = await sendMessage({
         chatId: activeChatId,
         text: userContent,
-        hidden_context: combinedContext
+        hidden_context: combinedContext,
+        tool: tool
       }, (partial) => {
         // streaming parcial para usuarios logueados
         console.log('partial recibido:', partial);
@@ -270,7 +278,7 @@ setMessages(prev => [...prev, ...newMessages]);
           }
         }
 
-        setMessages(prev =>
+        setLocalMessages(prev =>
           prev.map(msg =>
             msg.id === jarvisTempId
               ? { ...msg, content: cleanPartial, html: '', stable: false }
@@ -282,7 +290,7 @@ setMessages(prev => [...prev, ...newMessages]);
   } catch (err) {
     if (err.name !== 'AbortError') {
       console.error(err);
-      setMessages(prev =>
+      setLocalMessages(prev =>
         prev.map(msg =>
           msg.id === jarvisTempId
             ? { ...msg,
@@ -299,7 +307,7 @@ setMessages(prev => [...prev, ...newMessages]);
     setIsStreaming(false);
     setAbortController(null);
     setPendingContext([]);
-    setMessages(prev =>
+    setLocalMessages(prev =>
     prev.map(msg =>
       msg.id === jarvisTempId
         ? { ...msg, stable: true }
@@ -347,12 +355,15 @@ setMessages(prev => [...prev, ...newMessages]);
 
   return (
   <div className="page">
-    {/* Botón de nuevo chat */}
-    <LoginButton /> {/* ⬅ Aquí va el botón para iniciar sesion */}
+    {/* Aquí va el botón para iniciar sesion si No esta autenticado*/}
+    {!isAuthenticated && <LoginButton />} 
 
+    {/* Botón de nuevo chat */}
+    {isAuthenticated && (
     <button className="new-chat-button" onClick={createNewChat}>
       <TbMessagePlus size={23} />
     </button>
+    )}
 
     {/* Área de contenido */}
     <div className="content-area">
@@ -366,7 +377,7 @@ setMessages(prev => [...prev, ...newMessages]);
       <h4>How can I help you today?</h4>
 
       {/* Lista de mensajes */}
-      <MessageList messages={messages || []} />
+      <MessageList messages={localMessages || []} />
       <div ref={chatBottomRef}/>  {/*DIV vacío para controlar el scroll */ }
 
       {/* Indicador de escritura */}
@@ -377,7 +388,7 @@ setMessages(prev => [...prev, ...newMessages]);
 
     {/* Barra de búsqueda / entrada */}
     <SearchBar 
-      onSearch={(userQuery, context, image) => handleNewMessage({ role: 'user', text: userQuery }, context, image)}
+      onSearch={(userQuery, context, image, tool) => handleNewMessage({ role: 'user', text: userQuery }, context, image, tool)}
       onContextExtracted={(entry) => setPendingContext(prev => [...prev, entry])}
       onClearContext={clearPendingContext}
       onRemoveContext={removeContextByName}
@@ -393,6 +404,12 @@ setMessages(prev => [...prev, ...newMessages]);
       {notification}
     </div>
   )}
+    {/* Modal de config si está en /config */}
+      {isConfigOpen && (
+        <div className="config-modal">
+          <Outlet />
+        </div>
+      )}
   </div>
 );
 

@@ -1,73 +1,30 @@
 // src/service/mcp_service.js
+import { useState } from 'react';
+import { useMcp } from 'use-mcp/react';
 
-const MCP_URL = "http://localhost:8000/mcp/";
+const MCP_URL = process.env.REACT_APP_MCP_URL;
 
-async function callTool(tool, args = {}, userId) {
-  if (!userId) {
-    throw new Error("MCP: Se requiere userId en el contexto del usuario.");
-  }
+export function useMcpClient() {
+  const [enabled, setEnabled] = useState(false);
 
-  const body = {
-    jsonrpc: "2.0",
-    id: Date.now(),
-    method: "mcp.call_tool",
-    params: {
-      tool,
-      arguments: {
-        context: { user_id: userId },
-        ...args,
-      },
-    },
-  };
-
-  const res = await fetch(MCP_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Accept": "application/json, text/event-stream",
-    },
-    body: JSON.stringify(body),
+  // Hook MCP "apagado" hasta que lo habilitamos
+  const mcp = useMcp({
+    url: MCP_URL,
+    clientName: 'mcp-client-google-calendar',
+    debug: true,
+    autoReconnect: false,
+    autoRetry: false,
+    preventAutoAuth: true,
+    enabled,   // 👈 clave: solo conecta si enabled === true
   });
 
-  if (!res.ok) throw new Error(`MCP HTTP error ${res.status}`);
-  const json = await res.json();
-  if (json.error) throw new Error(`MCP JSON error: ${json.error.message}`);
-  return json.result;
-}
+  // Funciones para disparar manualmente
+  const start = () => setEnabled(true);
+  const stop = () => setEnabled(false);
 
-export function createMcpService(userId) {
   return {
-    getDailySummary: (calendarId = null) =>
-      callTool("resumen_diario", calendarId ? { calendar_id: calendarId } : {}, userId),
-
-    getWeeklySummary: (calendarId = null) =>
-      callTool("resumen_semanal", calendarId ? { calendar_id: calendarId } : {}, userId),
-
-    getFreeSlots: (date, calendarId = null, dur = 60) =>
-      callTool("slots_libres", { date, duracion_minutos: dur, ...(calendarId && { calendar_id: calendarId }) }, userId),
-
-    filterEventsByTitle: (keyword, calendarId = null) =>
-      callTool("Filtro de eventos por titulo", { keyword, ...(calendarId && { calendar_id: calendarId }) }, userId),
-
-    listUserCalendars: () =>
-      callTool("Listar calendarios del usuario", {}, userId),
-
-    createEvent: (summary, description, startTime, endTime, calendarId = "primary") =>
-      callTool("crear_evento", { summary, description, start_time: startTime, end_time: endTime, calendar_id: calendarId }, userId),
-
-    deleteEvent: (calendarId, eventId) =>
-      callTool("eliminar_evento", { calendar_id: calendarId, event_id: eventId }, userId),
-
-    updateEvent: (calendarId, eventId, updates = {}) =>
-      callTool("actualizar_evento", { calendar_id: calendarId, event_id: eventId, ...updates }, userId),
-
-    getEventsByRange: (calendarId, startDate, endDate) =>
-      callTool("Eventos por rango", { calendar_id: calendarId, start_date: startDate, end_date: endDate }, userId),
-
-    getEventsAllCalendars: (startDate, endDate) =>
-      callTool("Eventos de todos los calendarios por rango", { start_date: startDate, end_date: endDate }, userId),
-
-    createEventFromText: (texto, calendarId = "primary") =>
-      callTool("Crear evento desde texto natural", { texto_usuario: texto, calendar_id: calendarId }, userId),
+    ...mcp,
+    start,
+    stop,
   };
 }

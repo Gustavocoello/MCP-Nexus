@@ -1,3 +1,4 @@
+// mcp-scratch/frontend/src/service/useAuthStatus.js
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 

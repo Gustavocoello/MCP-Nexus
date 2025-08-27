@@ -1,3 +1,4 @@
+// features/auth/components/context/AuthContext.js
 import React, { createContext, useState, useEffect } from 'react';
 import { getCurrentUser } from '../authService';
 
@@ -19,11 +20,14 @@ export const AuthProvider = ({ children }) => {
         return;
       }
 
-      try {
+       try {
         const currentUser = await getCurrentUser();
-        setUser(currentUser);
-        localStorage.setItem('auth_user', JSON.stringify(currentUser));
+        if (currentUser) {
+          setUser(currentUser);
+          localStorage.setItem('auth_user', JSON.stringify(currentUser));
+        }
       } catch (error) {
+        console.error("Error obteniendo usuario:", error);
         setUser(null);
         localStorage.removeItem('auth_user');
       } finally {
@@ -32,7 +36,8 @@ export const AuthProvider = ({ children }) => {
     };
 
     fetchUser();
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); 
 
   const logout = () => {
     setUser(null);

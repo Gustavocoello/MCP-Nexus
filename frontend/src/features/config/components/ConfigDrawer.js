@@ -3,6 +3,7 @@ import { useState } from 'react';
 import ThemeTab from './tabs/Theme/ThemeTab';
 import MemoryTab from './tabs/MemoryTab/MemoryTab';
 import GeneralTab from './tabs/General/GeneralTab';
+import McpTab from './tabs/McpTab/McpTab';
 
 const ConfigDrawer = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState('general');
@@ -28,6 +29,12 @@ const ConfigDrawer = ({ onClose }) => {
           >
             Tema
           </button>
+           <button
+            className={activeTab === 'mcp' ? 'active' : ''}
+            onClick={() => setActiveTab('mcp')}
+          >
+            MCP - Model Context Protocol
+          </button>
           <button
             className={activeTab === 'memoria' ? 'active' : ''}
             onClick={() => setActiveTab('memoria')}
@@ -42,6 +49,7 @@ const ConfigDrawer = ({ onClose }) => {
           {activeTab === 'general' && <GeneralTab />}
           {activeTab === 'tema' && <ThemeTab />}
           {activeTab === 'memoria' && <MemoryTab />}
+          {activeTab === 'mcp' && <McpTab />}
         </div>
       </div>
     </div>

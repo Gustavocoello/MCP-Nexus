@@ -1,3 +1,4 @@
+// src//service/api_service.js
 import axios from 'axios';
 //import apiClient from './api'; // Tu instancia configurada de axios
 
@@ -22,7 +23,7 @@ export const sendAnonymousMessage = async (promptText) => {
    
 
 
-export const sendMessage = async ({chatId, text, hidden_context = ''}, onPartialResponse = null, signal) => {
+export const sendMessage = async ({chatId, text, hidden_context = '', tool = ''}, onPartialResponse = null, signal) => {
   try {
     // Verificamos si la señal ya fue abortada antes de iniciar la petición
     if (signal?.aborted) {
@@ -33,7 +34,7 @@ const response = await fetch(`${REACT_APP}/api/chat/${chatId}/message`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   credentials: 'include',
-  body: JSON.stringify({ text, hidden_context }),
+  body: JSON.stringify({ text, hidden_context, tool }),
   signal, // Pasamos el signal al fetch para que pueda ser abortado
 });
 

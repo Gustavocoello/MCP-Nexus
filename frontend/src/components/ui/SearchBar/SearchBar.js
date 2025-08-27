@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import './SearchBar.css';
 import '../../../styles/App.css';
 import { GrLink } from "react-icons/gr";
@@ -7,6 +8,11 @@ import { FaArrowUp, FaStop } from 'react-icons/fa';
 import { MdOutlineAttachFile } from "react-icons/md";
 import { IoCloseOutline } from "react-icons/io5";
 import { extractFileContent } from '../../../service/api_service';
+import { SiGooglecalendar } from "react-icons/si";
+import { FaGithub } from 'react-icons/fa';
+import { SiMysql } from 'react-icons/si';
+import { IoIosClose } from "react-icons/io";
+import { useMcpClient } from '../../../service/mcp_service';
 
 
 const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, onContextExtracted, pendingContext, onRemoveContext,}) => {
@@ -16,9 +22,15 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
   const fileInputRef = useRef(null);
   const [showMenu, setShowMenu] = useState(false);
   const [pendingFilePreview, setPendingFilePreview] = useState([]);
+  const [serviceMenu, setServiceMenu] = useState(false);
+  const [toolMenu, setToolMenu] = useState(false);
+  const [selectedService, setSelectedService] = useState(null);
+  const [selectedTool, setSelectedTool] = useState(null);
+  const [selectedToolTab, setSelectedToolTab] = useState(null);
+  const [toolConfirmed, setToolConfirmed] = useState(false); 
+  const modalRef = useRef(null);
 
-
-  // Ajustar altura del textarea basado en contenido, con máximo de 100px
+  // ----------------- SEARCHBAR LOGIC -----------------
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -36,24 +48,27 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
   const triggerSearch = () => {
     const lastUploadedImage = localStorage.getItem('lastUploadedImage');
     const shouldSendImage = pendingFilePreview.length > 0 && lastUploadedImage;
-
     const imageToSend = shouldSendImage ? lastUploadedImage : null;
 
     if (query.trim() || imageToSend) {
-      onSearch(query, pendingContext, imageToSend);
+      onSearch(query, pendingContext, imageToSend, toolConfirmed && selectedTool ? selectedTool : "");
     }
+    //Resetear selección de tool después de enviar
+    setSelectedService(null);
+    setSelectedTool(null);
+    setSelectedToolTab(null);
+    setToolConfirmed(false);
 
+    // Resetar input y archivos
     setQuery('');
     setPendingFilePreview([]);
     localStorage.removeItem('lastUploadedImage');
 };
 
-
-
   const handleFileSelect = () => {
     fileInputRef.current.click();
   };
-
+  // ----------------- FILE UPLOAD LOGIC -----------------
   const handleFileChange = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
@@ -121,19 +136,7 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
     e.target.value = null;
   };
 
-
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setShowMenu(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
+  // ----------------- IMAGE UPLOAD LOGIC -----------------
   const handleImageUploadOnly = useCallback(async (images) => {
     setShowMenu(false);
 
@@ -207,6 +210,87 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
   document.addEventListener("paste", handlePaste);
   return () => document.removeEventListener("paste", handlePaste);
 }, [handleImageUploadOnly]);
+
+// ----------------- MODAL LOGIC ----------------  
+  const handleOverlayClick = (e) => {
+    if (e.target.classList.contains('modal-overlay')) {
+      setToolMenu(false);
+    }
+  };
+
+  // Logica para el botón de cerrar el modal y todos 
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      const clickedInsideDropdown = dropdownRef.current && dropdownRef.current.contains(e.target);
+      const clickedInsideModal = modalRef.current && modalRef.current.contains(e.target);
+
+      if (!clickedInsideDropdown && !clickedInsideModal) {
+        setShowMenu(false);
+        setServiceMenu(false);
+        setToolMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+
+// ----------------- MCP TOOL LOGIC ----------------
+  const availableServices = [
+  { id: 'google_calendar', name: 'Google Calendar', icon: <SiGooglecalendar />, dev: false },
+  { id: 'github', name: 'GitHub', icon: <FaGithub />, dev: true },
+  { id: 'mysql', name: 'MySQL', icon: <SiMysql />, dev: true }
+  ];
+
+  const {
+    state,
+    tools = [],
+    prompts = [],
+    resources = [],
+    error,
+    callTool,
+    getPrompt,
+    readResource,
+    retry,
+    authenticate
+  } = useMcpClient();
+  const connected = state === 'ready';
+
+
+
+  const handleServiceClick = () => {
+    setServiceMenu(!serviceMenu);
+    setToolMenu(false);
+  };
+
+  const onSelectService = (service) => {
+    setSelectedService(service);
+    setSelectedToolTab(null);
+    setSelectedTool(null);
+    setToolMenu(true);
+  };
+
+  const handleSelectToolTab = (tab) => {
+    if (selectedToolTab === tab) {
+      setSelectedToolTab(null);
+    } else {
+      setSelectedToolTab(tab);
+    }
+  };
+
+  const handleSelectTool = (toolName) => {
+    setSelectedTool(toolName);
+    setToolConfirmed(true); // marcar como confirmado
+    setShowMenu(false);
+    setServiceMenu(false);
+    setToolMenu(false);
+  };
+
+  // Inicializa la herramienta seleccionada
+  useEffect(() => {
+    if (tools.length && !selectedTool) setSelectedTool(tools[0].name);
+  }, [tools, selectedTool]);
 
 
   
@@ -295,14 +379,121 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
     <div className="plus-menu-container" ref={dropdownRef}>
       <VscSettings
         className="plus-icon"
-        onClick={() => setShowMenu(!showMenu)}
+        onClick={() => {
+          const newShow = !showMenu;
+          setShowMenu(newShow);
+          if (!newShow) {
+            setServiceMenu(false);
+            setToolMenu(false);
+          }
+        }}
       />
       {showMenu && (
         <div className="dropdown-menu">
-          <div className="menu-item" onClick={() => alert("developing")}>
-            <GrLink className="menu-icon" />
-            <span className="menu-label">tool Kit - MCP</span>
+          <div className="menu-item" 
+            onClick={() => {
+              setServiceMenu(true);
+            }}
+          >
+            <GrLink className="menu-icon"/>
+            <span className="menu-label">Tool Kit - MCP</span>
           </div>
+          {serviceMenu && (
+            <div className="dropdown-submenu">
+              {availableServices.map(svc => (
+                <div
+                  key={svc.id}
+                  className="menu-items-service"
+                  onClick={() => onSelectService(svc)}
+                >
+                  <span className="service-icon">{svc.icon}</span>
+                  <span className="service-name">{svc.name}</span>
+                  {svc.dev && <span className="service-dev">(En desarrollo)</span>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ------- MENÚ DE HERRAMIENTAS -------*/}
+          {toolMenu && selectedService &&
+            ReactDOM.createPortal(
+              <div className="modal-overlay" onClick={handleOverlayClick}>
+                <div className="modal-content" ref={modalRef} onClick={(e) => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <span className="service-icon">{selectedService.icon}</span>
+                    <h3 className="modal-title">{selectedService.name}</h3>
+                  </div>
+
+                  <div className="tool-tabs">
+                    <button onClick={() => handleSelectToolTab('tools')}>🛠 Tools</button>
+                    <button onClick={() => handleSelectToolTab('prompts')}>📝 Prompts</button>
+                    <button onClick={() => handleSelectToolTab('resources')}>📚 Resources</button>
+                  </div>
+
+                  {selectedToolTab === 'tools' && (
+                    !connected ? (
+                      <div className="empty-message">
+                        MCP no conectado. Estado: <strong>{state}</strong><br />
+                        {error && <div>Error: {error}</div>}
+                        <button onClick={authenticate}>Autenticar</button>
+                        {state === 'failed' && <button onClick={retry}>Reintentar</button>}
+                      </div>
+                    ) : tools.length > 0 ? (
+                      <div className="tool-list">
+                        {tools.map(t => (
+                          <div key={t.name} className="menu-item-tools" onClick={() => handleSelectTool(t.name)}>
+                            {t.name}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="empty-message">No hay tools disponibles.</div>
+                    )
+                  )}
+
+                  {selectedToolTab === 'prompts' && (
+                    !connected ? (
+                      <div className="empty-message">
+                        MCP no conectado. Estado: <strong>{state}</strong><br />
+                        {error && <div>Error: {error}</div>}
+                        <button onClick={authenticate}>Autenticar</button>
+                        {state === 'failed' && <button onClick={retry}>Reintentar</button>}
+                      </div>
+                    ) : prompts.length > 0 ? (
+                      <div className="tool-list">
+                        {prompts.map(([key, prompt]) => (
+                          <div key={key} className="menu-item-tools">{prompt.description || key}</div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="empty-message">No hay prompts disponibles.</div>
+                    )
+                  )}
+
+                  {selectedToolTab === 'resources' && (
+                    !connected ? (
+                      <div className="empty-message">
+                        MCP no conectado. Estado: <strong>{state}</strong><br />
+                        {error && <div>Error: {error}</div>}
+                        <button onClick={authenticate}>Autenticar</button>
+                        {state === 'failed' && <button onClick={retry}>Reintentar</button>}
+                      </div>
+                    ) : resources.length > 0 ? (
+                      <div className="tool-list">
+                        {resources.map(([key, resource]) => (
+                          <div key={key} className="menu-item-tools">{resource.type || key}</div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="empty-message">No hay recursos disponibles.</div>
+                    )
+                  )}
+
+                </div>
+              </div>,
+              document.getElementById('modal-root')
+            )
+          }
           <div className="menu-item" onClick={handleFileSelect}>
             <MdOutlineAttachFile className="menu-icon" />
             <span className="menu-label">Agregar imágenes y archivos</span>
@@ -310,7 +501,21 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
         </div>
       )}
     </div>
-
+    {/* --- Mostrar herramienta seleccionada --- */}
+    {toolConfirmed && selectedTool && selectedService && (
+      <div className="selected-tool">
+        <span>{selectedService.name} {selectedToolTab} ➜ {selectedTool}</span>
+        <IoIosClose
+          className="clear-selection-icon"
+          onClick={() => {
+            setSelectedService(null);
+            setSelectedTool(null);
+            setSelectedToolTab(null);
+            setToolConfirmed(false);
+          }}
+        />
+      </div>
+    )}
     {/* Input oculto para seleccionar archivos */}
     <input
       type="file"
