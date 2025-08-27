@@ -12,7 +12,7 @@ load_dotenv()
 
 # --- Fix sys.path para imports ---
 current_dir = Path(__file__).resolve().parent
-backend_dir = current_dir.parent.parent.parent
+backend_dir = current_dir.parent.parent.parent.parent
 sys.path.insert(0, str(backend_dir))
 
 # --- Importa modelos y metadata ---

@@ -1,3 +1,7 @@
+import faulthandler
+
+from sqlalchemy import false
+faulthandler.enable()
 import os
 from pickle import FALSE
 from flask import Flask
@@ -8,7 +12,6 @@ from flask_session import Session
 from redis import Redis
 
 from src.services.auth.user_loader import load_user
-from src.api.mcp.calendar.routes import mcp_bp
 from src.config.config import Config
 from src.services.extensions.limiter import limiter
 
@@ -18,8 +21,10 @@ from src.api.v1.chat.routes import search_bp, chat_bp
 from src.api.v1.auth.github_routes import github_auth_bp
 from src.api.v1.auth.google_routes import google_auth_bp
 from src.api.v1.auth.routes import auth_bp
+from src.services.extensions.onedrive import onedrive_bp
 from src.database.config.connection import get_database_url
 from dotenv import load_dotenv
+
 
 # Cargar las variables de entorno desde el archivo .env
 load_dotenv()
@@ -42,7 +47,12 @@ login_manager.user_loader(load_user)
 CORS(app, supports_credentials=True, origins=[
     "https://mcp-nexus-h6y32pgox-gustavo-coellos-projects.vercel.app",
     "https://mcp-nexus.vercel.app",
-    "https://mcp-nexus.onrender.com"
+    "https://mcp-nexus.onrender.com",
+    "http://localhost:3000/",
+    "http://localhost:3000",
+    "http://localhost:8000/mcp/",
+    "https://inspector.use-mcp.dev",
+    "https://inspector.use-mcp.dev/"
 ])
 
 
@@ -52,7 +62,7 @@ app.config.from_object(Config)
 # Configuración de la base de datos MYSQL o AZURE SQL
 app.config["SQLALCHEMY_DATABASE_URI"] = get_database_url()
 # Configuración Redis para sesiones
-app.config['SESSION_TYPE'] = 'redis'
+app.config['SESSION_TYPE'] = 'redis' # redis para prod y filesystem para local
 app.config['SESSION_REDIS'] = Redis.from_url(app.config["REDIS_URL"])
 Session(app)
 
@@ -65,9 +75,6 @@ app.register_blueprint(search_bp, url_prefix='/api/search')
 """Mensajes de la IA con memoria"""
 app.register_blueprint(chat_bp, url_prefix='/api/chat')
 
-"""Rutas de MCP (Google Calendar, etc)"""
-app.register_blueprint(mcp_bp, url_prefix='/api/mcp/calendar')
-
 """Rutas para login con google"""
 app.register_blueprint(google_auth_bp)
 
@@ -77,6 +84,9 @@ app.register_blueprint(github_auth_bp)
 """Autenticación de usuario"""
 app.register_blueprint(auth_bp)
 
+"""Rutas de OneDrive"""
+app.register_blueprint(onedrive_bp, url_prefix='/api/onedrive')
+
 
 # Limitar - login -
 limiter.init_app(app)
@@ -84,7 +94,7 @@ limiter.init_app(app)
 
 # Inicia el servidor Flask
 if __name__ == "__main__":
-    is_prod = os.getenv("RENDER", True)
+    is_prod = os.getenv("RENDER", False)
     
     if not is_prod:
         app.run(debug=True, host=HOST, port=PORT) # Poner debug=False en producción

@@ -1,9 +1,13 @@
-from mcps.sources.calendar.google_calendar import GoogleCalendar
+#backend/src/mcps/core/registry.py
+from mcps.sources.calendar.google_calendar import GoogleCalendar, GoogleCalendarConnector
+from mcps.sources.files.local_file_explorer import LocalFileExplorer
+
 
 class SourceRegistry:
     def __init__(self):
         self.sources = {
-            "calendar": GoogleCalendar()
+            "calendar": GoogleCalendarConnector(),
+            "local_files": LocalFileExplorer()
             # luego: "notion": NotionClient(), "db": PostgresConnector()
         }
 

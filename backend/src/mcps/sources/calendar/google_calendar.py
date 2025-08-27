@@ -59,6 +59,7 @@ class GoogleCalendarConnector:
             raise ValueError("Falta el user_id (obligatorio en producción)")
         self.user_id = user_id
         self.creds = None
+        self.service = None
 
     def authenticate(self):
         """
@@ -126,10 +127,13 @@ class GoogleCalendarConnector:
     from datetime import datetime
     
     # ============= OBTENCIÓN DE EVENTOS =============
-    def fetch_events_by_range(self, start_date=None, end_date=None, calendar_ids=None):
+    def fetch_events_by_range(self, start_date=None, end_date=None, calendar_ids: Optional[str] = None):
         """
         Devuelve eventos de uno o varios calendarios en un rango de fechas arbitrario.
         """
+        if not hasattr(self, "service") or self.service is None:
+            self.authenticate()
+        
         if not start_date:
             start_date = datetime.datetime.utcnow()
         if not end_date:
@@ -472,10 +476,13 @@ class GoogleCalendarConnector:
             return False
     
     # ============= ESPACIO DISPONIBLE ENTRE EVENTOS =============
-    def get_free_slots(self, calendar_id: str, date: datetime.date, duration_minutes: int = 60) -> list:
+    def get_free_slots(self, date: datetime.date, duration_minutes: int = 60) -> list:
         """
         Devuelve slots libres para un día específico, solo hoy y futuro.
         """
+        if not hasattr(self, "service") or self.service is None:
+            self.authenticate()
+            
         now_utc       = datetime.now(timezone.utc)
         today_utc     = now_utc.date()
 

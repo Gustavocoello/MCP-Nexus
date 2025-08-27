@@ -1,9 +1,15 @@
 # src/mcps/server/calendar_server.py
 import os
 import sys
+from typing import Optional
 import anyio
 from pathlib import Path
 from fastmcp import FastMCP, Context
+from starlette.applications import Starlette
+from starlette.routing import Mount
+from starlette.middleware import Middleware
+from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.wsgi import WSGIMiddleware
 
 from datetime import datetime, timezone
 
@@ -24,9 +30,23 @@ def set_flask_app(app):
     flask_app = app
 
 #mcp = CustomFastMCP(name="Google Calendar MCP", stateless_http=True)
-mcp = FastMCP(name="Google Calendar MCP")
+mcp = FastMCP(name="Google Calendar MCP", stateless_http=True)
 
+mcp_app = mcp.http_app(path="/mcp")
 
+mcp_app_cors = CORSMiddleware(mcp_app,
+    allow_origins=["http://localhost:3000", "https://inspector.use-mcp.dev"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+# Envolviendo con CORS globalmente
+app = Starlette(
+    routes=[
+        Mount("/mcp-server", app=mcp_app_cors)
+    ], lifespan=mcp_app.lifespan)
+
+app.mount("/", WSGIMiddleware(flask_app))
 # Configuración del servidor MCP
 #os.environ["DANGEROUSLY_OMIT_AUTH"] = "true"
 #os.environ["MCP_SERVER_HOST"] = "0.0.0.0" 
@@ -86,7 +106,7 @@ async def actualizar_evento(context: dict, calendar_id: str, event_id: str, summ
 # ───────────────────── INFORMACIÓN ─────────────────────
 
 @mcp.tool
-async def resumen_diario(context: dict, calendar_id: str) -> str:
+async def resumen_diario(context: dict, calendar_id: Optional[str] = None) -> str:
     """
     Resumen diario de todos los calendarios o calendario seleccionado.
     """
@@ -94,7 +114,7 @@ async def resumen_diario(context: dict, calendar_id: str) -> str:
     return gcal.get_summary(calendar_id or None, range_type="daily")
 
 @mcp.tool
-async def resumen_semanal(context: dict, calendar_id: str) -> str:
+async def resumen_semanal(context: dict, calendar_id: Optional[str] = None) -> str:
     """
     Resumen semanal de todos los calendarios o calendario seleccionado.
     """
@@ -102,14 +122,32 @@ async def resumen_semanal(context: dict, calendar_id: str) -> str:
     return gcal.get_summary(calendar_id or None, range_type="weekly")
 
 @mcp.tool
-async def slots_libres(context: dict, calendar_id: str, date: str, duracion_minutos: int = 60) -> list:
+async def slots_libres(context: dict, date: Optional[str] = None, duracion_minutos: int = 60) -> list:
     """
-    Buscan lugares libres en un día.
+    Busca lugares libres en un día y los devuelve en formato legible.
     """
     gcal = get_connector(context)
-    fecha = datetime.fromisoformat(date).date()
-    slots = gcal.get_free_slots(calendar_id, fecha, duracion_minutos)
-    return [f"{s[0].isoformat()} — {s[1].isoformat()}" for s in slots]
+
+    if date:
+        fecha = datetime.fromisoformat(date).date()
+    else:
+        fecha = datetime.now(timezone.utc).date()
+
+    slots = gcal.get_free_slots(fecha, duracion_minutos)
+
+    if not slots:
+        # siempre devolvemos lista
+        return ["No hay espacios disponibles en el calendario."]
+
+    formatted = [
+        f"{i+1}. {start.strftime('%H:%M')} - {end.strftime('%H:%M')}"
+        for i, (start, end) in enumerate(slots)
+    ]
+
+    # también aquí aseguramos lista
+    return ["Espacios disponibles en el calendario:"] + formatted
+
+
 
 @mcp.tool(
     name="Filtro de eventos por titulo"
@@ -187,12 +225,13 @@ def debug_list_tools():
 debug_list_tools()
 #""" # Para utilizarlo en local
 if __name__ == "__main__":
-    from app import app as flask_app
-    set_flask_app(flask_app)
-    with flask_app.app_context():
-        mcp.run(
-            transport="http",
-            host="0.0.0.0",
-            port=8000
-        )
+        import uvicorn
+        from app import app as flask_app
+        set_flask_app(flask_app)
+        with flask_app.app_context():
+            uvicorn.run(
+                app,
+                host="0.0.0.0",
+                port=8000,
+            )
 #"""       

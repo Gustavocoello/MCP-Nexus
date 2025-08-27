@@ -1,5 +1,5 @@
 # src/database/models/__init__.py
-from .models import User, Chat, Message, UserToken, UserMemory, AuthProvider
+from .models import User, Chat, Message, UserToken, UserMemory, AuthProvider, Document
 
 __all__ = [
     "User",
@@ -8,4 +8,5 @@ __all__ = [
     "UserToken",
     "UserMemory",
     "AuthProvider",
+    "Document"
 ]

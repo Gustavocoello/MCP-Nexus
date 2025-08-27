@@ -7,7 +7,10 @@ import time
 import docx2txt
 from io import BytesIO
 from openai import OpenAI
+from flask_login import current_user
+from datetime import datetime
 from dotenv import load_dotenv
+from src.database.models.models import Document
 from src.config.logging_config import get_logger 
 from azure.cognitiveservices.vision.computervision import ComputerVisionClient
 from azure.cognitiveservices.vision.computervision.models import VisualFeatureTypes
@@ -174,6 +177,8 @@ def extract_text_from_file(file_stream, filename):
 
 
 # ====================== Funcion para extraer texto de imagenes Azure AI Vision========================
+OCR_LIMIT = 5000
+
 def analyze_image_with_azure(image_bytes):
     endpoint = AZURE_ENDPOINT
     key = AZURE_KEY
@@ -184,14 +189,29 @@ def analyze_image_with_azure(image_bytes):
     client = ComputerVisionClient(endpoint, CognitiveServicesCredentials(key))
     stream = BytesIO(image_bytes)
 
-    # --- Parte 1: Análisis Visual (colores, descripción, etiquetas) ---
+    # --- Control de límite mensual OCR ---
+    now = datetime.utcnow()
+    first_day_of_month = datetime(now.year, now.month, 1)
+    
+    # Contar cuántas imágenes ha subido el usuario este mes
+    ocr_count = Document.query.filter(
+        Document.user_id == current_user.id,
+        Document.created_at >= first_day_of_month,
+        Document.source == "onedrive"  # solo imágenes subidas a OneDrive
+    ).count()
+
+    if ocr_count >= OCR_LIMIT:
+        raise ValueError("Límite mensual de OCR alcanzado (5000 imágenes).")
+
+    # Asignamos el número OCR incremental
+    ocr_number = ocr_count + 1
+
+    # --- Parte 1: Análisis Visual ---
     analysis = client.analyze_image_in_stream(
         stream,
-        visual_features=[
-            VisualFeatureTypes.description,
-            VisualFeatureTypes.color,
-            VisualFeatureTypes.tags
-        ]
+        visual_features=[VisualFeatureTypes.description,
+                         VisualFeatureTypes.color,
+                         VisualFeatureTypes.tags]
     )
 
     description = analysis.description.captions[0].text if analysis.description.captions else "Sin descripción."
@@ -202,11 +222,13 @@ def analyze_image_with_azure(image_bytes):
     }
     tags = [tag.name for tag in analysis.tags][:5]
 
-    visual_summary = f"""🖼️ **Descripción de la imagen**: {description}
-🎨 **Colores**: Fondo: {colors['fondo']}, Frente: {colors['frente']}, Acento: #{colors['acentos']}
-🏷️ **Etiquetas**: {', '.join(tags)}"""
+    visual_summary = f"""🖼️ **Imagen #{ocr_number}** (proporcionada por usuario)
+        **Descripción**: {description}
+        🎨 **Colores**: Fondo: {colors['fondo']}, Frente: {colors['frente']}, Acento: #{colors['acentos']}
+        🏷️ **Etiquetas**: {', '.join(tags)}
+        """
 
-    # --- Parte 2: OCR (texto de la imagen) ---
+    # --- Parte 2: OCR ---
     ocr_stream = BytesIO(image_bytes)
     result = client.read_in_stream(ocr_stream, raw=True)
     operation_location = result.headers["Operation-Location"]
@@ -226,13 +248,19 @@ def analyze_image_with_azure(image_bytes):
         for line in page.lines:
             ocr_lines.append(line.text)
 
-    ocr_text = "\n".join(ocr_lines) if ocr_lines else "Sin texto detectado en la imagen."
-
-    # --- Unión final del contexto enriquecido ---
-    full_context = f"""{visual_summary}
-
-📄 **Texto en la imagen (OCR)**:
-{ocr_text}
-"""
+    ocr_text = "\n".join(ocr_lines) if ocr_lines else "Sin texto detectado."
+    
+    # --- Unión final ---
+    full_context = f"{visual_summary}\n📄 **Texto OCR:**\n{ocr_text}"
 
     return full_context
+
+
+def can_upload_image(username: str) -> bool:
+    """
+    Retorna True si el usuario puede subir imágenes.
+    Solo permite usuarios cuyo nombre empieza con 'G' o 'U'.
+    """
+    if not username:
+        return False
+    return username.upper().startswith(("G", "U"))

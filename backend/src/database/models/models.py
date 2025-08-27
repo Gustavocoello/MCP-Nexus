@@ -1,6 +1,7 @@
 import uuid
 from enum import Enum
 from extensions import db
+from sqlalchemy import text
 from datetime import datetime
 from flask_login import UserMixin
 from sqlalchemy.types import Enum as SQLAlchemyEnum
@@ -105,3 +106,15 @@ class UserMemory(db.Model):
     SQLAlchemyEnum(MemoryType, values_callable=lambda x: [e.value for e in x]), default=MemoryType.LONG_TERM.value)
     priority = db.Column(db.Integer, default=3)
     last_updated = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+class Document(db.Model):
+    __tablename__ = "documents"
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    mime_type = db.Column(db.String(100), nullable=False)
+    size_bytes = db.Column(db.Integer, nullable=False)
+    url = db.Column(db.Text, nullable=False)
+    source = db.Column(db.String(50), nullable=True)
+    tag = db.Column(db.String(50), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    user_id = db.Column(db.String(64), db.ForeignKey("users.id"), nullable=False)

@@ -1,3 +1,5 @@
+#backend/src/mcps/core/context_manager.py
+import os
 from typing import List
 from datetime import datetime
 from src.mcps.core.models import Event
@@ -11,6 +13,7 @@ class ContextManager:
             self.calendar_client = GoogleCalendarConnector(user_id)
         else:
             self.calendar_client = None
+        self.user_context = {}
 
     def fetch_events(self, start_date: datetime, end_date: datetime) -> List[Event]:
         """
@@ -73,6 +76,16 @@ class ContextManager:
         Lista los calendarios disponibles.
         """
         return self.calendar_client.list_calendars()
+    
+    def set_working_directory(self, user_id: str, path: str):
+        # Validaciones  - mcp prompt
+        if not os.path.exists(path):
+            raise ValueError(f"Ruta inválida: {path}")
+        self.user_contexts[user_id] = {"working_dir": path}
+
+    def get_working_directory(self, user_id: str) -> str:
+        return self.user_contexts.get(user_id, {}).get("working_dir", "")
+    
 
     # Futuro: agregar más fuentes
     # def fetch_files(self, ...): ...

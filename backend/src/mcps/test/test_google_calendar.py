@@ -1,26 +1,33 @@
+import os
 import sys
 import pytz
 import pytest
 from pathlib import Path
+from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
 
 datetime.now(timezone.utc)
 
 # --- Path Fix ---
 current_dir = Path(__file__).resolve().parent
-src_dir = current_dir.parent.parent
+src_dir = current_dir.parent.parent.parent
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
 # --- Imports del proyecto ---
-from mcps.sources.calendar.natural_parser import parse_natural_language_to_event
-from mcps.sources.calendar.google_calendar import GoogleCalendarConnector
-from mcps.core.models import Event
+from src.mcps.sources.calendar.natural_parser import parse_natural_language_to_event
+from src.mcps.sources.calendar.google_calendar import GoogleCalendarConnector
+from src.mcps.core.models import Event
+
+load_dotenv()
+
+USUARIO_TEST = os.getenv("USUARIO_TEST")
 
 
-@pytest.fixture(scope="module")
 def connector():
-    return GoogleCalendarConnector()
+    connector = GoogleCalendarConnector(user_id=USUARIO_TEST)
+    connector.authenticate() 
+    return connector
 
 
 def test_calendar_connection(connector):
@@ -97,7 +104,7 @@ def test_fetch_events_basic(connector):
 def test_filtrar_eventos_por_titulo(connector):
     """Filtra eventos por una palabra clave en el título."""
     calendar_id = "primary"
-    keyword = "reunión"
+    keyword = "Publica"
     time_min = datetime.now(timezone.utc).isoformat()
 
     eventos = connector.filter_events_by_title(calendar_id, keyword, time_min=time_min)
@@ -163,3 +170,23 @@ def test_parse_natural_event():
         print(f"🕓 Fin: {event.end_time}")
     else:
         print("❌ No se pudo generar el evento.")
+        
+
+
+if __name__ == "__main__":
+    from app import app as flask_app
+
+    with flask_app.app_context():
+        connector_inst = connector()
+        test_calendar_connection(connector_inst)
+        #test_fetch_events_basic(connector_inst)
+        # test_create_event(connector_inst)
+        # test_actualizar_evento(connector_inst)
+        # test_eliminar_evento(connector_inst)
+        test_filtrar_eventos_por_titulo(connector_inst)
+        test_resumen_diario(connector_inst)
+        test_resumen_semanal(connector_inst)
+        test_conflicto_evento(connector_inst)
+        test_suggest_free_slots(connector_inst)
+        test_parse_natural_event()
+

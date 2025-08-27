@@ -1,21 +1,26 @@
-from email import message
-import requests
-from openai import chat
+import json
+import asyncio
+import os
+import threading
+from httpx import get
 from extensions import db
 from datetime import datetime
 from werkzeug.utils import secure_filename
-from src.services.ai_providers.utils import generate_prompt, extract_text_from_file, analyze_image_with_azure
+from src.services.ai_providers.utils import generate_prompt, extract_text_from_file, analyze_image_with_azure, can_upload_image
 from src.services.ai_providers.context import completion,completion_stream
-from src.database.models.models import Chat, Message
-from flask import Blueprint, jsonify, Response, request, stream_with_context, session
+from src.database.models.models import Chat, Message, MemoryType, UserMemory, Document, User
+from src.services.extensions.onedrive_service import upload_to_onedrive, get_user_onedrive_token
 from src.config.logging_config import get_logger
 from src.services.memory.service import get_user_memory, save_memory
 from src.services.memory.utils import build_memory_context, extract_memory_from_text, calculate_priority, classify_memory
-from src.database.models.models import MemoryType, UserMemory
 from flask_login import login_required, current_user
-
+from flask import Blueprint, jsonify, Response, request, stream_with_context, session, copy_current_request_context
+from src.mcps.client.calendar.client_google_calendar import MCPToolsClient
+from src.mcps.client.utils.utils import serialize_call_result
 
 logger = get_logger('routes')
+
+mcp_client = MCPToolsClient()
 
 ## ----------- Mensajes de la IA sin memoria --------------
 """ Create a blueprint for search API """
@@ -41,6 +46,7 @@ def handle_search_prompt():
 
     session['anon_prompt_count'] = counter + 1
     logger.debug(f'print:{counter}')
+    print("BODY RECIBIDO:", request.json)
     try:
         data = request.json
 
@@ -74,7 +80,7 @@ MAX_TOTAL = 40
 
 # helpers (build_payload, summarize_and_trim) …
 # --------------- Helpers ----------------
-def build_payload(chat, recent, user_text, memory_context=None, hidden_context=None):
+def build_payload(chat, recent, user_text, memory_context=None, hidden_context=None, mcp_context=None):
     messages = [] 
     if memory_context:
         messages.append({
@@ -96,6 +102,17 @@ def build_payload(chat, recent, user_text, memory_context=None, hidden_context=N
             "role": "system",
             "content": hidden_context
         })
+    
+    if mcp_context:
+        messages.append({
+            "role": "system",
+            "content": (
+                "You have received structured data from a tool (MCP). "
+                "Use this information to provide an accurate answer to the user. "
+                "Do not mention the tool explicitly."
+            )
+        })
+        messages.append({"role": "system", "content": mcp_context})
 
     if chat.summary:
         messages.append({
@@ -258,8 +275,36 @@ def send_message(chat_id):
             # Guardar como mensaje oculto (contexto), no será mostrado en frontend
             context_msg = Message(chat_id=chat.id, role="context", content=hidden_context)
             db.session.add(context_msg)
+            
+        # MCP - Model Context Protocol
+        tool_name = request.json.get("tool", "").strip()
+        params = request.json.get("params", {})
+        mcp_client.user_id = current_user.id
+        mcp_context = None
+        if tool_name:
+            try:
+                result = asyncio.run(mcp_client._call_tool(tool_name, **params))
+                # Convertir a JSON serializable manualmente
+                result_dict = serialize_call_result(result)
+                # construir mcp_context como JSON plano
+                mcp_context = json.dumps({
+                    "response": result_dict,
+                    "tool_used": tool_name
+                }, ensure_ascii=False)
 
-        payload = build_payload(chat, recent, user_text, memory_context=memory_context, hidden_context=hidden_context)
+                # guardar en DB como oculto (no se renderiza en frontend)
+                mcp_msg = Message(
+                    chat_id=chat.id,
+                    role="mcp-tool",
+                    content=mcp_context
+                )
+                db.session.add(mcp_msg)
+
+            except Exception as e:
+                print("Error MCP:", e)
+
+
+        payload = build_payload(chat, recent, user_text, memory_context=memory_context, hidden_context=hidden_context, mcp_context=mcp_context)
         print("🔍 PAYLOAD ANTES DEL MODELO:", payload)
 
 
@@ -331,32 +376,66 @@ def extract_file():
     if file.filename == '':
         return jsonify({'error': 'Nombre de archivo vacío'}), 400
 
-    filename = secure_filename(file.filename)
+    original_name, ext = os.path.splitext(file.filename)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = secure_filename(f"{original_name}_{timestamp}{ext}")
     content_type = file.content_type
-    
+    file_bytes = file.read()
+
     try:
         if content_type.startswith("image/"):
-            image_bytes = file.read()
-            try:
-                extracted_text = analyze_image_with_azure(image_bytes)
+            try:                
+                extracted_text = analyze_image_with_azure(file_bytes)
                 logger.info(f"Texto extraído de la imagen {filename} (longitud: {len(extracted_text)} caracteres)")
-                return jsonify({"text": f"🖼️ Imagen `{filename}`:\n\n{extracted_text}"})
+                resp = jsonify({"text": f"🖼️ Imagen `{filename}`:\n\n{extracted_text}"})
             except Exception as e:
                 logger.error(f"Error al analizar imagen con Azure Vision: {str(e)}")
                 return jsonify({"error": f"Error en Azure Vision: {str(e)}"}), 500
-        
-        file_stream = file.stream
-        text = extract_text_from_file(file_stream, filename)
-        
-        # Puedes incluir el nombre del archivo en el texto aquí
-        full_text = f"### Contenido del archivo `{filename}`\n\n{text}"
-        
-        return jsonify({'text': full_text})
-    
+        else:
+            file_stream = file.stream
+            text = extract_text_from_file(file_stream, filename)
+            full_text = f"### Contenido del archivo `{filename}`\n\n{text}"
+            resp = jsonify({'text': full_text})
+
+        # --- background upload ---
+        @copy_current_request_context
+        def background_task(file_bytes=file_bytes, filename=filename, content_type=content_type, user_id=current_user.id):
+            try:
+                """
+                # Traer el usuario completo
+                user = User.query.get(user_id)
+                if not user or not can_upload_image(user.name):
+                    logger.warning(f"Usuario {user.name if user else 'desconocido'} no permitido para subir imágenes")
+                    return
+                """
+
+                logger.info("🚀 Iniciando background_task...")  # log de prueba
+                access_token = get_user_onedrive_token(user_id)  # <- usar token delegado
+                if not access_token:
+                    logger.error("No hay token de OneDrive en sesión")
+                    return
+                download_url = upload_to_onedrive(access_token, filename, file_bytes)
+                document = Document(
+                    mime_type=content_type,
+                    size_bytes=len(file_bytes),
+                    url=download_url,
+                    source="onedrive",
+                    tag="user_upload_mcp",
+                    user_id=user_id,
+                )
+                db.session.add(document)
+                db.session.commit()
+                logger.info(f"Archivo {filename} guardado en OneDrive y DB")
+            except Exception as e:
+                logger.exception(f"Error en background upload OneDrive: {e}")
+
+        threading.Thread(target=background_task, daemon=True).start()
+        return resp
+
     except Exception as e:
         logger.exception("Error procesando archivo:")
         return jsonify({'error': str(e)}), 500
-        
+
 # --------------- PUT ---------------
 @chat_bp.route('/<chat_id>/title', methods=['PUT'])
 @login_required

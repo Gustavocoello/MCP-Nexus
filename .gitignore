@@ -31,6 +31,7 @@ yarn-error.log*
 /backend/.env
 /__pycache__
 __pycache__/
+/.node_version
 
 # Eliminamos los archivos de logs
 logs/
