@@ -15,7 +15,7 @@ load_dotenv()
 DRIVE_ID = os.getenv("ONEDRIVE_DRIVE_ID")  # ponlo en .env
 
 def upload_to_onedrive(access_token, filename, file_bytes):
-    url = f"https://graph.microsoft.com/v1.0/me/drive/root:/Datos adjuntos/Work/Personal_Projects/2025/{filename}:/content"
+    url = f"https://graph.microsoft.com/v1.0/me/drive/root:/Datos adjuntos/Work/Personal_Projects/MCP-Nexus/2025/{filename}:/content"
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/octet-stream"
