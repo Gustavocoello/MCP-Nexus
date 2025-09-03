@@ -2,13 +2,15 @@
 import axios from 'axios';
 //import apiClient from './api'; // Tu instancia configurada de axios
 
-const REACT_APP = process.env.REACT_APP_URL; // Localhost:5000 o la URL de tu backend en producción
+//const REACT_APP = process.env.REACT_APP_URL; Localhost:5000 o la URL de tu backend en producción
 //const REACT_APP_URL = process.env.REACT_APP_URL_AZURE_PROMPT; // Azure Functions Nube
+// Vite
+const VITE_APP = import.meta.env.VITE_URL;
 
 
 export const sendAnonymousMessage = async (promptText) => {
     try {
-      const response = await axios.post(`${REACT_APP}/api/search/prompt`, { 
+      const response = await axios.post(`${VITE_APP}/api/search/prompt`, {
         prompt: promptText
       },{
         headers: {
@@ -30,7 +32,7 @@ export const sendMessage = async ({chatId, text, hidden_context = '', tool = ''}
       throw new DOMException('Operation aborted by the user', 'AbortError');
     }
 
-const response = await fetch(`${REACT_APP}/api/chat/${chatId}/message`, {
+const response = await fetch(`${VITE_APP}/api/chat/${chatId}/message`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   credentials: 'include',
@@ -97,7 +99,7 @@ export const extractFileContent = async (file) => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(`${REACT_APP}/api/chat/extract_file`, {
+  const response = await fetch(`${VITE_APP}/api/chat/extract_file`, {
     method: 'POST',
     credentials: 'include', // ✅ agregado como pediste
     body: formData,

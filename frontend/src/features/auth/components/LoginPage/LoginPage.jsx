@@ -4,7 +4,7 @@ import InputField from '../../../../components/ui/Form/InputField/InputField';
 import PasswordField from '../../../../components/ui/Form/PasswordField/PasswordField';
 import { loginUser, getCurrentUser, loginWithGoogle, loginWithGitHub } from '../authService';
 import { BiLogoGithub } from 'react-icons/bi';
-import useCurrentUser from '../../components/context/useCurrentUser';
+import useCurrentUser from '../context/useCurrentUser';
 import { FaGoogle } from 'react-icons/fa';
 import './LoginPage.css';
 

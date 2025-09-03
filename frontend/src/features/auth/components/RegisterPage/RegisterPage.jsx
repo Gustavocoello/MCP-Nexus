@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import InputField from '../../../../components/ui/Form/InputField/InputField';
 import PasswordField from '../../../../components/ui/Form/PasswordField/PasswordField';
-import useCurrentUser from '../../components/context/useCurrentUser';
+import useCurrentUser from '../context/useCurrentUser';
 import { registerUser } from '../authService';
 import './RegisterPage.css';
 
