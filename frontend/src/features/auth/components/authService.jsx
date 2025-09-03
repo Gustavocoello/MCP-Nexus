@@ -1,8 +1,11 @@
 // src/service/authService.js
 import axios from 'axios';
 
-const API_BASE = process.env.REACT_APP_URL || '';
-const AUTH_BASE = `${API_BASE}/api/v1/auth`;
+//const API_BASE = process.env.REACT_APP_URL || '';
+// Vite
+const VITE_APP = import.meta.env.VITE_URL;
+
+const AUTH_BASE = `${VITE_APP}/api/v1/auth`;
 
 // ------------------- LOGIN -------------------
 export const loginUser = async (email, password) => {

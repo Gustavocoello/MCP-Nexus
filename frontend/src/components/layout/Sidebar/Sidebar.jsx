@@ -10,7 +10,7 @@ import useCurrentUser from '../../../features/auth/components/context/useCurrent
 import '../Sidebar/Sidebar.css';
 
 // Servicios
-import { getAllChats, getChatMessages, deleteChat } from '../.././../service/chatService';
+import { getAllChats, getChatMessages, deleteChat } from '../../../service/chatService';
 
 const md = new MarkdownIt();
 

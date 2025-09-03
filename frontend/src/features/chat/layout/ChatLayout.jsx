@@ -1,7 +1,7 @@
 // features/chat/layout/ChatLayout.js
 import Sidebar from '../../../components/layout/Sidebar/Sidebar';
 import { Outlet } from 'react-router-dom';
-import BackgroundTechPattern from '../../../features/config/components/tabs/Theme/BackgroundTechPattern';
+import BackgroundTechPattern from '../../config/components/tabs/Theme/BackgroundTechPattern';
 
 export default function ChatLayout({ theme }) {
   return (

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { logoutUser } from '../../../auth/components/authService';
+import { logoutUser } from '../authService';
 import useCurrentUser from '../context/useCurrentUser';
 import './LogoutButton.css';
 

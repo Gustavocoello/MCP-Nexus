@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useParams, Navigate } from 'react-router-dom';
 import MarkdownIt from 'markdown-it';
 import MessageList from './components/MessageList/MessageList';
 import SearchBar from '../../components/ui/SearchBar/SearchBar';
@@ -31,6 +31,9 @@ const ChatPage = () => {
 };
 
   // Estados
+  const { user, loading } = useCurrentUser();
+  const { userId } = useParams(); // Para futuras mejoras multiusuario
+  const location = useLocation();
   const [localMessages, setLocalMessages] = useState([]);
   const [isJarvisTyping, setIsJarvisTyping] = useState(false);
   const [hasSentMessage, setHasSentMessage] = useState(false);
@@ -40,12 +43,10 @@ const ChatPage = () => {
   const chatBottomRef = useRef(null);
   const [notification, setNotification] = useState(null);
   const [pendingContext, setPendingContext] = useState([]);
-  const { user, loading } = useCurrentUser();
-  const isAuthenticated = !!user;
-  const location = useLocation();
   const isConfigOpen = location.pathname.endsWith("/config");
+  const isAuthenticated = !!user;
+ const isChatRoute = location.pathname.startsWith('/c/');
 
-  const isChatRoute = location.pathname === '/' || location.pathname.startsWith('/chat');
 
   const {
     messages: cachedMessages,
