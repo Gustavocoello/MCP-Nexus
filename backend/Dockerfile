@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     libxslt1-dev libsasl2-dev libldap2-dev \
     libcurl4-openssl-dev \
     libmagic1 file \
+    git \
     && mkdir -p /etc/apt/keyrings \
     && curl -sSL https://packages.microsoft.com/keys/microsoft.asc -o /etc/apt/keyrings/microsoft.asc \
     && echo "deb [signed-by=/etc/apt/keyrings/microsoft.asc] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list \
