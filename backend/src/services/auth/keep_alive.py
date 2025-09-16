@@ -11,7 +11,7 @@ RENDER_SERVER = os.getenv("RENDER_SERVER", "FALSE").upper() == "TRUE"
 LOCAL_SERVER = os.getenv("LOCAL_SERVER", "FALSE").upper() == "TRUE"
 
 LOCAL_PING_URL = os.getenv("LOCAL_PING_URL")
-RENDER_PING_URL = os.getenv("RENDER_PING_URL")
+RENDER_PING_URL = os.getenv("TARGET_PING_URL")
 
 def ping_url(url: str) -> bool:
     """Intenta hacer ping y devuelve True si funciona."""
@@ -47,13 +47,13 @@ def keep_alive():
                     success = ping_url(RENDER_PING_URL)
 
                 if not success:
-                    print("[KeepAlive] Ningún servidor respondió 😴")
+                    print("[KeepAlive] Ningún servidor respondió al ping.")
 
             else:
                 print(f"[KeepAlive] En modo sleep (00h-06h GMT-5) - {now}")
 
-            # cada 10 min
-            threading.Event().wait(600)
+            # cada 5 min
+            threading.Event().wait(300)
 
     t = threading.Thread(target=ping_loop, daemon=True)
     t.start()
