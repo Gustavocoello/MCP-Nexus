@@ -23,7 +23,7 @@ root.render(
     <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <AuthGate>
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_relativeSplatPath: true }}>
           <App />
         </BrowserRouter>
       </AuthGate>

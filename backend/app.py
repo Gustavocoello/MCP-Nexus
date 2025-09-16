@@ -13,7 +13,7 @@ from redis import Redis
 
 from src.services.auth.user_loader import load_user
 from src.config.config import Config
-from src.services.extensions.limiter import limiter
+from src.services.integrations.extensions.limiter import limiter
 
 from extensions import db
 from src.config.logging_config import get_logger
@@ -21,8 +21,10 @@ from src.api.v1.chat.routes import search_bp, chat_bp
 from src.api.v1.auth.github_routes import github_auth_bp
 from src.api.v1.auth.google_routes import google_auth_bp
 from src.api.v1.auth.routes import auth_bp
-from src.services.extensions.onedrive import onedrive_bp
+from src.api.v2.security.routes import ping_bp
+from src.services.integrations.extensions.onedrive import onedrive_bp
 from src.database.config.connection import get_database_url
+from src.services.auth.keep_alive import keep_alive
 from dotenv import load_dotenv
 
 
@@ -52,7 +54,8 @@ CORS(app, supports_credentials=True, origins=[
     "http://localhost:3000",
     "http://localhost:8000/mcp/",
     "https://inspector.use-mcp.dev",
-    "https://inspector.use-mcp.dev/"
+    "https://inspector.use-mcp.dev/",
+    "http://localhost:5173"
 ])
 
 
@@ -87,10 +90,14 @@ app.register_blueprint(auth_bp)
 """Rutas de OneDrive"""
 app.register_blueprint(onedrive_bp, url_prefix='/api/onedrive')
 
+"""Rutas de seguridad v2"""
+app.register_blueprint(ping_bp, url_prefix="/v2")
 
 # Limitar - login -
 limiter.init_app(app)
 
+# Iniciamos la función keep_alive para mantener el servidor activo
+keep_alive()
 
 # Inicia el servidor Flask
 if __name__ == "__main__":

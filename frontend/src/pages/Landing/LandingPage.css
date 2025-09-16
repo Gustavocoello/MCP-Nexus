@@ -1,0 +1,1024 @@
+/* LandingPage.css */
+
+.landing-container {
+  min-height: 100vh;
+  background: #000;
+  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Fondo de estrellas */
+.stars-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.star {
+  position: absolute;
+  background: white;
+  border-radius: 50%;
+  opacity: 0.4;
+  animation: starDrift 6s infinite ease-in-out, starTwinkle 4s infinite ease-in-out alternate;
+  transition: transform 0.1s ease-out;
+}
+
+/* Animaciones de estrellas */
+@keyframes starDrift {
+  0%, 100% { 
+    transform: translateY(0px) translateX(0px) scale(1);
+    opacity: 0.4;
+  }
+  25% { 
+    transform: translateY(-10px) translateX(5px) scale(1.1);
+    opacity: 0.6;
+  }
+  50% { 
+    transform: translateY(-5px) translateX(-8px) scale(0.9);
+    opacity: 0.8;
+  }
+  75% { 
+    transform: translateY(8px) translateX(3px) scale(1.2);
+    opacity: 0.5;
+  }
+}
+
+@keyframes starTwinkle {
+  0% { opacity: 0.2; }
+  50% { opacity: 0.8; }
+  100% { opacity: 0.3; }
+}
+
+/* Layout principal */
+.content-wrapper {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 100vh;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+/* Columna izquierda */
+.left-column {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  opacity: 0;
+  transform: translateX(-50px);
+  transition: all 1s ease-out 0.3s;
+}
+
+.left-column.loaded {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.svg-container {
+  width: 100%;
+  max-width: 500px;
+  height: auto;
+}
+
+.rocket-svg {
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.1));
+}
+
+/* Animaciones del SVG */
+.rocket-path {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: drawPath 2.5s ease-in-out 0.5s forwards;
+}
+
+.planet-circle {
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+  animation: drawPath 1.5s ease-in-out 1s forwards, planetGlow 3s ease-in-out 2s infinite alternate;
+  transform-origin: center;
+}
+
+.planet-orbit {
+  stroke-dasharray: 500;
+  stroke-dashoffset: 500;
+  animation: drawPath 2s ease-in-out 1.5s forwards;
+}
+
+.svg-star {
+  opacity: 0;
+  animation: starAppear 0.5s ease-out forwards;
+}
+
+.star-1 { animation-delay: 2s; }
+.star-2 { animation-delay: 2.2s; }
+.star-3 { animation-delay: 2.4s; }
+.star-4 { animation-delay: 2.6s; }
+
+@keyframes drawPath {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes planetGlow {
+  from { filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3)); }
+  to { filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.6)); }
+}
+
+@keyframes starAppear {
+  from { 
+    opacity: 0; 
+    transform: scale(0); 
+  }
+  to { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
+}
+
+/* Columna derecha */
+.right-column {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.text-content {
+  max-width: 500px;
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.8s ease-out 0.6s;
+}
+
+.text-content.loaded {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Tipografía */
+.main-title {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 800;
+  margin-bottom: 1.5rem;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  animation: titleSlideIn 0.8s ease-out 1.2s both;
+}
+
+.subtitle-small {
+  font-size: 0.9rem;
+  font-family: 'Courier New', Courier, monospace;
+  color: #bbb;
+  margin-top: 8px;
+  opacity: 0.8;             
+  animation: subtitleSlideIn 0.8s ease-out 1.5s both;
+}
+
+@keyframes titleSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes subtitleSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Sección de Servicios - Bloques rectangulares ACTUALIZADOS */
+.section-services {
+  padding: 4rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.services-title {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700;
+  margin-bottom: 3rem;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+  position: relative;
+}
+
+.services-title::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(135deg, #7c3aed, #3b82f6);
+  border-radius: 2px;
+}
+
+.services-grid {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  align-items: center;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.service-card {
+  background: rgba(15, 15, 15, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 1rem;
+  padding: 2rem;
+  width: 300px;
+  height: 200px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.service-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 10px 30px rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.service-icon {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  filter: brightness(2) contrast(1.2);
+  transition: all 0.3s ease;
+  margin-bottom: 1rem;
+}
+.service-icon-img {
+  width: 140px;
+  height: 80px;
+  object-fit: contain;
+  padding: 4px;
+  margin-top: -40px;
+  transition: background-color 0.3s ease;
+}
+[data-theme='dark'] .service-icon-img {
+  background-color: white;
+  border-radius: 50px;
+}
+
+.service-card:hover .service-icon {
+  filter: brightness(2.5) contrast(1.3);
+  transform: scale(1.1);
+}
+
+/* Para el componente AudioWaves */
+.service-card .service-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  margin-bottom: 1rem;
+}
+
+.service-divider {
+  width: 80%;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  margin: 0.5rem 0;
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: all 0.3s ease;
+}
+
+.service-card:hover .service-divider {
+  border-top-color: rgba(255, 255, 255, 0.8);
+  width: 90%;
+}
+
+.service-name {
+  font-size: 1.6rem;   /* antes era 1.3rem */
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: 1px;
+  text-transform: uppercase; /* opcional */
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: all 0.3s ease;
+}
+
+.service-card:hover .service-name {
+  transform: translateX(-50%) translateY(-4px);
+  color: #7c3aed; /* un highlight al hover */
+}
+
+
+.service-card:hover .service-name {
+  color: #ffffff;
+  transform: translateX(-50%) translateY(-2px);
+}
+.subtitle-under-development {
+  margin-top: 15rem; 
+  font-style: italic;
+  color: #fff; 
+  opacity: 0.8; 
+}
+
+
+.tars-details {
+  position: relative;
+  overflow: hidden; /* importante para que la imagen no se salga del div */
+}
+
+.tars-details::before {
+  content: "";
+  position: absolute;
+  top: 20%;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('/icons/theme/tars.jpg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.tars-details:hover::before {
+  opacity: 0.2; 
+}
+
+/* Para asegurarnos que el contenido esté por encima de la imagen */
+.tars-details .text-content {
+  position: relative;
+  z-index: 1;
+}
+
+
+/* 🔹 Sección de detalles debajo de Servicios */
+.services-details {
+  margin-top: 4rem;
+  text-align: center;
+  padding: 2rem;
+  max-width: 1000px;
+  margin-left: auto;
+  margin-right: auto;
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.services-details-container {
+  display: flex;
+  justify-content: space-between; /* separa uno a la izq y otro a la der */
+  align-items: flex-start;        /* alinea arriba */
+  gap: 2rem;                      /* espacio entre los dos */
+  margin-top: 4rem;
+}
+
+/* Opcional: ajusta el ancho de cada bloque */
+.services-details {
+  flex: 1;
+  max-width: 45%;
+}
+
+.services-details.left {
+  text-align: left;
+}
+
+.services-details.right {
+  text-align: right;
+}
+
+
+/* Texto intro */
+.services-details .text-content {
+  margin-bottom: 3rem;
+}
+
+.services-details .main-title {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.services-details .subtitle {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: #ccc;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+/* 🔹 Lista de funcionalidades */
+
+.features-title {
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  margin-bottom: 2rem;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.features-list {
+  list-style: none;
+  padding: 0;
+  max-width: 600px;
+  margin: 0 auto;
+  text-align: left;
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: #ddd;
+}
+
+.features-list li {
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.features-list li:hover {
+  transform: translateX(5px);
+  color: #fff;
+}
+
+/* 🔹 Cinta infinita de tecnologías */
+.tech-section {
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.tech-title {
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  font-weight: 700;
+  margin-bottom: 2rem;
+  color: #fff;
+}
+
+.tech-scroll-container {
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.tech-scroll {
+  display: flex;
+  gap: 2rem;
+  animation: scrollLoop 20s linear infinite;
+}
+
+.tech-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.9rem; /* tamaño de ícono */
+  color: #fff;
+  padding: 1rem;
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+  transition: all 0.3s ease;
+  min-width: 70px;
+  min-height: 70px;
+}
+.tech-icon {
+  font-size: 2.7rem;
+}
+
+
+
+@keyframes scrollLoop {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* 🔹 Extra detalle */
+.service-detail {
+  margin-top: 3rem;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 1rem;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+.service-detail h3 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.service-detail p {
+  font-size: 1rem;
+  color: #ccc;
+}
+
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .content-wrapper {
+    grid-template-columns: 1fr;
+    padding: 1rem;
+  }
+
+  .left-column {
+    order: 1;
+    padding: 1rem;
+    transform: translateY(-30px);
+  }
+
+  .left-column.loaded {
+    transform: translateY(0);
+  }
+
+  .right-column {
+    order: 2;
+    padding: 2rem 1rem;
+  }
+
+  .svg-container {
+    max-width: 300px;
+  }
+
+  .main-title {
+    text-align: center;
+  }
+
+  .subtitle {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+
+  .services-grid {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  
+  .service-card {
+    width: 100%;
+    max-width: 350px;
+    height: 180px;
+  }
+  
+  .section-services {
+    padding: 3rem 1rem;
+  }
+  .services-details-container {
+    flex-direction: column;  /* apila en columna */
+    align-items: center;     /* centra los bloques */
+    gap: 2rem;               /* espacio vertical */
+  }
+
+  .services-details {
+    max-width: 90%;          /* que no se desborde */
+    text-align: center;      /* opcional: centra el texto */
+  }
+
+  .services-details.left,
+  .services-details.right {
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .content-wrapper {
+    padding: 0.5rem;
+  }
+  
+  .main-title {
+    font-size: 2rem;
+  }
+  
+  .subtitle {
+    font-size: 1rem;
+  }
+
+  .left-column,
+  .right-column {
+    padding: 1rem;
+  }
+
+  .service-card {
+    width: 100%;
+    max-width: 300px;
+    height: 160px;
+    padding: 1.5rem;
+  }
+  
+  .service-icon {
+    width: 70px;
+    height: 70px;
+  }
+  
+  .service-name {
+    font-size: 1rem;
+  }
+  
+  .section-services {
+    padding: 2rem 0.5rem;
+  }
+}
+
+/* Mejoras de performance */
+@media (prefers-reduced-motion: reduce) {
+  .star,
+  .rocket-path,
+  .planet-circle,
+  .planet-orbit,
+  .svg-star,
+  .text-content,
+  .left-column {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #000;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Sección Desarrollador - Centrada como Services */
+.developer-section {
+  padding: 4rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Cabecera centrada */
+.developer-header {
+  margin-bottom: 3rem;
+}
+
+.developer-title {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+  position: relative;
+  text-align: center; /* Centrado */
+  margin-left: 0; /* Quitar el margen izquierdo */
+}
+
+/* Línea decorativa bajo el título (igual que services) */
+.developer-title::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(135deg, #7c3aed, #3b82f6);
+  border-radius: 2px;
+}
+
+/* ASCII Art centrado */
+.ascii-name {
+  font-size: 0.8rem;
+  line-height: 1.2;
+  color: #ffffff; /* Blanco como pediste */
+  margin: 2rem 0 1rem 0;
+  text-align: center;
+  display: flex;
+}
+
+/* Subtítulo centrado debajo del ASCII */
+.developer-subtitle {
+  font-size: 1.2rem;
+  color: #ffffff;
+  margin-bottom: 3rem;
+  font-weight: 600;
+  position: relative; /* Necesario para que funcione left */
+  left: 50px;
+}
+
+/* Terminal wrapper centrado y más pequeño */
+.terminal-wrapper {
+  display: grid;
+  grid-template-columns: 1fr 270px;
+  gap: 2rem;
+  align-items: flex-start;
+  max-width: 900px; /* Más pequeño que 1200px */
+  margin: 0 auto; /* Centrado */
+  justify-content: center;
+}
+
+.terminal-box {
+  min-width: 0;
+  width: 100%;
+  max-width: 600px; /* Limita el ancho máximo */
+}
+
+/* Responsive para developer section */
+@media (max-width: 768px) {
+  .developer-section {
+    padding: 3rem 1rem;
+  }
+  
+  .terminal-wrapper {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    max-width: 100%;
+  }
+  
+  .terminal-image {
+    order: -1;
+  }
+  
+  .perfil-img {
+    max-width: 200px;
+  }
+  
+  .ascii-name {
+    font-size: 0.6rem; /* Más pequeño en móvil */
+  }
+}
+
+@media (max-width: 480px) {
+  .ascii-name {
+    font-size: 0.5rem;
+  }
+  
+  .developer-subtitle {
+    font-size: 1rem;
+  }
+}
+
+/* Terminal Section */
+.terminal-section {
+  padding: 4rem 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+}
+
+.terminal-wrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  max-width: 1200px;
+  width: 100%;
+  align-items: flex-start;
+}
+
+/* Caja terminal */
+.terminal-box {
+  background: #111;
+  border-radius: 12px;
+  border: 2px solid #333;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 15px rgba(0,0,0,0.7);
+  padding: 1rem;
+  left: 45px;
+  position: relative;
+}
+
+/* Título (Developer) */
+.terminal-title {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700;
+  margin-bottom: 2rem;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+  position: relative;
+  text-align: left;
+  margin-left: 1.5rem; /* empuja un poco a la derecha */
+}
+
+/* Tabs */
+.terminal-tabs {
+  display: flex;
+  justify-content: center; /* centrados */
+  background: #222;
+  border-bottom: 1px solid #333;
+  padding: 0.5rem 0;
+}
+
+.tab {
+  padding: 0.8rem 1rem;
+  font-size: 0.9rem;
+  background: #222;
+  border: none;
+  cursor: pointer;
+  color: #aaa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.tab.active {
+  background: #000;
+  color: #fff;
+  border-bottom: 2px solid #fff;
+}
+
+.tab:hover {
+  background: #333;
+}
+
+/* Contenido */
+.terminal-content {
+  padding: 1.5rem;
+  min-height: 250px;
+  font-family: "Fira Code", monospace;
+  color: #fff;
+}
+
+/* Contact Form */
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.contact-form input, 
+.contact-form textarea {
+  width: 100%;
+  padding: 0.6rem;
+  background: #222;
+  border: 1px solid #444;
+  color: white;
+  border-radius: 6px;
+  font-family: inherit;
+}
+.contact-form button {
+  padding: 0.8rem;
+  background: #fff; /* Blanco */
+  color: black;
+  font-weight: bold;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+.contact-form button:hover {
+  background: #ddd; /* Gris claro en hover */
+}
+
+/* Footer con iconos */
+.terminal-footer {
+  background: #111;
+  border-top: 1px solid #333;
+  padding: 0.8rem;
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  font-size: 1.5rem;
+}
+.terminal-footer a {
+  color: #bbb;
+  transition: color 0.3s;
+}
+.terminal-footer a:hover {
+  color: #fff; /* Blanco */
+}
+
+.terminal-wrapper {
+  display: grid;
+  grid-template-columns: 1fr 290px; /* Terminal flexible, imagen fija */
+  gap: 2rem;
+  align-items: flex-start; /* Alinea ambas columnas arriba */
+}
+
+.terminal-box {
+  min-width: 0; /* Previene overflow en contenido largo */
+  width: 100%; /* Usa todo el espacio disponible */
+}
+
+.terminal-image {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.perfil-img {
+  width: 100%;
+  max-width: 290px;
+  height: auto;
+  opacity: 0.9;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  transform: translateX(-25px);
+}
+
+.perfil-img:hover {
+  transform: scale(1.05);
+  opacity: 1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .terminal-wrapper {
+    grid-template-columns: 1fr; /* Una sola columna en móviles */
+    gap: 1.5rem;
+  }
+  
+  .terminal-image {
+    order: -1; /* Imagen arriba en móviles */
+  }
+  
+  .perfil-img {
+    max-width: 200px; /* Más pequeña en móviles */
+  }
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .terminal-wrapper {
+    grid-template-columns: 1fr;
+  }
+  .terminal-image {
+    order: 2;
+    display: flex;
+    justify-content: center;
+  }
+  .terminal-image img {
+    max-width: 150px; /* aún más chica en móvil */
+  }
+}
+/* Footer */
+.landing-footer {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  font-size: 0.85rem;
+  color: #aaa;
+  border-top: 1px solid #333;
+  margin-top: 4rem;
+}
+
+.landing-footer span {
+  color: #fff;
+  font-weight: 600;
+}
+
+.landing-footer p {
+  margin: 0;
+}
+/* Estrellas específicas para Developer */
+.developer-stars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+/* Asegurar que el contenido esté por encima de las estrellas */
+.developer-header,
+.terminal-wrapper {
+  position: relative;
+  z-index: 2;
+}

@@ -16,19 +16,19 @@ API_PROVIDERS = [
         "name": "deepseek",
         "client": OpenAI(base_url="https://openrouter.ai/api/v1",
                          api_key=OPEN_ROUTER_0),
-        "model": "deepseek/deepseek-chat-v3-0324:free"
+        "model": "deepseek/deepseek-chat-v3.1:free"
     },
     {
         "name": "qwen-3",
         "client": OpenAI(base_url="https://openrouter.ai/api/v1",
                          api_key=OPEN_ROUTER_1),
-        "model": "qwen/qwen3-235b-a22b:free"
+        "model": "qwen/qwen3-coder:free"
     },
     {
         "name": "Deep-seek",
         "client": OpenAI(base_url="https://openrouter.ai/api/v1",
                          api_key=OPEN_ROUTER_2),
-        "model": "deepseek/deepseek-chat-v3-0324:free"
+        "model": "qwen/qwen3-235b-a22b:free"
     },
     {
         "name": "gemini",
@@ -86,7 +86,7 @@ def completion_stream(messages):
         logger.info(f"[STREAMING] Usando provider '{prov['name']}' (reintento {retries+1})")
 
         try:
-            # 👇 Aquí está la magia
+            # chunk - streaming
             resp = prov["client"].chat.completions.create(
                 model=prov["model"],
                 messages=messages,

@@ -6,10 +6,10 @@ from httpx import get
 from extensions import db
 from datetime import datetime
 from werkzeug.utils import secure_filename
-from src.services.ai_providers.utils import generate_prompt, extract_text_from_file, analyze_image_with_azure, can_upload_image
-from src.services.ai_providers.context import completion,completion_stream
+from src.services.providers.utils import generate_prompt, extract_text_from_file, analyze_image_with_azure, can_upload_image
+from src.services.core.llm_router import completion,completion_stream
 from src.database.models.models import Chat, Message, MemoryType, UserMemory, Document, User
-from src.services.extensions.onedrive_service import upload_to_onedrive, get_user_onedrive_token
+from src.services.integrations.extensions.onedrive_service import upload_to_onedrive, get_user_onedrive_token
 from src.config.logging_config import get_logger
 from src.services.memory.service import get_user_memory, save_memory
 from src.services.memory.utils import build_memory_context, extract_memory_from_text, calculate_priority, classify_memory

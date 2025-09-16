@@ -264,8 +264,8 @@ const categorizedChats = chats.reduce((acc, chat) => {
      
       {/* Settings */}
       <Link 
-        to="/config" 
-        className={`sidebar-item ${location.pathname === '/config' ? 'active' : ''}`}
+         to={user ? `/c/${user.id}/config` : '/login'} 
+        className={`sidebar-item ${location.pathname.endsWith('/config') ? 'active' : ''}`}
       >
         <FaCog className="icon" />
         <span className="label">Settings</span>

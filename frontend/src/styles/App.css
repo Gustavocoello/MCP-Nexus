@@ -62,6 +62,10 @@ pre, code {
   max-width: 100%;
 }
 
+.font-landing {
+  font-family: 'Inter', sans-serif;
+}
+
 /* RESPONSIVE DESIGN: Mejoras para pantallas grandes */
 @media (min-width: 768px) {
   .main-content,

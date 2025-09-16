@@ -35,7 +35,7 @@ mcp = FastMCP(name="Google Calendar MCP", stateless_http=True)
 mcp_app = mcp.http_app(path="/mcp")
 
 mcp_app_cors = CORSMiddleware(mcp_app,
-    allow_origins=["http://localhost:3000", "https://inspector.use-mcp.dev"],
+    allow_origins=["http://localhost:3000", "https://inspector.use-mcp.dev", "http://localhost:5173"] ,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

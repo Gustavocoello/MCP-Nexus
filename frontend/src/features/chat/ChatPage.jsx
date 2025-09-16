@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Outlet, useLocation, useParams, Navigate } from 'react-router-dom';
+import { Outlet, useLocation, useParams, Navigate, Link } from 'react-router-dom';
 import MarkdownIt from 'markdown-it';
 import MessageList from './components/MessageList/MessageList';
 import SearchBar from '../../components/ui/SearchBar/SearchBar';
@@ -43,9 +43,9 @@ const ChatPage = () => {
   const chatBottomRef = useRef(null);
   const [notification, setNotification] = useState(null);
   const [pendingContext, setPendingContext] = useState([]);
-  const isConfigOpen = location.pathname.endsWith("/config");
   const isAuthenticated = !!user;
- const isChatRoute = location.pathname.startsWith('/c/');
+  const isChatRoute = location.pathname.startsWith('/c/');
+  const isConfigOpen = location.pathname.endsWith('/config');
 
 
   const {
@@ -406,11 +406,10 @@ setLocalMessages(prev => [...prev, ...newMessages]);
     </div>
   )}
     {/* Modal de config si está en /config */}
-      {isConfigOpen && (
-        <div className="config-modal">
-          <Outlet />
-        </div>
+      {user?.id && (
+        <Link to={`/c/${user.id}/config`} className="config-modal"></Link>
       )}
+    <Outlet />
   </div>
 );
 

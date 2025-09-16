@@ -1,0 +1,132 @@
+/* Barra fija arriba, sin color de fondo (se integra con la página) */
+.navbar {
+  position: sticky; /* o fixed si prefieres que siempre esté visible */
+  top: 0;
+  z-index: 50;
+  background: transparent;
+  backdrop-filter: saturate(180%) blur(6px); /* sutil, moderno */
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+
+/* Ajuste de borde en tema oscuro si lo usas */
+html[data-theme="dark"] .navbar {
+  border-bottom-color: rgba(255,255,255,0.08);
+}
+
+.nav-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Izquierda: logo + nombre */
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Cuadro blanco para que el PNG transparente se vea bien */
+.logo-box {
+  width: 36px;
+  height: 36px;
+  background: #fff;
+  border-radius: 10px;           /* leve redondeado */
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  /* sutil borde para separar del fondo */
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.05);
+}
+
+html[data-theme="dark"] .logo-box {
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.08);
+}
+
+.logo-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.logo-text {
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+/* Links */
+.navbar-links {
+  margin-left: auto;           /* empuja los links hacia la derecha */
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  list-style: none;
+  padding: 0;
+}
+
+.navbar-links a {
+  text-decoration: none;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.navbar-links a:hover {
+  opacity: 1;
+}
+
+/* Astronauta a la derecha */
+.astronaut-btn {
+  margin-left: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 10px;
+}
+
+.astronaut-btn:hover {
+  outline: 1px solid rgba(0,0,0,0.08);
+}
+
+html[data-theme="dark"] .astronaut-btn:hover {
+  outline-color: rgba(255,255,255,0.12);
+}
+
+.astronaut-icon {
+  width: 28px;
+  height: 28px;
+  /* hereda color del texto actual */
+  color: white;
+}
+.astronaut-btn:disabled {
+  cursor: default;
+  opacity: 1; /* mantenemos igual, para que no se vea grisado */
+}
+.navbar-links a {
+  color: white;
+  text-decoration: none; /* quita el subrayado */
+  font-weight: 500;
+  transition: color 0.2s ease-in-out;
+}
+
+.navbar-links a:hover {
+  color: #ddd; /* un gris clarito al pasar el mouse */
+}
+
+
+
+/* Responsive básico */
+@media (max-width: 640px) {
+  .navbar-links {
+    gap: 14px;
+  }
+  .logo-text {
+    display: none; /* opcional: esconder nombre en móvil para ahorrar espacio */
+  }
+}
