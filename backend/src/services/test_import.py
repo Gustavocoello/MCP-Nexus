@@ -8,7 +8,7 @@ if project_root not in sys.path:
 
 # Ahora puedes importar desde services.ai_providers.utils
 try:
-    from ai_providers.utils import generate_prompt
+    from providers.utils import generate_prompt
     print("Importación exitosa!")
 except ImportError as e:
     print(f"Error al importar generate_prompt: {str(e)}")

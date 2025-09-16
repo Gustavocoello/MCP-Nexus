@@ -1,4 +1,8 @@
 /* Reset básico y fuente */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 html, body {
   margin: 0;
   padding: 0;
@@ -56,6 +60,10 @@ pre, code {
   word-break: break-word;
   overflow-x: auto;
   max-width: 100%;
+}
+
+.font-landing {
+  font-family: 'Inter', sans-serif;
 }
 
 /* RESPONSIVE DESIGN: Mejoras para pantallas grandes */

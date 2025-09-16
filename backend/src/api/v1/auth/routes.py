@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_login import login_required, logout_user,current_user, login_user
 from extensions import db
 from src.database.models import AuthProvider, User
-from src.services.extensions.limiter import limiter
+from src.services.integrations.extensions.limiter import limiter
 from flask import Blueprint, request, jsonify
 from flask_login import login_user, logout_user, current_user, login_required
 from extensions import db

@@ -1,7 +1,371 @@
+/* McpTab.css */
+
 /* === Container principal === */
 .mcp-tab-container {
   padding: 16px;
   color: #eaeaea;
+}
+
+/* === Vista principal con botones === */
+.mcp-main-view {
+  padding: 24px;
+  color: #eaeaea;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.mcp-main-title {
+  margin-bottom: 40px;
+  color: #eaeaea;
+  font-size: 1.8rem;
+  font-weight: bold;
+  text-align: center;
+}
+
+.mcp-main-buttons {
+  display: flex;
+  gap: 24px;
+  width: 100%;
+  max-width: 600px;
+  justify-content: center;
+}
+
+.mcp-main-button {
+  flex: 1;
+  padding: 24px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.mcp-main-button.server {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.mcp-main-button.server:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+.mcp-main-button.prueba {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  box-shadow: 0 4px 15px rgba(240, 147, 251, 0.3);
+}
+
+.mcp-main-button.prueba:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(240, 147, 251, 0.4);
+}
+
+.mcp-main-button-label {
+  color: #fff;
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.mcp-main-button-description {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* === Botón volver === */
+.mcp-back-button {
+  margin-bottom: 20px;
+  padding: 8px 16px;
+  background: #444;
+  border: none;
+  border-radius: 6px;
+  color: #eaeaea;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s ease;
+}
+
+.mcp-back-button:hover {
+  background: #555;
+}
+
+/* === Headers de sección === */
+.mcp-section-header {
+  margin-bottom: 20px;
+  color: #eaeaea;
+  font-size: 1.2rem;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* === Vista Server vacía === */
+.mcp-server-empty {
+  background: #2a2a2a;
+  border-radius: 8px;
+  padding: 40px;
+  text-align: center;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.mcp-server-empty-title {
+  margin-top: 20px;
+  color: #aaa;
+  font-size: 1.1rem;
+}
+
+.mcp-server-empty-description {
+  margin-top: 10px;
+  color: #888;
+  font-size: 0.95rem;
+}
+
+.mcp-add-server-btn {
+  margin-top: 20px;
+  background-color: #667eea;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: background-color 0.3s ease;
+}
+
+.mcp-add-server-btn:hover {
+  background-color: #5a67d8;
+}
+
+/* === Panel unificado MCP (Tools, Prompts, Resources) === */
+.mcp-panel {
+  background: #1e1e1e;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid #444;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+  margin-top: 16px;
+}
+
+/* === Tabs dentro del panel === */
+.tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.tab {
+  padding: 8px 14px;
+  background: #2c2c2c;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #eaeaea;
+  transition: background 0.2s ease;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tab:hover {
+  background: #3a3a3a;
+}
+
+.tab.active {
+  background: #444;
+  font-weight: bold;
+}
+
+/* === Contenido de cada pestaña === */
+.panel-content {
+  background: #2a2a2a;
+  border-radius: 8px;
+  padding: 12px;
+  color: #ddd;
+  min-height: 300px;
+}
+
+.panel-content-header {
+  margin-bottom: 15px;
+  color: #eaeaea;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* === Grupo de servicios === */
+.service-group {
+  margin-bottom: 20px;
+  background: #1e1e1e;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #444;
+}
+
+.service-group-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #444;
+}
+
+.service-group-icon {
+  margin-right: 8px;
+}
+
+.service-group-name {
+  font-weight: bold;
+  color: #eaeaea;
+  font-size: 16px;
+}
+
+.service-group-count {
+  margin-left: auto;
+  background-color: #444;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  color: #ddd;
+}
+
+.service-tools-grid {
+  display: grid;
+  gap: 8px;
+}
+
+/* === Tarjeta de herramienta === */
+.tool-card {
+  padding: 12px;
+  background-color: #2c2c2c;
+  border-radius: 6px;
+  border: 1px solid #555;
+}
+
+.tool-card-name {
+  font-weight: 600;
+  color: #eaeaea;
+  margin-bottom: 6px;
+}
+
+.tool-card-description {
+  font-size: 14px;
+  color: #ddd;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+
+.tool-card-id {
+  font-size: 12px;
+  color: #aaa;
+  font-family: monospace;
+}
+
+/* === Tarjetas de prompts y resources === */
+.prompt-card, .resource-card {
+  padding: 15px;
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  border: 1px solid #444;
+}
+
+.prompt-card-name, .resource-card-name {
+  color: #eaeaea;
+  font-weight: bold;
+}
+
+.prompt-card-description, .resource-card-type {
+  margin: 8px 0 0 0;
+  color: #ddd;
+}
+
+.items-grid {
+  display: grid;
+  gap: 10px;
+}
+
+/* === Mensaje vacío === */
+.empty-message {
+  color: #ddd;
+}
+
+/* === Estado de conexión MCP === */
+.mcp-status {
+  background-color: #2a2a2a;
+  border: 1px solid #555;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-top: 16px;
+  color: #f5f5f5;
+  font-size: 0.95rem;
+}
+
+.mcp-status-label {
+  color: #fca311;
+  font-weight: bold;
+}
+
+.mcp-status-value {
+  color: #ff6b6b;
+}
+
+.mcp-status-value.active {
+  color: #4ade80;
+}
+
+/* === Botones de acción MCP === */
+.mcp-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+}
+
+.mcp-action-button {
+  background-color: #444;
+  color: #f5f5f5;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  font-weight: 500;
+}
+
+.mcp-action-button:hover {
+  background-color: #555;
+}
+
+.mcp-action-button.primary {
+  background-color: #4285f4;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+}
+
+.mcp-action-button.primary:hover {
+  background-color: #3367d6;
+}
+
+.mcp-action-button.primary.prueba {
+  background-color: #f093fb;
+}
+
+.mcp-action-button.primary.prueba:hover {
+  background-color: #e879f9;
 }
 
 /* === Sección de servicios externos (Google, GitHub) === */
@@ -55,6 +419,13 @@
   border-top: 1px solid #ccc;
 }
 
+.drawer-divider {
+  height: 1px;
+  background-color: #444;
+  margin: 10px 0;
+  opacity: 0.5;
+}
+
 /* === Mensaje vacío + botón para conectar MCP === */
 .mcp-empty {
   text-align: center;
@@ -80,58 +451,14 @@
   background-color: #3367d6;
 }
 
-/* === Panel unificado MCP (Tools, Prompts, Resources) === */
-.mcp-panel {
-  background: #1e1e1e; /* fondo oscuro */
-  padding: 16px;
-  border-radius: 12px;
-  border: 1px solid #444;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
-  margin-top: 16px;
-}
-
-/* === Tabs dentro del panel === */
-.tabs {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.tab {
-  padding: 8px 14px;
-  background: #2c2c2c;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  color: #eaeaea;
-  transition: background 0.2s ease;
-}
-
-.tab:hover {
-  background: #3a3a3a;
-}
-
-.tab.active {
-  background: #444;
-  font-weight: bold;
-}
-
-/* === Contenido de cada pestaña === */
-.panel-content {
-  background: #2a2a2a;
-  border-radius: 8px;
-  padding: 12px;
-  color: #ddd;
-}
-
-/* === Lista de servicios MCP (solo visible si no se usa el panel unificado) === */
+/* === Lista de servicios MCP === */
 .mcp-service-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-/* === Tarjeta de servicio (no activa si se usa panel unificado) === */
+/* === Tarjeta de servicio === */
 .mcp-service-card {
   border: 1px solid #ccc;
   border-radius: 12px;
@@ -141,7 +468,7 @@
 }
 
 .mcp-service-card:hover {
-    background: #2c2c2c;
+  background: #2c2c2c;
   border-color: #bbb;
 }
 
@@ -154,53 +481,4 @@
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-/* === Otros estilos de división === */
-.drawer-divider {
-  height: 1px;
-  background-color: #444;
-  margin: 10px 0;
-  opacity: 0.5;
-}
-
-/* === Estado de conexión MCP === */
-.mcp-status {
-  background-color: #2a2a2a;
-  border: 1px solid #555;
-  border-radius: 8px;
-  padding: 12px 16px;
-  margin-top: 16px;
-  color: #f5f5f5;
-  font-size: 0.95rem;
-}
-
-.mcp-status strong {
-  color: #fca311;
-}
-
-.mcp-status span {
-  color: #ff6b6b;
-}
-
-/* === Botones de acción MCP === */
-.mcp-actions {
-  margin-top: 12px;
-  display: flex;
-  gap: 10px;
-}
-
-.mcp-actions button {
-  background-color: #444;
-  color: #f5f5f5;
-  padding: 8px 14px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  font-weight: 500;
-}
-
-.mcp-actions button:hover {
-  background-color: #555;
 }
