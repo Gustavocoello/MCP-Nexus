@@ -1,7 +1,7 @@
 {
   "functions": {
-    "api/ping-backend.js": {
-      "schedule": "every 5 minutes"
+    "api/*.js": {
+      "runtime": "nodejs22.x"
     }
   },
   "rewrites": [
