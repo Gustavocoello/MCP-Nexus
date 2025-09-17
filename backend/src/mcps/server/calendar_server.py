@@ -21,6 +21,7 @@ sys.path.insert(0, str(backend_dir))
 from src.mcps.sources.calendar.google_calendar import GoogleCalendarConnector
 from src.mcps.sources.calendar.natural_parser import parse_natural_language_to_event
 #from src.mcps.server.fastmcp import FastMCP as CustomFastMCP
+from src.services.auth.keep_alive import keep_alive
 from src.mcps.core.models import Event
 
 flask_app = None  
@@ -35,7 +36,7 @@ mcp = FastMCP(name="Google Calendar MCP", stateless_http=True)
 mcp_app = mcp.http_app(path="/mcp")
 
 mcp_app_cors = CORSMiddleware(mcp_app,
-    allow_origins=["http://localhost:3000", "https://inspector.use-mcp.dev", "http://localhost:5173"] ,
+    allow_origins=["http://localhost:3000", "https://inspector.use-mcp.dev", "http://localhost:5173", "https://mcp-nexus.vercel.app", "https://mcp-nexus-gustavo-coellos-projects.vercel.app" ] ,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -227,6 +228,9 @@ debug_list_tools()
 if __name__ == "__main__":
         import uvicorn
         from app import app as flask_app
+        # Iniciar el keep_alive 
+        #keep_alive()
+        # Configurar la aplicación Flask
         set_flask_app(flask_app)
         with flask_app.app_context():
             uvicorn.run(
