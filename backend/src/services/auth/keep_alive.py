@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-RENDER_SERVER = os.getenv("RENDER_SERVER", "FALSE").upper() == "TRUE"
-LOCAL_SERVER = os.getenv("LOCAL_SERVER", "FALSE").upper() == "TRUE"
+RENDER_SERVER = os.getenv("RENDER_SERVER").upper() == "TRUE"
+LOCAL_SERVER = os.getenv("LOCAL_SERVER").upper() == "TRUE"
 
 LOCAL_PING_URL = os.getenv("LOCAL_PING_URL")
 RENDER_PING_URL = os.getenv("TARGET_PING_URL")

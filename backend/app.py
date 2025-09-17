@@ -49,6 +49,7 @@ login_manager.user_loader(load_user)
 CORS(app, supports_credentials=True, origins=[
     "https://mcp-nexus-h6y32pgox-gustavo-coellos-projects.vercel.app",
     "https://mcp-nexus.vercel.app",
+    "https://mcp-nexus-7u379ha92-gustavo-coellos-projects.vercel.app/",
     "https://mcp-nexus.onrender.com",
     "http://localhost:3000/",
     "http://localhost:3000",
