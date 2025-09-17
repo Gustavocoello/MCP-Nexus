@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/ping-backend.js": {
+      "schedule": "every 5 minutes"
+    }
+  },
   "rewrites": [
     { "source": "/(.*)", "destination": "/" }
   ]

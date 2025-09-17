@@ -229,7 +229,7 @@ if __name__ == "__main__":
         import uvicorn
         from app import app as flask_app
         # Iniciar el keep_alive 
-        keep_alive()
+        #keep_alive()
         # Configurar la aplicación Flask
         set_flask_app(flask_app)
         with flask_app.app_context():
