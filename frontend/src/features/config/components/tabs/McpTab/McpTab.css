@@ -482,3 +482,31 @@
   align-items: center;
   gap: 8px;
 }
+.mcp-footer {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.mcp-back-button.red {
+  background-color: red;
+  color: white;
+  border: none;
+  border-radius: 8px;       /* esquinas redondeadas */
+  padding: 0.6rem 1.2rem;   /* más área clickeable */
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out; /* animación suave */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); /* sombra ligera */
+}
+
+.mcp-back-button.red:hover {
+  background-color: darkred;
+  transform: translateY(-2px);  /* efecto de levantar al hover */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+.mcp-back-button.red:active {
+  transform: translateY(0); /* al hacer click baja de nuevo */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}

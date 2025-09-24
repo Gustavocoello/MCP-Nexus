@@ -1,11 +1,11 @@
 import os
 import sys
-from dotenv import load_dotenv
 import pytz
 from pathlib import Path
-from typing import Optional, Union, List, Tuple
+from dotenv import load_dotenv
 from dateutil.parser import parse as parse_dt
 from datetime import datetime, timezone, timedelta
+from typing import Optional, Union, List, Tuple, Dict
 
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
@@ -32,14 +32,15 @@ load_dotenv()
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
-# Ruta al archivo de credenciales y token
-CREDENTIALS_PATH = Path("D:/Personal/Documentos/Work/Python/AI agent/AI/mcp-nexus/mcp-scratch/backend/src/config/credentials/credentials_google_calendar.json")
 # Scopes necesarios para acceder al calendario
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
 SCOPES_READONLY = ["https://www.googleapis.com/auth/calendar.readonly"]
 SCOPES_WRITE = ["https://www.googleapis.com/auth/calendar.events"]
 
 load_dotenv()
+
+# Zona horaria Ecuador (GMT-5)
+EC_TZ = pytz.timezone("America/Guayaquil")
 
 # Seguridad para evitar que el LLM selecione fechas muy futuras o pasadas
 def validate_range(start: datetime, end: datetime):
@@ -284,7 +285,7 @@ class GoogleCalendarConnector:
             return self._to_event_object(updated)
 
         except Exception as e:
-            print(f"❌ Error al actualizar el evento: {e}")
+            print(f"Error al actualizar el evento: {e}")
             return {"error": str(e)}
 
 
@@ -302,10 +303,10 @@ class GoogleCalendarConnector:
         """
         try:
             self.service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
-            print(f"🗑️ Evento eliminado: {event_id}")
+            print(f"Evento eliminado: {event_id}")
             return True
         except Exception as e:
-            print(f"❌ Error al eliminar el evento: {e}")
+            print(f"Error al eliminar el evento: {e}")
             return False
 
 
@@ -352,7 +353,7 @@ class GoogleCalendarConnector:
             ]
             return filtered
         except Exception as e:
-            print(f"❌ Error al filtrar eventos: {e}")
+            print(f"Error al filtrar eventos: {e}")
             return []
         
     # ============= RESUMEN DE EVENTOS =============
@@ -368,15 +369,26 @@ class GoogleCalendarConnector:
         except Exception as e:
             print(f"Error al listar calendarios: {e}")
             return []
+        
+    def get_calendar_name(self, calendar_id: str) -> str:
+        """Obtiene el nombre del calendario basado en su ID."""
+        try:
+            calendars = self.list_calendars()
+            for cal in calendars:
+                if cal["id"] == calendar_id:
+                    return cal["name"]  # Usar "name" en lugar de "summary"
+            return calendar_id  # Si no encuentra el nombre, devuelve el ID
+        except:
+            return calendar_id
 
-    def get_summary(self, calendar_id=None, range_type: str = "daily", timezone: str = "UTC") -> str:
+
+    def get_summary(self, calendar_id=None, range_type: str = "daily") -> str:
         """
-        Genera un resumen de eventos para hoy o la semana.
+        Genera un resumen de eventos para hoy o la semana en hora de Ecuador (GMT-5).
 
         Args:
             calendar_id (str): ID del calendario.
             range_type (str): 'daily' o 'weekly'.
-            timezone (str): Zona horaria (ej. 'America/Lima').
 
         Returns:
             str: Resumen textual de los eventos.
@@ -384,17 +396,18 @@ class GoogleCalendarConnector:
         if not hasattr(self, "service"):
             self.authenticate()
         try:
-            tz = pytz.timezone(timezone)
-            now = datetime.now(tz)
+            # Usar directamente la zona horaria de Ecuador
+            tz_ecu = pytz.timezone("America/Guayaquil")
+            now = datetime.now(tz_ecu)
             
             if range_type == "daily":
-                start = tz.localize(datetime(now.year, now.month, now.day))
+                start = tz_ecu.localize(datetime(now.year, now.month, now.day))
                 end = start + timedelta(days=1)
-                title = f"🗓️ Resumen de eventos para hoy ({start.strftime('%d/%m/%Y')}):"
+                title = f"🗓️ Resumen de eventos para hoy ({start.strftime('%d/%m/%Y')}) - Hora Ecuador (GMT-5):"
             elif range_type == "weekly":
-                start = tz.localize(datetime(now.year, now.month, now.day)) - timedelta(days=now.weekday())
+                start = tz_ecu.localize(datetime(now.year, now.month, now.day)) - timedelta(days=now.weekday())
                 end = start + timedelta(days=7)
-                title = f"📅 Resumen de eventos para la semana ({start.strftime('%d/%m')} - {end.strftime('%d/%m')}):"
+                title = f"📅 Resumen de eventos para la semana ({start.strftime('%d/%m')} - {end.strftime('%d/%m')}) - Hora Ecuador (GMT-5):"
             else:
                 return "⚠️ Tipo de resumen no válido. Usa 'daily' o 'weekly'."
             
@@ -420,13 +433,14 @@ class GoogleCalendarConnector:
                     ).execute().get("items", [])
 
                     if not events:
-                        all_summaries.append(f"📅 [{cid}] Sin eventos.")
+                        calendar_name = self.get_calendar_name(cid)
+                        all_summaries.append(f"📅 [{calendar_name}] Sin eventos.")
                         continue
                     
                     lines = []
                     for ev in events:
                         start_time = ev["start"].get("dateTime", ev["start"].get("date"))
-                        parsed_start = datetime.fromisoformat(start_time).astimezone(tz)
+                        parsed_start = datetime.fromisoformat(start_time).astimezone(tz_ecu)
                         hora = parsed_start.strftime('%H:%M')
                         fecha = parsed_start.strftime('%d/%m/%Y')
                         summary = ev.get("summary", "Sin título")
@@ -434,16 +448,19 @@ class GoogleCalendarConnector:
                         loc_str = f" en {location}" if location else ""
                         lines.append(f"• {fecha} a las {hora}: {summary}{loc_str}")
                         
-                    summary = f"📅 [{cid}] {range_type.capitalize()} Summary:\n" + "\n".join(lines)
+                    calendar_name = self.get_calendar_name(cid)
+                    summary = f"📅 [{calendar_name}]:\n" + "\n".join(lines)
                         
                     all_summaries.append(summary)
                 except Exception as e:
-                    all_summaries.append(f"⚠️ Error al obtener eventos del calendario '{cid}': {e}")
+                    all_summaries.append(f"Error al obtener eventos del calendario '{cid}': {e}")
 
             return title + "\n\n" + "\n".join(all_summaries)
 
         except Exception as e:
             return f"Error al generar el resumen: {e}"
+
+
     
     # ============= DETECCION DE CONFLICTOS =============
     def has_conflict(self, calendar_id: str, start_time: str, end_time: str) -> bool:
@@ -476,46 +493,116 @@ class GoogleCalendarConnector:
             return False
     
     # ============= ESPACIO DISPONIBLE ENTRE EVENTOS =============
-    def get_free_slots(self, date: datetime.date, duration_minutes: int = 60) -> list:
+    def get_free_slots(self, date: datetime.date, duration_minutes: int = 60) -> Dict[str, List]:
         """
-        Devuelve slots libres para un día específico, solo hoy y futuro.
+        Retorna dict con:
+        - 'free_slots': list[ (start_dt_ec, end_dt_ec) ]
+        - 'busy_events': list[ {start, end, summary, calendar_id, description?} ]
+        Todos los datetimes devueltos son aware en zona EC (America/Guayaquil).
         """
         if not hasattr(self, "service") or self.service is None:
             self.authenticate()
-            
-        now_utc       = datetime.now(timezone.utc)
-        today_utc     = now_utc.date()
 
-        # Fechas pasadas => vaciar
-        if date < today_utc:
-            print("⚠️ El día solicitado ya pasó.")
-            return []
+        # Validación
+        if duration_minutes <= 0:
+            return {"free_slots": [], "busy_events": []}
 
-        # Si es hoy, arrancás desde ahora; si es futuro, desde medianoche UTC
-        if date == today_utc:
-            current = now_utc
+        # Fecha y límites en EC
+        tz_ecuador = EC_TZ
+        now_ecuador = datetime.now(tz_ecuador)
+        today_ecuador = now_ecuador.date()
+
+        if date < today_ecuador:
+            return {"free_slots": [], "busy_events": []}
+
+        # Inicio del día: hoy -> ahora; futuro -> 06:00
+        if date == today_ecuador:
+            current_ec = now_ecuador
+            if current_ec.hour >= 22:
+                return {"free_slots": [], "busy_events": []}
         else:
-            current = datetime.combine(date, datetime.min.time()).replace(tzinfo=timezone.utc)
+            current_ec = tz_ecuador.localize(datetime.combine(date, datetime.min.time().replace(hour=6)))
 
-        end_of_day = datetime.combine(date, datetime.max.time()).replace(tzinfo=timezone.utc)
+        end_of_day_ec = tz_ecuador.localize(datetime.combine(date, datetime.min.time().replace(hour=22)))
 
+        # Convertir a UTC para hacer las consultas
+        current_utc = current_ec.astimezone(timezone.utc)
+        end_of_day_utc = end_of_day_ec.astimezone(timezone.utc)
+
+        # Obtener eventos del día (asumo que fetch_events_by_range devuelve objetos con start_time, end_time, summary, calendar_id)
         events = sorted(
-            self.fetch_events_by_range(current, end_of_day),
+            self.fetch_events_by_range(current_utc, end_of_day_utc),
             key=lambda e: e.start_time
         )
 
+        # Construir busy_events con campos útiles y convertidos a EC
+        busy_events = []
+        for e in events:
+            start_ec = ensure_aware(e.start_time).astimezone(tz_ecuador)
+            end_ec = ensure_aware(e.end_time).astimezone(tz_ecuador)
+            busy_events.append({
+                "start": start_ec,
+                "end": end_ec,
+                "summary": getattr(e, "summary", "") or getattr(e, "title", ""),
+                "calendar_id": getattr(e, "calendar_id", None),
+                "all_day": getattr(e, "all_day", False)
+            })
+
+        # Construir free slots
         free_slots = []
+        cursor = current_ec
+        for be in busy_events:
+            event_start = be["start"]
+            event_end = be["end"]
+            # Ignorar eventos que terminan antes del cursor o eventos all-day
+            if event_end <= cursor:
+                cursor = max(cursor, event_end)
+                continue
 
-        for event in events:
-            event_start = ensure_aware(event.start_time)
-            # Si cabe un slot antes del inicio del evento
-            if current + timedelta(minutes=duration_minutes) <= event_start:
-                free_slots.append((current, event_start))
-            # Avanzamos al final del evento para seguir buscando
-            current = max(current, ensure_aware(event.end_time))
+            # Si hay suficiente espacio antes del inicio del evento -> añadir
+            if cursor + timedelta(minutes=duration_minutes) <= event_start:
+                free_slots.append((cursor, event_start))
 
-        # Slot entre el último evento y el fin del día
-        if current + timedelta(minutes=duration_minutes) <= end_of_day:
-            free_slots.append((current, end_of_day))
+            # Avanzar cursor
+            cursor = max(cursor, event_end)
 
-        return free_slots
+        # Último slot hasta fin del día
+        if cursor + timedelta(minutes=duration_minutes) <= end_of_day_ec:
+            free_slots.append((cursor, end_of_day_ec))
+
+        return {"free_slots": free_slots, "busy_events": busy_events}
+
+    def get_weekly_free_slots(self, start_date: datetime.date = None, duration_minutes: int = 60) -> List[Dict]:
+        """
+        Retorna lista de dict por día con 'date', 'free_slots' y 'busy_events'
+        """
+        tz_ecu = EC_TZ
+        if start_date:
+            start = start_date
+        else:
+            start = datetime.now(tz_ecu).date()
+
+        week = []
+        for d_offset in range(7):
+            day = start + timedelta(days=d_offset)
+            res = self.get_free_slots(day, duration_minutes)  # returns dict with datetimes
+            # serializamos a iso para transporte/structured content
+            free_serial = [
+                {"start": s.isoformat(), "end": e.isoformat()} for (s, e) in res["free_slots"]
+            ]
+            busy_serial = [
+                {
+                    "start": be["start"].isoformat(),
+                    "end": be["end"].isoformat(),
+                    "summary": be.get("summary"),
+                    "calendar_id": be.get("calendar_id"),
+                    "all_day": be.get("all_day", False)
+                }
+                for be in res["busy_events"]
+            ]
+            week.append({
+                "date": day.isoformat(),
+                "free_slots": free_serial,
+                "busy_events": busy_serial
+            })
+        return week

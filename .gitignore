@@ -7,6 +7,9 @@ node_modules/
 .pnp.js
 /venv
 venv/
+tars_venv/
+/tars_venv
+data/
 
 # testing
 /coverage
@@ -57,6 +60,9 @@ dist-ssr
 /__pycache__
 __pycache__/
 /.node_version
+/Extras
+Extras/
+%USERPROFILE%/
 
 # Eliminamos los archivos de logs
 logs/

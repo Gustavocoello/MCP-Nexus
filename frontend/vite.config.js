@@ -8,6 +8,13 @@ export default defineConfig({
   },
   server: {
     open: true
+  },
+  // Para resolver las importaciones del SDK
+  optimizeDeps: {
+    include: [
+      "@modelcontextprotocol/sdk/client",
+      "@modelcontextprotocol/sdk/client/streamableHttp"
+    ]
   }
 })
 

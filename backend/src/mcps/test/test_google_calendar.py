@@ -33,8 +33,44 @@ def connector():
 def test_calendar_connection(connector):
     """Verifica que se pueda autenticar y construir el servicio."""
     assert connector.service is not None, "Falló la autenticación o construcción del servicio"
-    print("✅ Servicio de Google Calendar autenticado correctamente.")
+    print("Servicio de Google Calendar autenticado correctamente.")
 
+
+def test_get_free_slots():
+    """Test para la funcion get_free_slots sin parametros (usa valores por defecto)"""
+    conn = connector()
+    today = datetime.now().date()
+    
+    result = conn.get_free_slots(today)
+    
+    print(f"Resultado para {today}:")
+    print(f"Free slots: {len(result['free_slots'])}")
+    print(f"Busy events: {len(result['busy_events'])}")
+    
+    for slot in result['free_slots']:
+        print(f"Slot libre: {slot[0]} - {slot[1]}")
+    
+    for event in result['busy_events']:
+        print(f"Evento ocupado: {event['summary']} ({event['start']} - {event['end']})")
+
+
+def test_get_weekly_free_slots():
+    """Test para la funcion get_weekly_free_slots sin parametros (usa valores por defecto)"""
+    conn = connector()
+    
+    result = conn.get_weekly_free_slots()
+    
+    print(f"Resultado semanal:")
+    for day in result:
+        print(f"Dia {day['date']}:")
+        print(f"- Free slots: {len(day['free_slots'])}")
+        print(f"- Busy events: {len(day['busy_events'])}")
+        
+        for slot in day['free_slots']:
+            print(f"  Slot libre: {slot['start']} - {slot['end']}")
+        
+        for event in day['busy_events']:
+            print(f"  Evento ocupado: {event['summary']} ({event['start']} - {event['end']})")
 
 def test_fetch_events_basic(connector):
     """Busca eventos en los últimos 15 días."""
@@ -47,59 +83,10 @@ def test_fetch_events_basic(connector):
     if not events:
         print("⚠️ No se encontraron eventos.")
     else:
-        print(f"✅ {len(events)} eventos encontrados:")
+        print(f" - {len(events)} eventos encontrados:")
         for e in events:
             print(f"📅 {e.title} | {e.start_time} -> {e.end_time}")
 
-""""
-#def test_create_event(connector):
-    #Crea un evento en un slot libre sin conflictos.
-    date = datetime.now(timezone.utc).date()
-    free_slots = connector.get_free_slots("primary", date)
-
-    assert free_slots, "❌ No hay espacios libres para testear creación de evento."
-
-    slot = free_slots[0]
-    start_time = slot.start_time
-    end_time = start_time + timedelta(minutes=30)  # usamos menos del slot
-
-    event = Event(
-        title="🧪 Test de evento libre",
-        description="Evento creado automáticamente en un slot libre.",
-        start_time=start_time,
-        end_time=end_time
-    )
-
-    response = connector.create_event("primary", event)
-
-    assert not isinstance(response, dict), f"❌ Falló la creación del evento: {response.get('error')}"
-    print("✅ Evento de prueba creado correctamente.")
-
-
-#def test_actualizar_evento(connector):
-    #Actualiza un evento específico por ID.
-    calendar_id = "primary"
-    event_id = "b628ii8c265anhc3jgqa5cj8cc"  # ⚠️ Asegúrate que este ID sea válido
-
-    cambios = {
-        "summary": "🛠️ Evento actualizado por MCP-prueba",
-        "description": "Esto es un test de actualización",
-    }
-
-    result = connector.update_event(calendar_id, event_id, cambios)
-    assert not isinstance(result, dict), f"Error al actualizar: {result.get('error')}"
-    print(f"✅ Evento actualizado: {result.title} - {result.description}")
-
-
-#def test_eliminar_evento(connector):
-    #Elimina un evento por ID.
-    calendar_id = "primary"
-    event_id = "b628ii8c265anhc3jgqa5cj8cc"  # ⚠️ Reemplaza por un ID válido
-
-    success = connector.delete_event(calendar_id, event_id)
-    assert success, "❌ No se pudo eliminar el evento"
-    print("✅ Evento eliminado correctamente.")
-"""
 
 def test_filtrar_eventos_por_titulo(connector):
     """Filtra eventos por una palabra clave en el título."""
@@ -108,7 +95,7 @@ def test_filtrar_eventos_por_titulo(connector):
     time_min = datetime.now(timezone.utc).isoformat()
 
     eventos = connector.filter_events_by_title(calendar_id, keyword, time_min=time_min)
-    assert isinstance(eventos, list), "❌ La función no devolvió una lista"
+    assert isinstance(eventos, list), "La función no devolvió una lista"
 
     for ev in eventos:
         print(f"🔎 {ev['summary']} – {ev['start'].get('dateTime', ev['start'].get('date'))}")
@@ -142,20 +129,6 @@ def test_conflicto_evento(connector):
     print("¿Conflicto?", tiene_conflicto)
 
 
-def test_suggest_free_slots(connector):
-    """Sugiere espacios disponibles en el día actual para un bloque de 30 min."""
-    calendar_id = "primary"
-    test_date = datetime.now(timezone.utc).date()
-
-    print(f"\n📅 Buscando espacios libres para: {test_date.strftime('%Y-%m-%d')}\n")
-    slots = connector.get_free_slots(calendar_id, test_date, duration_minutes=30)
-
-    if not slots:
-        print("⚠️ No hay espacios disponibles.")
-    else:
-        print("✅ Espacios disponibles:")
-        for i, (start, end) in enumerate(slots, 1):
-            print(f"{i}. {start.strftime('%H:%M')} - {end.strftime('%H:%M')}")
 
 
 def test_parse_natural_event():
@@ -169,7 +142,80 @@ def test_parse_natural_event():
         print(f"🕒 Inicio: {event.start_time}")
         print(f"🕓 Fin: {event.end_time}")
     else:
-        print("❌ No se pudo generar el evento.")
+        print("No se pudo generar el evento.")
+
+def test_list_calendars(connector):
+    """Prueba la función list_calendars() del connector."""
+    print("\n🔍 Probando list_calendars()...")
+    print("=" * 40)
+    
+    try:
+        # Llamar a la función
+        calendars = connector.list_calendars()
+        
+        # Verificar que devuelve una lista
+        assert isinstance(calendars, list), "list_calendars() debe devolver una lista"
+        print(f"Devuelve una lista: {type(calendars)}")
+
+        # Verificar contenido
+        if not calendars:
+            print("La lista está vacía - puede ser normal si no hay calendarios")
+            print("Verificando llamada directa a API...")
+            
+            # Test directo de la API para comparar
+            raw_result = connector.service.calendarList().list().execute()
+            raw_items = raw_result.get('items', [])
+            print(f"📡 API directa devuelve: {len(raw_items)} calendarios")
+            
+            if raw_items:
+                print("PROBLEMA: La API tiene datos pero nuestro método no los procesa")
+                print("📋 Datos raw del primer calendario:")
+                first = raw_items[0]
+                for key in ['id', 'summary', 'description']:
+                    print(f"   {key}: {first.get(key, 'N/A')}")
+            else:
+                print("ℹ️ La cuenta realmente no tiene calendarios visibles")
+                
+        else:
+            print(f"Se encontraron {len(calendars)} calendarios:")
+            
+            # Verificar estructura de cada calendario
+            for i, cal in enumerate(calendars):
+                print(f"\n📅 Calendario {i+1}:")
+                
+                # Verificar que es un dict
+                assert isinstance(cal, dict), f"El calendario {i+1} debe ser un dict, es: {type(cal)}"
+
+                # Verificar campos requeridos
+                assert 'id' in cal, f"El calendario {i+1} debe tener campo 'id'"
+                assert 'name' in cal, f"El calendario {i+1} debe tener campo 'name'"
+                
+                # Mostrar información
+                calendar_id = cal.get('id')
+                calendar_name = cal.get('name')
+                
+                print(f"   ID: {calendar_id}")
+                print(f"   Nombre: {calendar_name}")
+                
+                # Verificar que los valores no estén vacíos
+                assert calendar_id, f"El ID del calendario {i+1} no puede estar vacío"
+                assert calendar_name, f"El nombre del calendario {i+1} no puede estar vacío"
+                
+                # Verificar si es el calendario primario
+                if calendar_id == 'primary':
+                    print("   🌟 Este es el calendario primario")
+                    
+        print("\n test_list_calendars() completado exitosamente")
+        return True
+        
+    except AssertionError as ae:
+        print(f"Assertion Error: {ae}")
+        return False
+        
+    except Exception as e:
+        print(f"Error durante el test: {str(e)}")
+        print(f"Tipo de error: {type(e).__name__}")
+        return False
         
 
 
@@ -179,14 +225,6 @@ if __name__ == "__main__":
     with flask_app.app_context():
         connector_inst = connector()
         test_calendar_connection(connector_inst)
-        #test_fetch_events_basic(connector_inst)
-        # test_create_event(connector_inst)
-        # test_actualizar_evento(connector_inst)
-        # test_eliminar_evento(connector_inst)
-        test_filtrar_eventos_por_titulo(connector_inst)
-        test_resumen_diario(connector_inst)
-        test_resumen_semanal(connector_inst)
-        test_conflicto_evento(connector_inst)
-        test_suggest_free_slots(connector_inst)
-        test_parse_natural_event()
-
+        test_list_calendars(connector_inst)
+        test_get_free_slots()
+        test_get_weekly_free_slots()

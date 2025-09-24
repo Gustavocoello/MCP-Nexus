@@ -31,7 +31,7 @@ const Navbar = () => {
               className="logo-img"
             />
           </div>
-          <span className="logo-text">AI Asistent</span>
+          <span className="logo-text">AI Assistant</span>
         </div>
 
         {/* Centro/Derecha: Links */}
