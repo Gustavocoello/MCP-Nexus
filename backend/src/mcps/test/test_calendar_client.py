@@ -7,10 +7,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+MCP_URL = os.getenv("MCP")
 USUARIO_TEST = os.getenv("USUARIO_TEST")
 
 async def main():
-    transport = StreamableHttpTransport("http://localhost:8000/mcp-server/mcp/") 
+    transport = StreamableHttpTransport(MCP_URL)
     async with Client(transport=transport) as client:
         await client.ping()
         print("Conexión exitosa al MCP")

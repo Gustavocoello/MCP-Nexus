@@ -60,7 +60,7 @@ const ConfigDrawer = ({ onClose }) => {
         <div className="drawer-divider" />
 
         <div className="drawer-content">
-          <div className={`content-wrapper ${isTransitioning ? 'transitioning' : ''}`}>
+          <div className={`content-wrapper-config ${isTransitioning ? 'transitioning' : ''}`}>
             {displayTab === 'general' && <GeneralTab />}
             {displayTab === 'tema' && <ThemeTab />}
             {displayTab === 'memoria' && <MemoryTab />}

@@ -16,7 +16,7 @@ from src.services.memory.utils import build_memory_context, extract_memory_from_
 from flask_login import login_required, current_user
 from flask import Blueprint, jsonify, Response, request, stream_with_context, session, copy_current_request_context
 from src.mcps.client.calendar.client_google_calendar import MCPToolsClient
-from src.mcps.client.utils.utils import serialize_call_result
+from src.mcps.client.utils.utils import safe_serialize_call_result
 
 logger = get_logger('routes')
 
@@ -283,14 +283,21 @@ def send_message(chat_id):
         mcp_context = None
         if tool_name:
             try:
-                result = asyncio.run(mcp_client._call_tool(tool_name, **params))
+                #Creamos un nuevo loop
+                loop = asyncio.new_event_loop() # Creamos un nuevo event loop
+                try:
+                    result = loop.run_until_complete(mcp_client._call_tool(tool_name, **params))
+                finally:
+                    loop.close()  # Cerramos el event loop
+                    print(f"MCP Results: ({tool_name}):", result)
+                
                 # Convertir a JSON serializable manualmente
-                result_dict = serialize_call_result(result)
+                result_dict = safe_serialize_call_result(result)
                 # construir mcp_context como JSON plano
                 mcp_context = json.dumps({
                     "response": result_dict,
                     "tool_used": tool_name
-                }, ensure_ascii=False)
+                })
 
                 # guardar en DB como oculto (no se renderiza en frontend)
                 mcp_msg = Message(

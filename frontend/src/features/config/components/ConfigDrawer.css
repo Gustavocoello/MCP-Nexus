@@ -111,14 +111,14 @@
 }
 
 /* ANIMACIONES DE CONTENIDO */
-.content-wrapper {
+.content-wrapper-config {
   transition: opacity 0.3s ease, transform 0.3s ease;
   transform: translateX(0) scale(1);
   opacity: 1;
   min-height: 200px;
 }
 
-.content-wrapper.transitioning {
+.content-wrapper-config.transitioning {
   opacity: 0;
   transform: translateX(16px) scale(0.95);
 }
