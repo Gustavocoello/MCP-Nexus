@@ -43,19 +43,21 @@ logger = get_logger('app')
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 
+app.config.update(
+    SESSION_COOKIE_SAMESITE='None',
+    SESSION_COOKIE_SECURE=True,
+    REMEMBER_COOKIE_SAMESITE='None',
+    REMEMBER_COOKIE_SECURE=True
+)
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.user_loader(load_user)
 CORS(app, supports_credentials=True, origins=[
     "https://mcp-nexus-h6y32pgox-gustavo-coellos-projects.vercel.app",
     "https://mcp-nexus.vercel.app",
-    "https://mcp-nexus-7u379ha92-gustavo-coellos-projects.vercel.app/",
     "https://mcp-nexus.onrender.com",
-    "http://localhost:3000/",
-    "http://localhost:3000",
     "http://localhost:8000/mcp/",
-    "https://inspector.use-mcp.dev",
-    "https://inspector.use-mcp.dev/",
     "http://localhost:5173"
 ])
 
@@ -65,7 +67,6 @@ app.config.from_object(Config)
 
 # Configuración de la base de datos MYSQL o AZURE SQL
 app.config["SQLALCHEMY_DATABASE_URI"] = get_database_url()
-# Configuración Redis para sesiones
 app.config['SESSION_TYPE'] = 'redis' # redis para prod y filesystem para local
 app.config['SESSION_REDIS'] = Redis.from_url(app.config["REDIS_URL"])
 Session(app)
