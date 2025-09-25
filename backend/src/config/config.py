@@ -12,8 +12,8 @@ class Config:
     SESSION_TYPE = "redis"
     SESSION_COOKIE_NAME = "session"
     SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SECURE = True  # ✅ debe estar en True para cross-origin HTTPS
-    SESSION_COOKIE_SAMESITE = "None"  # ✅ permite enviar cookies desde otro dominio
+    SESSION_COOKIE_SECURE = True  # Debe estar en True para cross-origin HTTPS
+    SESSION_COOKIE_SAMESITE = "None"  # Permite enviar cookies desde otro dominio
 
     # También para recordar sesiones con LoginManager (opcional pero recomendado)
     REMEMBER_COOKIE_SECURE = True
