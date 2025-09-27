@@ -8,10 +8,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 RENDER_SERVER = os.getenv("RENDER_SERVER").upper() == "TRUE"
-LOCAL_SERVER = os.getenv("LOCAL_SERVER").upper() == "TRUE"
 
-LOCAL_PING_URL = os.getenv("LOCAL_PING_URL")
 RENDER_PING_URL = os.getenv("TARGET_PING_URL")
+RENDER_PING_URL2 = os.getenv("TARGET_PING_URL2")
+
 
 def ping_url(url: str) -> bool:
     """Intenta hacer ping y devuelve True si funciona."""
@@ -27,8 +27,10 @@ def ping_url(url: str) -> bool:
         print(f"[KeepAlive] Error al hacer ping a {url}: {e}")
         return False
 
+
 def keep_alive():
     def ping_loop():
+        toggle = True  # alternador entre URL1 y URL2
         while True:
             now = datetime.datetime.now(pytz.timezone("America/Guayaquil"))
             hour = now.hour
@@ -36,18 +38,16 @@ def keep_alive():
             if 6 <= hour < 24:
                 print(f"[KeepAlive] Ejecutando ping loop - {now}")
 
-                success = False
+                if RENDER_SERVER:
+                    if toggle:
+                        if RENDER_PING_URL:
+                            ping_url(RENDER_PING_URL)
+                    else:
+                        if RENDER_PING_URL2:
+                            ping_url(RENDER_PING_URL2)
 
-                # Primero intenta local
-                if LOCAL_SERVER:
-                    success = ping_url(LOCAL_PING_URL)
-
-                # Si local falla, intenta render
-                if not success and RENDER_SERVER:
-                    success = ping_url(RENDER_PING_URL)
-
-                if not success:
-                    print("[KeepAlive] Ningún servidor respondió al ping.")
+                # alternar entre primer y segundo render
+                toggle = not toggle
 
             else:
                 print(f"[KeepAlive] En modo sleep (00h-06h GMT-5) - {now}")

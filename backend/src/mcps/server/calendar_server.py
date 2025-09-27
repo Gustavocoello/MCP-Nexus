@@ -8,11 +8,11 @@ from typing import Optional, List, Tuple, Dict
 from fastmcp import FastMCP, Context
 from fastmcp.tools.tool import ToolResult
 from starlette.applications import Starlette
-from starlette.routing import Mount
+from starlette.routing import Mount, Route
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.middleware.wsgi import WSGIMiddleware
-
+from starlette.responses import JSONResponse
 from datetime import datetime, timezone, time, timedelta
 
 # --- Fix Paths ---
@@ -25,12 +25,10 @@ from src.mcps.sources.calendar.natural_parser import parse_natural_language_to_e
 #from src.mcps.server.fastmcp import FastMCP as CustomFastMCP
 from src.services.auth.keep_alive import keep_alive
 from src.mcps.core.models import Event
+from app import app as flask_app
 
-flask_app = None  
-
-def set_flask_app(app):
-    global flask_app
-    flask_app = app
+async def ping(request):
+    return JSONResponse({"status": "ok", "service": "mcp-render"})
 
 #mcp = CustomFastMCP(name="Google Calendar MCP", stateless_http=True)
 mcp = FastMCP(name="Google Calendar MCP")  # Antes esta esto stateless_http=True
@@ -53,8 +51,10 @@ mcp_app_cors = CORSMiddleware(mcp_app,
 # Envolviendo con CORS globalmente
 app = Starlette(
     routes=[
-        Mount("/mcp-server", app=mcp_app_cors)
-    ], lifespan=mcp_app.lifespan)
+        Mount("/mcp-server", app=mcp_app_cors),
+        Route("/ping", ping)
+    ], 
+    lifespan=mcp_app.lifespan)
 
 app.mount("/", WSGIMiddleware(flask_app))
 # Configuración del servidor MCP
@@ -299,10 +299,6 @@ debug_list_tools()
 if __name__ == "__main__":
         import uvicorn
         from app import app as flask_app
-        # Iniciar el keep_alive 
-        #keep_alive()
-        # Configurar la aplicación Flask
-        set_flask_app(flask_app)
         with flask_app.app_context():
             uvicorn.run(
                 app,
