@@ -22,10 +22,10 @@ sys.path.insert(0, str(backend_dir))
 
 from src.mcps.sources.calendar.google_calendar import GoogleCalendarConnector
 from src.mcps.sources.calendar.natural_parser import parse_natural_language_to_event
-#from src.mcps.server.fastmcp import FastMCP as CustomFastMCP
 from src.services.auth.keep_alive import keep_alive
 from src.mcps.core.models import Event
 from app import app as flask_app
+from extensions import db
 
 async def ping(request):
     return JSONResponse({"status": "ok", "service": "mcp-render"})
@@ -72,6 +72,7 @@ def get_connector(context):
         return connector
     except Exception as e:
         print(f"Error al obtener el conector de Google Calendar: {e}")
+        db.session.rollback()
         raise
     
     
