@@ -12,6 +12,8 @@ from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import all_
 
 try: # Para el app.py
@@ -68,39 +70,47 @@ class GoogleCalendarConnector:
         Guarda/recupera token para evitar autenticación repetida.
         Elimnar el tokens si se quiere forzar una nueva autenticación.
         """
-        token_entry = UserToken.query.filter_by(user_id=self.user_id, provider="google_calendar").first()
-        if not token_entry:
-            raise Exception("🔐 No se encontró token para este usuario. ¿Autenticó con Google?")
+        try:
+            token_entry = UserToken.query.filter_by(user_id=self.user_id, provider="google_calendar").first()
+            if not token_entry:
+                raise Exception("🔐 No se encontró token para este usuario. ¿Autenticó con Google?")
 
-        access_token = decrypt_token(token_entry.access_token)
-        refresh_token = decrypt_token(token_entry.refresh_token) if token_entry.refresh_token else None
+            access_token = decrypt_token(token_entry.access_token)
+            refresh_token = decrypt_token(token_entry.refresh_token) if token_entry.refresh_token else None
 
-        # Construye el objeto de credenciales
-        creds = Credentials(
-            token=access_token,
-            refresh_token=refresh_token,
-            token_uri="https://oauth2.googleapis.com/token",
-            client_id=os.getenv("GOOGLE_CLIENT_ID"),
-            client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
-            scopes=[
-                "https://www.googleapis.com/auth/calendar",
-                "https://www.googleapis.com/auth/calendar.readonly",
-                "openid", "email", "profile"
-            ]
-        )
+            # Construye el objeto de credenciales
+            creds = Credentials(
+                token=access_token,
+                refresh_token=refresh_token,
+                token_uri="https://oauth2.googleapis.com/token",
+                client_id=os.getenv("GOOGLE_CLIENT_ID"),
+                client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+                scopes=[
+                    "https://www.googleapis.com/auth/calendar",
+                    "https://www.googleapis.com/auth/calendar.readonly",
+                    "openid", "email", "profile"
+                ]
+            )
 
-        # Si está expirado pero tiene refresh_token, refresca
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+            # Si está expirado pero tiene refresh_token, refresca
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
 
-            # 🛡️ Opcional: actualiza el nuevo access_token en base de datos
-            token_entry.access_token = encrypt_token(creds.token)
-            token_entry.expires_at = datetime.utcnow() + creds.expiry if creds.expiry else None
-            db.session.commit()
+                # 🛡️ Opcional: actualiza el nuevo access_token en base de datos
+                token_entry.access_token = encrypt_token(creds.token)
+                token_entry.expires_at = datetime.utcnow() + creds.expiry if creds.expiry else None
+                db.session.commit()
 
-        self.creds = creds
-        self.service = build("calendar", "v3", credentials=self.creds)
-        return self.service
+            self.creds = creds
+            self.service = build("calendar", "v3", credentials=self.creds)
+            return self.service
+        except SQLAlchemyError as e:
+            db.session.rollback()
+            print(f"Error de la base de datos: {e}")
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error inesperado: {e}")
+            raise
     # ============= OBTENCIÓN DE EVENTOS POR RANGO FECHAS ===============
     def get_events_by_range(self, calendar_id: str, start: Union[str, datetime], end: Union[str, datetime]):
         if isinstance(start, str):
