@@ -1,21 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import Sidebar from './components/layout/Sidebar/Sidebar';
-import ChatPage from './features/chat/ChatPage';
-import DashboardPage from './pages/DashboardPage';
-import ConfigPage from './features/config/ConfigPage';
-import BackgroundTechPattern from './features/config/components/tabs/Theme/BackgroundTechPattern';
-import LoginPage from './features/auth/components/LoginPage/LoginPage'; 
-import RegisterPage from './features/auth/components/RegisterPage/RegisterPage'; 
-import OAuthCallback from './features/auth/utils/McpOauthCallback';
-import SpherePage from './pages/SpherePage';
-import LandingPage from './pages/Landing/LandingPage';
-import useCurrentUser from './features/auth/components/context/useCurrentUser';
-import './styles/App.css';
+import Sidebar from '@/components/layout/Sidebar/Sidebar';
+import ChatPage from '@/features/chat/ChatPage';
+import DashboardPage from '@/pages/DashboardPage';
+import ConfigPage from '@/features/config/ConfigPage';
+import BackgroundTechPattern from '@/features/config/components/tabs/Theme/BackgroundTechPattern';
+import LoginPage from '@/features/auth/components/LoginPage/LoginPage'; 
+import RegisterPage from '@/features/auth/components/RegisterPage/RegisterPage'; 
+import OAuthCallback from '@/features/auth/utils/McpOauthCallback';
+import SpherePage from '@/pages/SpherePage';
+import LandingPage from '@/pages/Landing/LandingPage';
+import useCurrentUser from '@/features/auth/components/context/useCurrentUser';
+import {inject} from '@vercel/analytics';
+import '@/styles/App.css';
+
+// Inicializar Vercel Analytics 
+inject({ mode: import.meta.env.DEV ? 'development' : 'production' })
 
 function App() {
   const [theme, setTheme] = useState(document.documentElement.getAttribute('data-theme'));
-  const { user } = useCurrentUser();
   const location = useLocation();
 
   useEffect(() => {
@@ -30,6 +33,10 @@ function App() {
   // Ocultar sidebar en estas rutas
   const hideSidebarRoutes = ['/', '/jarvis', '/login', '/register', '/oauth-callback'];
   const hideSidebar = hideSidebarRoutes.includes(location.pathname);
+  const shouldLoadUser = !hideSidebar;
+  const { user: currentUser } = useCurrentUser();
+  const user = hideSidebar ? null : currentUser;
+
 
   return (
     <div className="app-container">

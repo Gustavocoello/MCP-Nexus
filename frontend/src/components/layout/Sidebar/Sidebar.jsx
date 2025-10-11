@@ -4,13 +4,13 @@ import { FaChartBar, FaCog, FaBars } from 'react-icons/fa';
 import dayjs from 'dayjs';
 import MarkdownIt from 'markdown-it';
 import { CgMoreAlt } from "react-icons/cg";
-import AnimatedJarvis from '../../ui/Animated/AnimatedJarvis';
-import ChatMenu from '../../../features/chat/components/ChatMenu/ChatMenu';
-import useCurrentUser from '../../../features/auth/components/context/useCurrentUser';
+import AnimatedJarvis from '@/components/ui/Animated/AnimatedJarvis';
+import ChatMenu from '@/features/chat/components/ChatMenu/ChatMenu';
+import useCurrentUser from '@/features/auth/components/context/useCurrentUser';
 import '../Sidebar/Sidebar.css';
 
 // Servicios
-import { getAllChats, getChatMessages, deleteChat } from '../../../service/chatService';
+import { getAllChats, getChatMessages, deleteChat } from '@/service/chatService';
 
 const md = new MarkdownIt();
 

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { MCPSearchPanel } from './utils/MCPSearchPanel';
-import { extractFileContent } from '../../../service/api_service';
+import { extractFileContent } from '@/service/api_service';
 import { IoIosClose } from "react-icons/io";
 import { FaArrowUp, FaStop } from 'react-icons/fa';
 import { MdOutlineAttachFile } from "react-icons/md";
@@ -9,7 +9,7 @@ import { GrLink, GrResources } from "react-icons/gr";
 import { VscSettings, VscTools } from "react-icons/vsc";
 import { IoCloseOutline, IoDocumentTextOutline } from "react-icons/io5";
 import './SearchBar.css';
-import '../../../styles/App.css';
+import '@/styles/App.css';
 
 const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, onContextExtracted, pendingContext, onRemoveContext,}) => {
   const [query, setQuery] = useState('');

@@ -1,7 +1,7 @@
 import { GiAstronautHelmet } from "react-icons/gi";
 import { useNavigate } from "react-router-dom";
 //import useCurrentUser from "../../../features/auth/components/context/useCurrentUser";
-import useAuthStatus from '../../../service/useAuthStatus';
+import useAuthStatus from '@/service/useAuthStatus';
 import "./Navbar.css";
 
 const Navbar = () => {

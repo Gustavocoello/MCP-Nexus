@@ -1,5 +1,5 @@
 import React from "react";
-import ReactiveSphere from "../components/ui/Animated/ReactiveSphere";
+import ReactiveSphere from "@/components/ui/Animated/ReactiveSphere";
 
 export default function SpherePage() {
   return (

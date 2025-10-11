@@ -1,6 +1,6 @@
 // components/MCPSearchPanel.jsx
 import React, { useState } from 'react';
-import { useMCPClient } from '../../../controller/hooks/useMCPClient';
+import { useMCPClient } from '@/components/controller/hooks/useMCPClient';
 import { FaGithub, FaDatabase } from 'react-icons/fa';
 import { SiNotion, SiMysql } from 'react-icons/si';
 import { FcGoogle } from 'react-icons/fc';
@@ -10,7 +10,7 @@ import { VscTools } from 'react-icons/vsc';
 import { GrResources } from 'react-icons/gr';
 import { TfiReload } from "react-icons/tfi";
 import { GiArmoredBoomerang } from "react-icons/gi";
-import '../../../../features/config/components/tabs/McpTab/McpTab.css';
+import '@/features/config/components/tabs/McpTab/McpTab.css';
 
 const MCPSearchPanel = ({ onClose, onSelectTool }) => {
   const [activeTab, setActiveTab] = useState('tools');
