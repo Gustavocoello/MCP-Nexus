@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { logoutUser } from '../authService';
-import useCurrentUser from '../context/useCurrentUser';
+import useCurrentUser from '@/features/auth/components/context/useCurrentUser';
 import './LogoutButton.css';
 
 const LogoutButton = () => {

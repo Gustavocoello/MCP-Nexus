@@ -1,4 +1,4 @@
-import { pingBackend } from '../service/ping_backend';
+import { pingBackend } from '@/service/ping_backend';
 
 const VITE_APP = import.meta.env.VITE_CRON_SECRET;
 

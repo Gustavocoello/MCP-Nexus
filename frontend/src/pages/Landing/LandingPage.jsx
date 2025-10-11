@@ -1,9 +1,8 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import useCurrentUser from "../../features/auth/components/context/useCurrentUser";
-import Navbar from "../../components/layout/Navbar/Navbar";
-import AudioWaves from "../../components/ui/Animated/AudioWaves";
-import JarvisCard from "../../components/ui/Animated/JarvisCard";
+import useCurrentUser from "@/features/auth/components/context/useCurrentUser";
+import Navbar from "@/components/layout/Navbar/Navbar";
+import AudioWaves from "@/components/ui/Animated/AudioWaves";
 import { FaReact, FaPython, FaNodeJs, FaDatabase, FaDocker, FaGitAlt, FaCodepen, FaUserShield, FaLinkedin, FaGithub } from "react-icons/fa";
 import { SiMongodb, SiOpenai, SiJavascript, SiGnubash} from "react-icons/si";
 import { BsFillMenuButtonWideFill } from "react-icons/bs";

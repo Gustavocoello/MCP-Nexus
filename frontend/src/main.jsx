@@ -1,11 +1,10 @@
 import App from './App';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import AuthGate from './features/auth/components/context/AuthGate';
-import { AuthProvider } from './features/auth/components/context/AuthContext';
-import './styles/index.css';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider } from '@/features/auth/components/context/AuthContext';
+import './styles/index.css';
 
 // Aplica el tema antes de renderizar
 const preferredTheme = localStorage.getItem('preferred-theme') || 'system';
@@ -21,13 +20,11 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <AuthGate>
-        <BrowserRouter future={{ v7_relativeSplatPath: true }}>
+      <AuthProvider>
+        <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
           <App />
         </BrowserRouter>
-      </AuthGate>
-    </AuthProvider>
+      </AuthProvider>
   </QueryClientProvider>
   </React.StrictMode>
 );

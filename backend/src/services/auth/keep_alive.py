@@ -1,8 +1,6 @@
 import threading
 import requests
 import os
-import datetime
-import pytz
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -31,29 +29,22 @@ def ping_url(url: str) -> bool:
 def keep_alive():
     def ping_loop():
         toggle = True  # alternador entre URL1 y URL2
-        while True:
-            now = datetime.datetime.now(pytz.timezone("America/Guayaquil"))
-            hour = now.hour
-
-            if 6 <= hour < 24:
-                print(f"[KeepAlive] Ejecutando ping loop - {now}")
-
-                if RENDER_SERVER:
-                    if toggle:
-                        if RENDER_PING_URL:
-                            ping_url(RENDER_PING_URL)
-                    else:
-                        if RENDER_PING_URL2:
-                            ping_url(RENDER_PING_URL2)
-
-                # alternar entre primer y segundo render
-                toggle = not toggle
-
+        if RENDER_SERVER:
+            if toggle:
+                    if RENDER_PING_URL:
+                        ping_url(RENDER_PING_URL)
             else:
+                    if RENDER_PING_URL2:
+                        ping_url(RENDER_PING_URL2)
+
+            # alternar entre primer y segundo render
+            toggle = not toggle
+
+        else:
                 print(f"[KeepAlive] En modo sleep (00h-06h GMT-5) - {now}")
 
-            # cada 5 min
-            threading.Event().wait(300)
+        # cada 5 min
+        threading.Event().wait(300)
 
     t = threading.Thread(target=ping_loop, daemon=True)
     t.start()

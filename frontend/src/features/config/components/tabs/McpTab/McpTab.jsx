@@ -1,31 +1,20 @@
 import React, { useState } from 'react';
-import { useMCPClient } from '../../../../../components/controller/hooks/useMCPClient';
+import { useMCPClient } from '@/components/controller/hooks/useMCPClient';
+import { MCPSearchPanel } from '@/components/ui/SearchBar/utils/MCPSearchPanel';
+import { FcGoogle } from 'react-icons/fc';
+import { VscTools } from 'react-icons/vsc';
+import { TfiReload } from "react-icons/tfi";
+import { GrResources } from 'react-icons/gr';
+import { AiOutlineCloudServer } from 'react-icons/ai';
 import { FaGithub, FaDatabase } from 'react-icons/fa';
 import { SiNotion, SiMysql, SiRed } from 'react-icons/si';
-import { FcGoogle } from 'react-icons/fc';
-import { AiOutlineCloudServer } from 'react-icons/ai';
 import { IoPrismOutline, IoDocumentTextOutline } from 'react-icons/io5';
-import { VscTools } from 'react-icons/vsc';
-import { GrResources } from 'react-icons/gr';
-import { TfiReload } from "react-icons/tfi";
 import './McpTab.css';
 
 const McpTab = () => {
   const [mainView, setMainView] = useState(''); // '', 'server', 'prueba'
   const [activeTab, setActiveTab] = useState('tools');
   const { isConnected, isLoading, error, tools: serverTools, prompts: serverPrompts, resources: serverResources, reconnect } = useMCPClient();
-
-  // Server Real
-  const groupedServerTools = (serverTools || []).reduce((acc, tool) => {
-    const service = tool.name.startsWith('google_calendar_') ? 'google_calendar' : 'default';
-    if (!acc[service]) acc[service] = [];
-    acc[service].push(tool);
-    return acc;
-  }, {});
-  // Función para refrescar datos MCP
-  const handleRefresh = () => {
-    reconnect();
-  };
 
   
   // Simulando datos de ejemplo - Prueba
@@ -138,123 +127,9 @@ const McpTab = () => {
   if (mainView === 'server') {
     return (
       <div className="mcp-tab-container">
-        <h3 className="mcp-section-header">
-          <AiOutlineCloudServer size={24} />
-          Servidores MCP
-        </h3>
-        {/* Tabs */}
-        <div className="tabs">
-          {[
-            { id: 'tools', label: 'Tools', icon: <VscTools size={18} /> },
-            { id: 'prompts', label: 'Prompts', icon: <IoDocumentTextOutline size={18} /> },
-            { id: 'resources', label: 'Resources', icon: <GrResources size={18} /> }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`tab ${activeTab === tab.id ? 'active' : ''}`}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
-        </div>
-        {/* Content */}
-        <div className="panel-content">
-          {activeTab === 'tools' && (
-            <div>
-              <h4 className="panel-content-header">
-                Herramientas disponibles ({serverTools.length})
-              </h4>
-              
-              {Object.entries(groupedServerTools).map(([service, tools]) => (
-                <div key={service} className="service-group">
-                  <div className="service-group-header">
-                    <span className="service-group-icon">
-                      {serviceIcons[service]}
-                    </span>
-                    <span className="service-group-name">
-                      {getServiceDisplayName(service)}
-                    </span>
-                    <span className="service-group-count">
-                      {tools.length} herramienta{tools.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  
-                  <div className="service-tools-grid">
-                    {tools.map((tool) => (
-                      <div key={tool.name} className="tool-card">
-                        <div className="tool-card-name">
-                          {cleanToolName(tool.name)}
-                        </div>
-                        <div className="tool-card-description">
-                          {tool.description}
-                        </div>
-                        <div className="tool-card-id">
-                          {tool.name}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+        {/* Renderizamos directamente MCPSearchPanel */}
+        <MCPSearchPanel />
 
-          {activeTab === 'prompts' && (
-            <div>
-              <h4 className="panel-content-header">
-                Prompts disponibles ({serverPrompts.length})
-              </h4>
-              {serverPrompts.length === 0 ? (
-                <p className="empty-message">No hay prompts disponibles.</p>
-              ) : (
-                <div className="items-grid">
-                  {serverPrompts.map((prompt, idx) => (
-                    <div key={idx} className="prompt-card">
-                      <strong className="prompt-card-name">{prompt.name}</strong>
-                      <p className="prompt-card-description">
-                        {prompt.description}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'resources' && (
-            <div>
-              <h4 className="panel-content-header">
-                Recursos disponibles ({serverResources.length})
-              </h4>
-              {serverResources.length === 0 ? (
-                <p className="empty-message">No hay recursos disponibles.</p>
-              ) : (
-                <div className="items-grid">
-                  {serverResources.map((resource, idx) => (
-                    <div key={idx} className="resource-card">
-                      <strong className="resource-card-name">{resource.name}</strong>
-                      <p className="resource-card-type">
-                        Tipo: {resource.type}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>        
-        {/* Botones de acción MCP */}
-        <div className="mcp-actions">
-          <button className="mcp-action-button" onClick={handleRefresh} disabled={isLoading}>
-            <TfiReload /> Actualizar
-          </button>
-          
-          <button className="mcp-action-button primary prueba">
-            <SiRed /> Simular Conexión
-          </button>
-        </div>
         {/* Botón de volver abajo */}
         <div className="mcp-footer">
           <button

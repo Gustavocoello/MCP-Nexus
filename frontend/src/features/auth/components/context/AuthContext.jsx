@@ -10,7 +10,8 @@ export const AuthProvider = ({ children }) => {
     const storedUser = localStorage.getItem('auth_user');
     return storedUser ? JSON.parse(storedUser) : null;
   });
-  const [loading, setLoading] = useState(true);
+  
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {

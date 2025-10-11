@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import useAuthStatus from '../../../service/useAuthStatus';
+import useAuthStatus from '@/service/useAuthStatus';
 import './LoginButton.css';
 
 const LoginButton = () => {

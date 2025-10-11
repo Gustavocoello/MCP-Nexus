@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import InputField from '../../../../components/ui/Form/InputField/InputField';
-import PasswordField from '../../../../components/ui/Form/PasswordField/PasswordField';
+import InputField from '@/components/ui/Form/InputField/InputField';
+import PasswordField from '@/components/ui/Form/PasswordField/PasswordField';
 import { loginUser, getCurrentUser, loginWithGoogle, loginWithGitHub } from '../authService';
 import { BiLogoGithub } from 'react-icons/bi';
-import useCurrentUser from '../context/useCurrentUser';
+import useCurrentUser from '@/features/auth/components/context/useCurrentUser';
 import { FaGoogle } from 'react-icons/fa';
 import './LoginPage.css';
 
