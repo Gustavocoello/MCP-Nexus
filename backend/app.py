@@ -1,8 +1,5 @@
-import faulthandler
-
-from sqlalchemy import false
-faulthandler.enable()
 import os
+import faulthandler
 from pickle import FALSE
 from flask import Flask
 from flask_cors import CORS
@@ -24,9 +21,10 @@ from src.api.v1.auth.routes import auth_bp
 from src.api.v2.security.routes import ping_bp
 from src.services.integrations.extensions.onedrive import onedrive_bp
 from src.database.config.connection import get_database_url
-from src.services.auth.keep_alive import keep_alive
+from src.services.auth.keep_alive_jarvis import keep_alive
 from dotenv import load_dotenv
 
+faulthandler.enable()
 
 # Cargar las variables de entorno desde el archivo .env
 load_dotenv()
@@ -58,7 +56,10 @@ CORS(app, supports_credentials=True, origins=[
     "https://mcp-nexus.vercel.app",
     "https://mcp-nexus.onrender.com",
     "http://localhost:8000/mcp/",
-    "http://localhost:5173"
+    "https://localhost:8001",
+    "http://localhost:5173",
+    "https://gustavocoello.space",
+    "http://localhost:8001",
 ])
 
 
@@ -98,12 +99,14 @@ app.register_blueprint(ping_bp, url_prefix="/v2")
 # Limitar - login -
 limiter.init_app(app)
 
-# Iniciamos la función keep_alive para mantener el servidor activo
-keep_alive()
-
 # Inicia el servidor Flask
 if __name__ == "__main__":
+    
     is_prod = os.getenv("RENDER", False)
+    # Iniciamos la función keep_alive para mantener el servidor activo
+    # Solo inicia keep_alive en el proceso principal (no en el reloader)
+    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or not os.getenv("FLASK_DEBUG"):
+        keep_alive()
     
     if not is_prod:
         app.run(debug=True, host=HOST, port=PORT) # Poner debug=False en producción

@@ -14,7 +14,7 @@ def ping():
     logging.info(f"[PONG] Backend recibió solicitud /v2/ping a las {now}")
     return jsonify({
         "status": "pong",
-        "message": "Render server is alive! - Backend odoo",
+        "message": "Render server is alive! - Backend ",
         "client_ip": client_ip,
         "user_agent": user_agent,
         "timestamp": now
