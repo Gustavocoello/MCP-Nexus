@@ -59,7 +59,7 @@ CORS(app, supports_credentials=True, origins=[
     "https://localhost:8001",
     "http://localhost:5173",
     "https://gustavocoello.space",
-    "http://localhost:8001",
+    "https://coello-system-1.onrender.com"
 ])
 
 
