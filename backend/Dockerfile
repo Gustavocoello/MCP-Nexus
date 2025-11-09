@@ -27,8 +27,11 @@ COPY . .
 # Instala paquetes de Python
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# Puerto (Render lo ignora y pone el suyo vía $PORT)
-EXPOSE 10000
+# Render define automáticamente la variable $PORT
+ENV PORT=10000
 
-# Comando que corre el servidor
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000"]
+# Expone el puerto (Render lo detecta con $PORT)
+EXPOSE $PORT
+
+# Usa gunicorn escuchando en el puerto dinámico
+CMD ["bash", "-c", "gunicorn app:app --bind 0.0.0.0:$PORT --timeout 120"]
