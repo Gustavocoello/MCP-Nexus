@@ -22,7 +22,7 @@ sys.path.insert(0, str(backend_dir))
 
 from src.mcps.sources.calendar.google_calendar import GoogleCalendarConnector
 from src.mcps.sources.calendar.natural_parser import parse_natural_language_to_event
-from src.services.auth.keep_alive import keep_alive
+from src.services.auth.Keep_alive_mcp import keep_alive
 from src.mcps.core.models import Event
 from app import app as flask_app
 from extensions import db
@@ -37,12 +37,14 @@ mcp_app = mcp.http_app(path="/mcp")
 
 mcp_app_cors = CORSMiddleware(mcp_app,
     allow_origins=[
-        "http://localhost:3000", 
-        "https://inspector.use-mcp.dev", 
-        "http://localhost:5173", 
+        "https://mcp-nexus-gustavo-coellos-projects.vercel.app",
         "https://mcp-nexus.vercel.app", 
-        "https://mcp-nexus-gustavo-coellos-projects.vercel.app" 
-        ] ,
+        "https://inspector.use-mcp.dev", 
+        "http://localhost:5173",
+        "http://localhost:5000",
+        "https://mcp-nexus.onrender.com",
+        "https://gustavocoello.space",
+        ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -301,6 +303,7 @@ if __name__ == "__main__":
         import uvicorn
         from app import app as flask_app
         with flask_app.app_context():
+            keep_alive()
             uvicorn.run(
                 app,
                 host="0.0.0.0",
