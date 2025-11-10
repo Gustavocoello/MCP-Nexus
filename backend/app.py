@@ -99,15 +99,16 @@ app.register_blueprint(ping_bp, url_prefix="/v2")
 # Limitar - login -
 limiter.init_app(app)
 
+# Iniciar el keep-alive solo una vez
+if not getattr(app, "keep_alive_started", False):
+    keep_alive()
+    app.keep_alive_started = True
+
+
 # Inicia el servidor Flask
 if __name__ == "__main__":
     
-    is_prod = os.getenv("RENDER", False)
-    # Iniciamos la función keep_alive para mantener el servidor activo
-    # Solo inicia keep_alive en el proceso principal (no en el reloader)
-    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true' or not os.getenv("FLASK_DEBUG"):
-        keep_alive()
-    
+    is_prod = os.getenv("RENDER", False)    
     if not is_prod:
         app.run(debug=True, host=HOST, port=PORT) # Poner debug=False en producción
 

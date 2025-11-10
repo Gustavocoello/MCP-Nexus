@@ -13,16 +13,16 @@ load_dotenv()
 TIMEZONE = "America/Guayaquil"
 RENDER_SERVER = os.getenv("RENDER_SERVER").lower() == "true"
 
-LOCAL_URL = os.getenv("LOCAL_TARGET3")
-DEPLOY_URL = os.getenv("TARGET_PING_URL3")
+LOCAL_URL = os.getenv("LOCAL_TARGET3") # Backend de jarvis local
+DEPLOY_URL = os.getenv("TARGET_DEPLOYED3") # Backend de jarvis deployado
 
 if RENDER_SERVER:
     TARGET_URL = DEPLOY_URL
 else:
     TARGET_URL = LOCAL_URL
     
-LOCAL_PING_LOG_URL = os.getenv("LOCAL_PING_LOG_URL")
-DEPLOY_PING_LOG_URL = os.getenv("DEPLOY_PING_LOG_URL")
+LOCAL_PING_LOG_URL = os.getenv("LOCAL_PING_LOG_URL") # backend de vite local
+DEPLOY_PING_LOG_URL = os.getenv("DEPLOY_PING_LOG_URL") # backend de vite deployado
 
 PING_LOG_URL = DEPLOY_PING_LOG_URL if RENDER_SERVER else LOCAL_PING_LOG_URL
 
