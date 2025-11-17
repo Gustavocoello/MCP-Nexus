@@ -1,7 +1,12 @@
+"""
+Archivo - keep_alive_jarvis.py
+"""
+
 import asyncio
 import aiohttp
 import random
 import datetime
+from pandas import Timestamp
 import pytz
 import os
 import threading
@@ -26,7 +31,8 @@ async def ping_target():
 
     while True:
         now = datetime.datetime.now(pytz.timezone(TIMEZONE))
-        delay = random.randint(240, 360)  # Próximo ping (4–6 minutos)
+        delay = random.randint(420, 600)  # Próximo ping (7–10 minutos)
+        timestamp = now.strftime('%H:%M:%S')
 
         # 🧩 Mensaje unificado
         log_message = (
@@ -40,13 +46,19 @@ async def ping_target():
                 async with session.post(
                     TARGET_URL,
                     json={"log": log_message},
-                    timeout=5
+                    timeout=10,
+                    headers={
+                        "Content-Type": "application/json; charset=utf-8"  # Encoding explícito
+                    }
                 ) as resp:
                     if resp.status == 200:
-                        print(f" Ping enviado con exito {resp.status}")
+                        print(f" Ping enviado con exito {resp.status}/ {timestamp} - [Jarvis -> Vite]")
+                    elif resp.status == 429:
+                        extra_delay = random.randint(300, 600)
+                        print(f"[Jarvis → Vite] 429 Rate limited ({timestamp}) | esperando {extra_delay}s extra")
+                        await asyncio.sleep(extra_delay)
                     else:
-                        print(f" Error al enviar el ping {resp.status}")
-
+                        print(f"[Jarvis → Vite] Error {resp.status} ({timestamp}) | next_ping={delay}s")
         except Exception as e:
             print(f"[Jarvis → Vite] Error: {e} ({now.strftime('%H:%M:%S')}) | next_ping={delay}s")
 

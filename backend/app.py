@@ -99,16 +99,27 @@ app.register_blueprint(ping_bp, url_prefix="/v2")
 # Limitar - login -
 limiter.init_app(app)
 
-# Iniciar el keep-alive solo una vez
-if not getattr(app, "keep_alive_started", False):
+# Limitar - login -
+limiter.init_app(app)
+
+# Iniciar keep-alive SOLO si se especifica la variable de entorno
+# (necesario para Render donde gunicorn no ejecuta if __name__)
+INIT_KEEP_ALIVE = os.getenv("INIT_KEEP_ALIVE", "false").lower() == "true"
+
+if INIT_KEEP_ALIVE and not getattr(app, "keep_alive_started", False):
     keep_alive()
     app.keep_alive_started = True
+    print("🚀 Keep-alive Jarvis iniciado (vía INIT_KEEP_ALIVE)")
 
-
-# Inicia el servidor Flask
+# Inicia el servidor Flask (solo desarrollo local)
 if __name__ == "__main__":
+    is_prod = os.getenv("RENDER", False)
     
-    is_prod = os.getenv("RENDER", False)    
+    # Iniciar keep-alive si NO se inició arriba
+    if not getattr(app, "keep_alive_started", False):
+        keep_alive()
+        app.keep_alive_started = True
+        print("🚀 Keep-alive Jarvis iniciado (vía if __name__)")
+    
     if not is_prod:
-        app.run(debug=True, host=HOST, port=PORT) # Poner debug=False en producción
-
+        app.run(debug=True, host=HOST, port=PORT, use_reloader=False)

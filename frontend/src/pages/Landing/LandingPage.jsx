@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import useCurrentUser from "@/features/auth/components/context/useCurrentUser";
 import Navbar from "@/components/layout/Navbar/Navbar";
 import AudioWaves from "@/components/ui/Animated/AudioWaves";
+import Footer from "@/components/layout/Footer/Footer.jsx";
 import { FaReact, FaPython, FaNodeJs, FaDatabase, FaDocker, FaGitAlt, FaCodepen, FaUserShield, FaLinkedin, FaGithub } from "react-icons/fa";
 import { SiMongodb, SiOpenai, SiJavascript, SiGnubash} from "react-icons/si";
 import { BsFillMenuButtonWideFill } from "react-icons/bs";
@@ -16,6 +17,36 @@ const LandingPage = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [starsVisible, setStarsVisible] = useState(false);
   const [activeTab, setActiveTab] = useState("about");
+  const [isWhiteTheme, setIsWhiteTheme] = useState(false);
+
+  useEffect(() => {
+    const container = document.querySelector('.landing-container');
+    const techSection = document.querySelector('.tech-section');
+    
+    const handleScroll = () => {
+      if (techSection && container) {
+        const containerRect = container.getBoundingClientRect();
+        const techRect = techSection.getBoundingClientRect();
+        
+        // Calcular la posición relativa de tech respecto al contenedor
+        const techTop = techRect.top - containerRect.top;
+        
+        // Activar cuando tech esté a 300px o menos del top del contenedor
+        if (techTop <= 300) {
+          setIsWhiteTheme(true);
+        } else {
+          setIsWhiteTheme(false);
+        }
+      }
+    };
+
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+      handleScroll(); // Ejecutar al cargar
+      
+      return () => container.removeEventListener('scroll', handleScroll);
+    }
+  }, []);
 
 
   const { user } = useCurrentUser();
@@ -1843,13 +1874,14 @@ const LandingPage = () => {
   );
 
   return (
-    <div className="landing-container">
-      <Navbar />
+    <div className={`landing-container ${isWhiteTheme ? 'white-theme' : ''}`}>      
+      <Navbar isWhiteTheme={isWhiteTheme} />
 
       {/* Fondo estrellado */}
       <div className="stars-background">{stars}</div>
 
       {/* Hero principal */}
+      <section id="home" className="section section-home"></section>
       <div className="content-wrapper">
         <div className={`left-column ${isLoaded ? "loaded" : ""}`}>
           <div className="svg-container">
@@ -1869,8 +1901,8 @@ const LandingPage = () => {
 
       {/* Sección Servicios (ahora botones) */}
       {/* Sección Servicios */}
-      <section id="servicios" className="section section-services">
-        <h2 className="services-title">Servicios</h2>
+      <section id="services" className="section section-services">
+        <h2 className="services-title">Services</h2>
 
         {/* Cards de selección */}
         <div className="services-grid">
@@ -1905,15 +1937,15 @@ const LandingPage = () => {
                 It also enables anyone to access a ChatGPT-like generative AI for free and unlimited, running entirely locally.
               </p>
             </div>
-            {/* 👇 Funcionalidades solo de Jarvis */}
+            {/* Funcionalidades solo de Jarvis */}
             <section className="features-section">
               <h3 className="features-title">Funcionalidades</h3>
               <ul className="features-list">
-                <li><IoMdChatbubbles /> Chat estilo ChatGPT en tu PC</li>
-                <li><BsFillMenuButtonWideFill /> Integración con Google Calendar vía MCP</li>
-                <li><FaCodepen /> Herramientas de productividad para desarrolladores</li>
-                <li> <GiBreakingChain /> Integración con LangChain para flujos de trabajo avanzados</li>
-                <li><FaUserShield /> Multiusuario con autenticación segura</li>
+                <li><IoMdChatbubbles /> ChatGPT-style chat on your PC</li>
+                <li><BsFillMenuButtonWideFill /> Google Calendar integration via MCP</li>
+                <li><FaCodepen /> Productivity tools for developers</li>
+                <li> <GiBreakingChain /> LangChain integration for advanced workflows</li>
+                <li><FaUserShield /> Multi-user with secure authentication</li>
               </ul>
             </section>
           </div>
@@ -1923,7 +1955,7 @@ const LandingPage = () => {
             <div className="text-content loaded">
               <h1 className="main-title"> Talk to TARS like in Interstellar </h1>
               <p className="subtitle">
-                Developing a voice-interactive AI assistant using OpenAI's
+                Developing a voice-interactive AI assistant using OpenAI's technology
               </p>
               {/* Nuevo párrafo */}
               <p className="subtitle-under-development">
@@ -1936,7 +1968,7 @@ const LandingPage = () => {
 
         {/* Cinta de Tecnologías Infinita */}
         <section className="tech-section">
-          <h3 className="tech-title">Tecnologías Utilizadas</h3>
+          <h3 className="tech-title">Technologies Used</h3>
           <div className="tech-scroll-container">
             <div className="tech-scroll">
               {technologies.map((tech, index) => (
@@ -1955,7 +1987,7 @@ const LandingPage = () => {
       </section>
     
       {/* Sección Desarrollador */}
-      <section id="Desarrollador" className="section developer-section">
+      <section id="developer" className="section developer-section">
         <div className="stars-background developer-stars">{stars}</div>
         {/* Cabecera Developer */}
         <div className="developer-header">
@@ -1988,7 +2020,7 @@ const LandingPage = () => {
                 className={`tab ${activeTab === "contact" ? "active" : ""}`} 
                 onClick={() => setActiveTab("contact")}
               >
-                Contacto
+                Contact
               </button>
             </div>
 
@@ -1997,14 +2029,14 @@ const LandingPage = () => {
               {activeTab === "about" && (
                 <div className="about-tab">
                   <p>
-                    Este proyecto nació de la motivación de crear un asistente de IA 
-                    accesible, local y seguro, inspirado en Jarvis y TARS, para ayudar 
-                    a desarrolladores y usuarios a ser más productivos.
+                    This project was born from the motivation to create an accessible, 
+                    local, and secure AI assistant, inspired by Jarvis and TARS, to help 
+                    developers and users be more productive.
                     <br /><br />
                     -
-                    Estos proyectos forman parte de mi portafolio personal y reflejan mis 
-                    habilidades técnicas y experiencia práctica en inteligencia artificial, 
-                    ciencia de datos y desarrollo de software. 
+                    These projects are part of my personal portfolio and reflect my 
+                    technical skills and practical experience in artificial intelligence, 
+                    data science, and software development.
                   </p>
                 </div>
               )}
@@ -2012,7 +2044,7 @@ const LandingPage = () => {
               {activeTab === "contact" && (
                 <form className="contact-form">
                   <label>
-                    Nombre:
+                    Name:
                     <input type="text" name="name" required />
                   </label>
                   <label>
@@ -2020,10 +2052,10 @@ const LandingPage = () => {
                     <input type="email" name="email" required />
                   </label>
                   <label>
-                    Mensaje:
+                    Message:
                     <textarea name="message" rows="4" required></textarea>
                   </label>
-                  <button type="submit">Enviar</button>
+                  <button type="submit">Send</button>
                 </form>
               )}
             </div>
@@ -2048,10 +2080,9 @@ const LandingPage = () => {
           </div>
         </div>
       </section>
-
-      <footer className="landing-footer">
-        <p>© {new Date().getFullYear()} Hecho por <span>Gustavo Coello</span> + <span>Vibe Coding</span></p>
-      </footer>
+      
+      {/* Footer */}
+      <Footer />
     </div>
     
   );
