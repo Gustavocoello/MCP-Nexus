@@ -1,3 +1,7 @@
+"""
+Archivo - keep_alive_jarvis.py
+"""
+
 import asyncio
 import aiohttp
 import random
@@ -35,7 +39,7 @@ async def ping_target():
         try:
             async with aiohttp.ClientSession() as session:
                 # Paso 1: Hacer el GET al TARGET_URL
-                async with session.get(TARGET_URL, timeout=5) as resp:
+                async with session.get(TARGET_URL, timeout=10) as resp:
                     status = resp.status
                     timestamp = now.strftime('%H:%M:%S')
                     
@@ -50,16 +54,25 @@ async def ping_target():
                             async with session.post(
                                 PING_LOG_URL,
                                 json={"log": log_message},
-                                timeout=5
+                                timeout=10,
+                                headers={
+                                    "Content-Type": "application/json; charset=utf-8"  # Encoding explícito
+                                }
                             ) as post_resp:
                                 if post_resp.status == 200:
-                                    print(f"[MCP → Jarvis] {status} Ping OK | Log enviado | next_ping={delay}s")
+                                    print(f"[MCP → Jarvis] {status} Ping OK | Log enviado ({timestamp}) | next_ping={delay}s")
                                 else:
-                                    print(f"[MCP → Jarvis] {status} Ping OK | Error al enviar log ({post_resp.status}) | next_ping={delay}s")
+                                    print(f"[MCP → Jarvis] {status} Ping OK | Error al enviar log ({post_resp.status}) {timestamp} | next_ping={delay}s")
                         except Exception as post_e:
                             print(f"[MCP → Jarvis] {status} Ping OK | Falló POST a log: {post_e} | next_ping={delay}s")
                     else:
-                        # Ping fallido → solo logueamos
+                        # Ping fallido
+                        if status == 429:
+                            # Rate limited → esperar más tiempo
+                            extra_delay = random.randint(300, 600)  # 5-10 min extra
+                            print(f"[MCP → Jarvis] 429 Rate limited ({timestamp}), esperando {extra_delay}s extra")
+                            await asyncio.sleep(extra_delay)
+                        
                         print(f"[MCP → Jarvis] {status} Ping fallido a {TARGET_URL} ({timestamp}) | next_ping={delay}s")
 
         except Exception as e:
@@ -68,7 +81,7 @@ async def ping_target():
         await asyncio.sleep(delay)
 
 
-def keep_alive():
+def keep_alive_mcp():
     """Inicia el loop del keep-alive de MCP en segundo plano."""
     def start_loop():
         asyncio.run(ping_target())

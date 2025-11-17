@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import useAuthStatus from '@/service/useAuthStatus';
 import "./Navbar.css";
 
-const Navbar = () => {
+const Navbar = ({ isWhiteTheme }) => {
   const isAuthenticated = useAuthStatus();
   const navigate = useNavigate();
 
@@ -19,7 +19,7 @@ const Navbar = () => {
 
 
   return (
-    <nav className="navbar">
+    <nav className={`navbar ${isWhiteTheme ? 'white-theme' : ''}`}>
       <div className="nav-inner">
         {/* Izquierda: Logo + nombre */}
         <div className="navbar-left">
@@ -36,9 +36,9 @@ const Navbar = () => {
 
         {/* Centro/Derecha: Links */}
         <ul className="navbar-links">
-          <li><a href="#inicio">Inicio</a></li>
-          <li><a href="#servicios">Servicios</a></li>
-          <li><a href="#desarrollador">Desarrollador</a></li>
+          <li><a href="#home">Home</a></li>
+          <li><a href="#services">Services</a></li>
+          <li><a href="#developer">Developer</a></li>
         </ul>
 
         {/* Derecha: Astronauta */}

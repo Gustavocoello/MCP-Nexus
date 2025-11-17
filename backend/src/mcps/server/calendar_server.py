@@ -3,6 +3,7 @@ import os
 import sys
 import pytz
 import anyio
+import uvicorn
 from pathlib import Path
 from typing import Optional, List, Tuple, Dict
 from fastmcp import FastMCP, Context
@@ -22,7 +23,7 @@ sys.path.insert(0, str(backend_dir))
 
 from src.mcps.sources.calendar.google_calendar import GoogleCalendarConnector
 from src.mcps.sources.calendar.natural_parser import parse_natural_language_to_event
-from src.services.auth.Keep_alive_mcp import keep_alive
+from src.services.auth.Keep_alive_mcp import keep_alive_mcp
 from src.mcps.core.models import Event
 from app import app as flask_app
 from extensions import db
@@ -300,10 +301,9 @@ def debug_list_tools():
 debug_list_tools()
 #""" # Para utilizarlo en local
 if __name__ == "__main__":
-        import uvicorn
         from app import app as flask_app
+        keep_alive_mcp()
         with flask_app.app_context():
-            keep_alive()
             uvicorn.run(
                 app,
                 host="0.0.0.0",

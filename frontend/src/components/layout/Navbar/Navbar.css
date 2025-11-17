@@ -130,3 +130,31 @@ html[data-theme="dark"] .astronaut-btn:hover {
     display: none; /* opcional: esconder nombre en móvil para ahorrar espacio */
   }
 }
+
+/* ========================================
+   🎨 NAVBAR - Tema Blanco
+   ======================================== */
+
+.navbar.white-theme .navbar-links a {
+  color: #000000;
+}
+
+.navbar.white-theme .navbar-links a:hover {
+  color: #333;
+}
+
+.navbar.white-theme .logo-text {
+  color: #000000;
+}
+
+.navbar.white-theme .astronaut-icon {
+  color: #000000;
+}
+
+.navbar.white-theme .astronaut-btn:hover {
+  outline-color: rgba(0, 0, 0, 0.12);
+}
+
+.navbar.white-theme {
+  border-bottom-color: rgba(0, 0, 0, 0.08);
+}
