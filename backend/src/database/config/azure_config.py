@@ -18,24 +18,32 @@ def get_azure_engine():
     # 💾 Primer intento con el que te sirvió para migraciones
     logger.info("🔌 Intentando conexión a Azure SQL con params_migrations...")
 
-    try:
-        params_migrations = (
-            f"DRIVER={{ODBC Driver 18 for SQL Server}};"
-            f"SERVER=tcp:{ROOT_AZURE};"
-            f"DATABASE={BASE_AZURE};"
-            f"UID={USER_AZURE};"
-            f"PWD={USER_PASS};"
-            "Encrypt=yes;"
-            "TrustServerCertificate=no;"
-            "Connection Timeout=30;"
+    params_migrations = (
+        f"DRIVER={{ODBC Driver 18 for SQL Server}};"
+        f"SERVER=tcp:{ROOT_AZURE};"
+        f"DATABASE={BASE_AZURE};"
+        f"UID={USER_AZURE};"
+        f"PWD={USER_PASS};"
+        "Encrypt=yes;"
+        "TrustServerCertificate=yes;"
+        "Connection Timeout=60;"
         )
-        params_migrations = urllib.parse.quote_plus(params_migrations)
-        engine = create_engine(f"mssql+pyodbc:///?odbc_connect={params_migrations}")
+    params_migrations = urllib.parse.quote_plus(params_migrations)
+        
+    engine = create_engine(
+        f"mssql+pyodbc:///?odbc_connect={params_migrations}",
+        pool_pre_ping=True,
+        pool_recycle=900,
+        pool_size=5,
+        max_overflow=10,
+        )
+    
+    try: 
         # test connection
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         logger.info("✅ Conexión a Azure SQL exitosa con params_migrations.")
         return engine
-
     except Exception as e1:
-        logger.debug(f"Error migración Azure: {e1}")
+            logger.debug(f"Error migración Azure: {e1}")
+            raise
