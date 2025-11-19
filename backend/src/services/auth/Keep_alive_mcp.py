@@ -34,7 +34,7 @@ async def ping_target():
     """Envía pings periódicos de MCP → Jarvis y, si es 200, notifica a localhost:8001/ping."""
     while True:
         now = datetime.datetime.now(pytz.timezone(TIMEZONE))
-        delay = random.randint(240, 360)  # 4–6 minutos
+        delay = random.randint(420, 600)  # 7–10 minutos
 
         try:
             async with aiohttp.ClientSession() as session:
