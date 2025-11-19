@@ -13,14 +13,21 @@ load_dotenv()
 
 def get_mysql_engine():
     # Configuración desde .env
-    HOST_DB = os.getenv("ROOT_BD")
+    HOST_DB = os.getenv("ROOT_BD1")
     USER_DB = os.getenv("USER_BD")
     PASS_DB = os.getenv("PASS_BD")
     NAME_DB = os.getenv("NAME_BD")
 
     MYSQL_URL = f"mysql+mysqlconnector://{USER_DB}:{PASS_DB}@{HOST_DB}:3306/{NAME_DB}"
     
-    engine = create_engine(MYSQL_URL)
+    engine = create_engine(
+        MYSQL_URL,
+        pool_pre_ping=True,
+        pool_recycle=1800,
+        pool_size=5,
+        max_overflow=10,
+        )
+                        
     # Forzar conexión inmediata para validar credenciales
     try:
         with engine.connect() as conn:

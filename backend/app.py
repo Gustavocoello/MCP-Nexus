@@ -104,7 +104,7 @@ limiter.init_app(app)
 
 # Iniciar keep-alive SOLO si se especifica la variable de entorno
 # (necesario para Render donde gunicorn no ejecuta if __name__)
-INIT_KEEP_ALIVE = os.getenv("INIT_KEEP_ALIVE", "false").lower() == "true"
+INIT_KEEP_ALIVE = os.getenv("INIT_KEEP_ALIVE").lower() == "true"
 
 if INIT_KEEP_ALIVE and not getattr(app, "keep_alive_started", False):
     keep_alive()
