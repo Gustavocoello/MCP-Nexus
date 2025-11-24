@@ -52,13 +52,12 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.user_loader(load_user)
 CORS(app, supports_credentials=True, origins=[
-    "https://mcp-nexus-h6y32pgox-gustavo-coellos-projects.vercel.app",
+    "https://gustavocoello.space",
     "https://mcp-nexus.vercel.app",
     "https://mcp-nexus.onrender.com",
-    "http://localhost:8000/mcp/",
+    "http://localhost:8000/mcp",
     "https://localhost:8001",
     "http://localhost:5173",
-    "https://gustavocoello.space",
     "https://coello-system-1.onrender.com"
 ])
 

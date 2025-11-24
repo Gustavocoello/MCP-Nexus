@@ -4,7 +4,11 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/features/auth/components/context/AuthContext';
+import { injectSpeedInsights } from '@vercel/speed-insights';
 import './styles/index.css';
+
+// Inicializar Vercel Speed Insights
+injectSpeedInsights();
 
 // Aplica el tema antes de renderizar
 const preferredTheme = localStorage.getItem('preferred-theme') || 'system';
