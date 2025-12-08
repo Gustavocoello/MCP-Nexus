@@ -38,7 +38,7 @@ logger = get_logger('app')
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
 CORS(app, supports_credentials=True, origins=[
-    "https://gustavocoello.space",
+    "https://gustavocoello.space","https://www.gustavocoello.space",
     "https://mcp-nexus.vercel.app",
     "https://mcp-nexus.onrender.com",
     "http://localhost:8000/mcp",
