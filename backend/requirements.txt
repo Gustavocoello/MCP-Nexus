@@ -92,7 +92,6 @@ openapi-pydantic==0.5.1
 openpyxl==3.1.5
 ordered-set==4.1.0
 packaging==25.0
-pandas==2.3.0
 pluggy==1.6.0
 preshed==3.0.10
 propcache==0.4.1
@@ -114,7 +113,7 @@ pyperclip==1.9.0
 pytest==8.4.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.0
-python-magic==0.4.14
+python-magic
 python-multipart==0.0.20
 pytz==2025.2
 PyYAML==6.0.2
