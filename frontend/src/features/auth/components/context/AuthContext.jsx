@@ -1,54 +1,35 @@
-// features/auth/components/context/AuthContext.js
-import React, { createContext, useState, useEffect } from 'react';
-import { getCurrentUser } from '../authService';
+// NUEVO AuthContext.jsx (reemplazo completo)
+import React, { createContext, useContext, useMemo } from "react";
+import { useUser, useAuth } from "@clerk/clerk-react";
 
-export const AuthContext = createContext();
+const AuthContext = createContext({
+  user: null,
+  isAuthenticated: false,
+  getToken: async () => null,
+});
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
-    // Cargar usuario desde localStorage si existe
-    const storedUser = localStorage.getItem('auth_user');
-    return storedUser ? JSON.parse(storedUser) : null;
-  });
-  
-  const [loading, setLoading] = useState(false);
+  const { user } = useUser();
+  const { getToken, isSignedIn } = useAuth();
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      if (user) {
-        // Ya hay un usuario en localStorage, no hagas llamada al backend
-        setLoading(false);
-        return;
-      }
-
-       try {
-        const currentUser = await getCurrentUser();
-        if (currentUser) {
-          setUser(currentUser);
-          localStorage.setItem('auth_user', JSON.stringify(currentUser));
+  const value = useMemo(() => ({
+    user: user
+      ? {
+          id: user.id,
+          email:
+            user.primaryEmailAddress?.emailAddress ||
+            user.emailAddresses?.[0]?.emailAddress,
+          fullName: user.fullName,
+          imageUrl: user.imageUrl,
         }
-      } catch (error) {
-        console.error("Error obteniendo usuario:", error);
-        setUser(null);
-        localStorage.removeItem('auth_user');
-      } finally {
-        setLoading(false);
-      }
-    };
+      : null,
+    isAuthenticated: isSignedIn,
+    getToken: async (opts) => await getToken(opts),
+  }), [user, isSignedIn, getToken]);
 
-    fetchUser();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); 
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('auth_user');
-    // Aquí también podrías llamar a un `logout` en el backend
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, setUser, loading, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+
+export const useAuthContext = () => useContext(AuthContext);
+
+export { AuthContext };

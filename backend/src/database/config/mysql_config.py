@@ -13,7 +13,7 @@ load_dotenv()
 
 def get_mysql_engine():
     # Configuración desde .env
-    HOST_DB = os.getenv("ROOT_BD1") # En local se quita 1 seria ROOT_BD
+    HOST_DB = os.getenv("ROOT_BD") # En local se quita 1 seria ROOT_BD
     USER_DB = os.getenv("USER_BD")
     PASS_DB = os.getenv("PASS_BD")
     NAME_DB = os.getenv("NAME_BD")

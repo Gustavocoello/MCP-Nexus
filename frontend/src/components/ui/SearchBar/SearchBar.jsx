@@ -1,3 +1,4 @@
+// frontend/src/components/ui/SearchBar/SearchBar.jsx
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { MCPSearchPanel } from './utils/MCPSearchPanel';
@@ -8,6 +9,7 @@ import { MdOutlineAttachFile } from "react-icons/md";
 import { GrLink, GrResources } from "react-icons/gr";
 import { VscSettings, VscTools } from "react-icons/vsc";
 import { IoCloseOutline, IoDocumentTextOutline } from "react-icons/io5";
+import { apiLogger } from '@/components/controller/log/logger.jsx';
 import './SearchBar.css';
 import '@/styles/App.css';
 
@@ -47,6 +49,7 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
     const imageToSend = shouldSendImage ? lastUploadedImage : null;
 
     if (query.trim() || imageToSend) {
+      apiLogger.info('TriggerSearch: Iniciando búsqueda', { query: query.length > 0, hasImage: !!imageToSend, tool: selectedTool || 'none' });
       onSearch(query, pendingContext, imageToSend, toolConfirmed && selectedTool ? selectedTool : "");
     }
     //Resetear selección de tool después de enviar
@@ -61,6 +64,7 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
 
   const handleFileSelect = () => {
     fileInputRef.current.click();
+    apiLogger.debug('FileSelect: Abriendo diálogo de archivos');
   };
   // ----------------- FILE UPLOAD LOGIC -----------------
   const handleFileChange = async (e) => {
@@ -116,7 +120,7 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
           )
         );
       } catch (err) {
-        console.error('Error al procesar archivo:', err.message);
+        apiLogger.error(`FileChange: Error al procesar archivo ${file.name}`, err.message);
         alert('Error al procesar archivo: ' + err.message);
 
         setPendingFilePreview(prev =>
@@ -171,7 +175,7 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
             )
           );
         } catch (err) {
-          console.error('Error al subir imagen:', err.message);
+          apiLogger.error(`ImageUpload: Error al subir imagen ${file.name}`, err.message);
           alert('Error al subir imagen: ' + err.message);
         }
       };

@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Outlet, useLocation, useParams, Navigate, Link } from 'react-router-dom';
 import MarkdownIt from 'markdown-it';
-import MessageList from './components/MessageList/MessageList';
 import SearchBar from '@/components/ui/SearchBar/SearchBar';
-import LoginButton from '@/components/layout/LoginButton/LoginButton';
-import useCurrentUser from '@/features/auth/components/context/useCurrentUser';
-import { TbMessagePlus } from "react-icons/tb";
-import { sendMessage, sendAnonymousMessage} from '../../service/api_service';
 import useChatMessages from '../chat/hooks/useChatMessages';
+import MessageList from './components/MessageList/MessageList';
+import LoginButton from '@/components/layout/LoginButton/LoginButton';
+import { useAuth } from '@clerk/clerk-react';
+import { useAuthContext } from '@/features/auth/components/context/AuthContext';
+import { TbMessagePlus } from "react-icons/tb";
 import { getAllChats, createChat} from '../../service/chatService';
+import { sendMessage, sendAnonymousMessage} from '../../service/api_service';
+import { streamLogger } from '@/components/controller/log/logger.jsx';
 
 // Cambiando de Markdown a HTML
 const md = new MarkdownIt({
@@ -25,13 +27,15 @@ const ChatPage = () => {
     const chats = await getAllChats(); // Llama al backend
     return chats;
   } catch (error) {
-    console.error('Error cargando chats:', error);
+    streamLogger.error('Error cargando chats:', error);
     return [];
   } 
 };
 
   // Estados
-  const { user, loading } = useCurrentUser();
+  const { user, isAuthenticated } = useAuthContext();
+  const { isLoaded } = useAuth();
+  const loading = !isLoaded;
   const { userId } = useParams(); // Para futuras mejoras multiusuario
   const location = useLocation();
   const [localMessages, setLocalMessages] = useState([]);
@@ -43,9 +47,13 @@ const ChatPage = () => {
   const chatBottomRef = useRef(null);
   const [notification, setNotification] = useState(null);
   const [pendingContext, setPendingContext] = useState([]);
-  const isAuthenticated = !!user;
   const isChatRoute = location.pathname.startsWith('/c/');
-  const isConfigOpen = location.pathname.endsWith('/config');
+  const isConfigOpen = location.pathname.endsWith('/settings');
+
+// Protección de ruta: si no está autenticado y está en /c/:userId → redirigir a login
+  if (!loading && !isAuthenticated && location.pathname.startsWith('/c/')) {
+   return <Navigate to="/login" replace />;
+ }
 
 
   const {
@@ -130,7 +138,7 @@ const ChatPage = () => {
       }));
 
     } catch (error) {
-      console.error('Error creando chat:', error);
+      streamLogger.error('Error creando chat:', error);
     }
   };
 
@@ -158,7 +166,7 @@ const ChatPage = () => {
   ? contextFromFile.map(c => `🗂️ ${c.name}:\n${c.text}`).join('\n\n')
   : contextFromFile;
 
-  console.log("🔧 Tool seleccionada:", tool); // hay que eliminar
+  streamLogger.info("🔧 Tool seleccionada:", tool); // hay que eliminar
 
   const fullPrompt = combinedContext
   ? `Archivo recibido:\n${combinedContext}\n\nPregunta del usuario:\n${userContent}`
@@ -241,7 +249,7 @@ setLocalMessages(prev => [...prev, ...newMessages]);
 
       // Incrementar contador después de la respuesta
       localStorage.setItem('anonMessageCount', String(anonCount + 1));
-      console.log('Mensajes de usuarios no registrados:', anonCount );
+      streamLogger.info('Mensajes de usuarios no registrados:', anonCount );
 
       if (res.result) {
         fullReply = res.result;
@@ -265,7 +273,7 @@ setLocalMessages(prev => [...prev, ...newMessages]);
         tool: tool
       }, (partial) => {
         // streaming parcial para usuarios logueados
-        console.log('partial recibido:', partial);
+        streamLogger.info('partial recibido:', partial);
         
 
         let cleanPartial = partial;
@@ -290,7 +298,7 @@ setLocalMessages(prev => [...prev, ...newMessages]);
     }
   } catch (err) {
     if (err.name !== 'AbortError') {
-      console.error(err);
+      streamLogger.error(err);
       setLocalMessages(prev =>
         prev.map(msg =>
           msg.id === jarvisTempId
@@ -349,7 +357,7 @@ setLocalMessages(prev => [...prev, ...newMessages]);
   }, [isAuthenticated]);
 
   if (loading) {
-    console.log('Usuario actual:', user);
+    streamLogger.info('Usuario actual:', user);
     return <div className="loading-screen">Cargando usuario...</div>;
 
   }

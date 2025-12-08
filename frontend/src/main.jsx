@@ -1,3 +1,4 @@
+// frontend/src/main.jsx
 import App from './App';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
@@ -5,10 +6,17 @@ import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/features/auth/components/context/AuthContext';
 import { injectSpeedInsights } from '@vercel/speed-insights';
+import { ClerkProvider } from '@clerk/clerk-react'
 import './styles/index.css';
 
+// Obtener la clave pública de Clerk desde las variables de entorno
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
 // Inicializar Vercel Speed Insights
-injectSpeedInsights();
+if (import.meta.env.VITE_DEBUG === 'true') {
+  injectSpeedInsights();
+}
+
 
 // Aplica el tema antes de renderizar
 const preferredTheme = localStorage.getItem('preferred-theme') || 'system';
@@ -23,6 +31,8 @@ const queryClient = new QueryClient();
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
+    <ClerkProvider
+  publishableKey={PUBLISHABLE_KEY} fallbackRedirectUrl="/">
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
@@ -30,6 +40,7 @@ root.render(
         </BrowserRouter>
       </AuthProvider>
   </QueryClientProvider>
+  </ClerkProvider>
   </React.StrictMode>
 );
 

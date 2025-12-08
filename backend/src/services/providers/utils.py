@@ -1,15 +1,15 @@
 import os
-from re import A 
-import xlrd
-import magic
-import PyPDF2
 import time
+import magic
+import pypdf
 import docx2txt
+from re import A 
+from flask import g
 from io import BytesIO
 from openai import OpenAI
-from flask_login import current_user
 from datetime import datetime
 from dotenv import load_dotenv
+from openpyxl import load_workbook 
 from src.database.models.models import Document
 from src.config.logging_config import get_logger 
 from azure.cognitiveservices.vision.computervision import ComputerVisionClient
@@ -22,10 +22,9 @@ logger = get_logger(__name__)
 # Cargar las variables de entorno desde el archivo .env
 load_dotenv()
 
-DEEP_API_KEY = os.getenv("OPEN_ROUTER_2")
-QWEN_API_KEY = os.getenv("OPEN_ROUTER_1")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+OPENROUTER0 = os.getenv("OPEN_ROUTER_0")
+OPENROUTER1 = os.getenv("OPEN_ROUTER_1")
+OPENROUTER2 = os.getenv("OPEN_ROUTER_2")
 
 
 AZURE_ENDPOINT = os.getenv("AZURE_VISION_ENDPOINT")
@@ -34,44 +33,35 @@ AZURE_KEY = os.getenv("AZURE_KEY1")
 
 API_PROVIDERS = [
     {
-        'name'     : 'deepseek',
+        'name'     : 'Kwaipilot',
         'client'   : OpenAI(
             base_url="https://openrouter.ai/api/v1",
-            api_key= DEEP_API_KEY),
+            api_key= OPENROUTER0),
         'handler'  : lambda client, prompt: client.chat.completions.create(
-            model = 'deepseek/deepseek-chat-v3-0324:free',
+            model = 'kwaipilot/kat-coder-pro:free',
             messages = [{'role' : 'user', 'content' : prompt}]
         )
     },
     {
-        'name'     : 'qwen-3',
+        'name'     : 'Nemotron Nano 12B',
         'client'   : OpenAI(
             base_url="https://openrouter.ai/api/v1",
-            api_key= QWEN_API_KEY),
+            api_key= OPENROUTER1),
         'handler'  : lambda client, prompt: client.chat.completions.create(
-            model = 'qwen/qwen3-235b-a22b:free',
+            model = 'nvidia/nemotron-nano-12b-v2-vl:free',
             messages = [{'role' : 'user', 'content' : prompt}]
         )
     },
     {
-        'name'     : 'openai',
-        'client'   : OpenAI(api_key= OPENAI_API_KEY),
-        'handler'  : lambda client, prompt : client.chat.completions.create(
-            model="gpt-4o",
-            messages = [{'role' : 'user', 'content': prompt}]
-        )
-    },
-    {
-        'name'     : 'gemini',
+        'name'     : 'TNG: R1T Chimera',
         'client'   : OpenAI(
-            api_key= GEMINI_API_KEY, 
-            base_url="https://generativelanguage.googleapis.com/v1beta/openai/"),
+            base_url="https://openrouter.ai/api/v1",
+            api_key= OPENROUTER1),
         'handler'  : lambda client, prompt: client.chat.completions.create(
-            model = 'gemini-2.0-flash',
+            model = 'tngtech/tng-r1t-chimera:free',
             messages = [{'role' : 'user', 'content' : prompt}]
         )
-    } 
-    
+    }    
     # Se puede añadir más apis aqui para abajo  ->
 ]
 
@@ -99,11 +89,11 @@ def generate_prompt(prompt_data, retry_count=0):
         # ======================================
         # SIMULADOR DE ERRORES SOLO PARA PRUEBAS
         # ======================================
-        if provider["name"] == 'deepseek' and os.getenv('TEST_MODE') == 'True':
+        if provider["name"] == 'Kwaipilot' and os.getenv('TEST_MODE') == 'True':
             if retry_count == 0:
-                raise ConnectionError("Error de conexion simulado con deepseek")
+                raise ConnectionError("Error de conexion simulado con Kwaipilot")
             elif retry_count == 1:
-                raise Exception("Error de timeout simulado con deepseek")
+                raise Exception("Error de timeout simulado con Kwaipilot")
             
         user_prompt = prompt_data.get("description", "") # actualizado
         prompt = f"{user_prompt}"
@@ -146,7 +136,7 @@ def extract_text_from_file(file_stream, filename):
 
     # PDF
     if 'pdf' in file_type or filename.endswith('.pdf'):
-        reader = PyPDF2.PdfReader(file_stream)
+        reader = pypdf.PdfReader(file_stream)
         text = "\n".join([page.extract_text() or '' for page in reader.pages])
     
     # Word moderno
@@ -155,11 +145,20 @@ def extract_text_from_file(file_stream, filename):
 
     # Excel
     elif 'excel' in file_type or filename.endswith(('.xlsx', '.xls')):
-        workbook = xlrd.open_workbook(file_contents=file_stream.read())
-        text = ""
-        for sheet in workbook.sheets():
-            for row in range(sheet.nrows):
-                text += "\t".join(str(cell) for cell in sheet.row_values(row)) + "\n"
+        file_stream.seek(0)
+
+        # openpyxl solo soporta .xlsx.
+        if filename.endswith('.xlsx'):
+            workbook = load_workbook(filename=BytesIO(file_stream.read()))
+            text = ""
+            for sheet in workbook.worksheets:
+                for row in sheet.iter_rows():
+                    text += "\t".join(str(cell.value) for cell in row if cell.value is not None) + "\n"
+        else:
+            # Mantener xlrd para .xls antiguos, o usar una librería diferente (ej. pyxlsb)
+            # Para este ejemplo, si solo quieres .xlsx, podrías eliminar el soporte .xls
+            # o dejar la lógica actual de xlrd para .xls.
+            raise ValueError("Soporte para .xls requiere xlrd; se usa openpyxl para .xlsx")
 
     # Texto plano
     elif file_type.startswith('text') or filename.endswith(('.txt', '.csv')):
@@ -195,7 +194,7 @@ def analyze_image_with_azure(image_bytes):
     
     # Contar cuántas imágenes ha subido el usuario este mes
     ocr_count = Document.query.filter(
-        Document.user_id == current_user.id,
+        Document.user_id == g.user_id,
         Document.created_at >= first_day_of_month,
         Document.source == "onedrive"  # solo imágenes subidas a OneDrive
     ).count()

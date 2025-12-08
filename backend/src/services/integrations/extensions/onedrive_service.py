@@ -2,11 +2,8 @@
 import os
 import time
 import requests
-from json import load
 from extensions import db
 from datetime import datetime, timedelta
-from functools import lru_cache
-from flask_login import login_required, current_user
 from src.database.models.models import UserToken
 from dotenv import load_dotenv
 

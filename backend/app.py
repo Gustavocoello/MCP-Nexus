@@ -3,25 +3,22 @@ import faulthandler
 from pickle import FALSE
 from flask import Flask
 from flask_cors import CORS
-from flask_login import LoginManager
-from flask_session import Session
 
 from redis import Redis
-
-from src.services.auth.user_loader import load_user
 from src.config.config import Config
 from src.services.integrations.extensions.limiter import limiter
 
 from extensions import db
 from src.config.logging_config import get_logger
 from src.api.v1.chat.routes import search_bp, chat_bp
+from src.api.v1.chat.mcp_tools import mcp_tools_bp
 from src.api.v1.auth.github_routes import github_auth_bp
 from src.api.v1.auth.google_routes import google_auth_bp
-from src.api.v1.auth.routes import auth_bp
+from src.api.v1.auth.user_routes import user_bp, integrations_bp
 from src.api.v2.security.routes import ping_bp
 from src.services.integrations.extensions.onedrive import onedrive_bp
 from src.database.config.connection import get_database_url
-from src.services.auth.keep_alive_jarvis import keep_alive
+from src.services.auth.utils.keep_alive_jarvis import keep_alive
 from dotenv import load_dotenv
 
 faulthandler.enable()
@@ -40,17 +37,6 @@ logger = get_logger('app')
 # Inicializamos la aplicación Flask
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
-
-app.config.update(
-    SESSION_COOKIE_SAMESITE='None',
-    SESSION_COOKIE_SECURE=True,
-    REMEMBER_COOKIE_SAMESITE='None',
-    REMEMBER_COOKIE_SECURE=True
-)
-
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.user_loader(load_user)
 CORS(app, supports_credentials=True, origins=[
     "https://gustavocoello.space",
     "https://mcp-nexus.vercel.app",
@@ -67,9 +53,6 @@ app.config.from_object(Config)
 
 # Configuración de la base de datos MYSQL o AZURE SQL
 app.config["SQLALCHEMY_DATABASE_URI"] = get_database_url()
-app.config['SESSION_TYPE'] = 'redis' # redis para prod y filesystem para local
-app.config['SESSION_REDIS'] = Redis.from_url(app.config["REDIS_URL"])
-Session(app)
 
 db.init_app(app)
 
@@ -86,17 +69,20 @@ app.register_blueprint(google_auth_bp)
 """Autenticación de usuario con github"""
 app.register_blueprint(github_auth_bp)
 
-"""Autenticación de usuario"""
-app.register_blueprint(auth_bp)
-
 """Rutas de OneDrive"""
 app.register_blueprint(onedrive_bp, url_prefix='/api/onedrive')
 
 """Rutas de seguridad v2"""
 app.register_blueprint(ping_bp, url_prefix="/v2")
 
-# Limitar - login -
-limiter.init_app(app)
+"""Rutas de usuario"""
+app.register_blueprint(user_bp, url_prefix="/api/v1/user")
+
+"""Rutas de integraciones"""
+app.register_blueprint(integrations_bp, url_prefix="/api/v1/integrations")
+
+"""Rutas de herramientas MCP"""
+app.register_blueprint(mcp_tools_bp, url_prefix='/api/v1/mcp')
 
 # Limitar - login -
 limiter.init_app(app)

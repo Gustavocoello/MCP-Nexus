@@ -1,6 +1,7 @@
 // components/MCPSearchPanel.jsx
 import React, { useState } from 'react';
 import { useMCPClient } from '@/components/controller/hooks/useMCPClient';
+import { useMCPTools } from '@/components/controller/hooks/useMCPClientSimple';
 import { FaGithub, FaDatabase } from 'react-icons/fa';
 import { SiNotion, SiMysql } from 'react-icons/si';
 import { FcGoogle } from 'react-icons/fc';
@@ -10,6 +11,7 @@ import { VscTools } from 'react-icons/vsc';
 import { GrResources } from 'react-icons/gr';
 import { TfiReload } from "react-icons/tfi";
 import { GiArmoredBoomerang } from "react-icons/gi";
+import { mcpLogger } from '@/components/controller/log/logger.jsx';
 import '@/features/config/components/tabs/McpTab/McpTab.css';
 
 const MCPSearchPanel = ({ onClose, onSelectTool }) => {
@@ -22,7 +24,7 @@ const MCPSearchPanel = ({ onClose, onSelectTool }) => {
     prompts: serverPrompts, 
     resources: serverResources, 
     reconnect 
-  } = useMCPClient();
+  } = useMCPTools();
 
   // Mapeo de servicios con sus iconos
   const serviceIcons = {
@@ -78,12 +80,12 @@ const MCPSearchPanel = ({ onClose, onSelectTool }) => {
     try {
       await reconnect();
     } catch (err) {
-      console.error('Error al actualizar servidor MCP:', err);
+      mcpLogger.error('Error al actualizar servidor MCP:', err);
     }
   };
 
   const handleSimulate = () => {
-    console.log('Simulación activada');
+    mcpLogger.info('Simulación activada');
   };
 
   const handleToolSelect = (toolName) => {
@@ -99,7 +101,6 @@ const MCPSearchPanel = ({ onClose, onSelectTool }) => {
           <AiOutlineCloudServer size={24} />
           Servidores MCP
         </h3>
-        <button className="modal-close-btn" onClick={onClose}>×</button>
       </div>
 
       {/* Tabs */}
@@ -247,52 +248,6 @@ const MCPSearchPanel = ({ onClose, onSelectTool }) => {
           <GiArmoredBoomerang /> Simular
         </button>
       </div>
-
-      <style jsx>{`
-        .modal-close-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 16px;
-        }
-
-        .modal-close-btn {
-          background: none;
-          border: none;
-          font-size: 24px;
-          color: #eaeaea;
-          cursor: pointer;
-          padding: 4px 8px;
-          border-radius: 4px;
-          transition: background-color 0.2s ease;
-        }
-
-        .modal-close-btn:hover {
-          background-color: #444;
-        }
-
-        .tool-card.clickable {
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .tool-card.clickable:hover {
-          background-color: #3a3a3a;
-          border-color: #666;
-          transform: translateY(-1px);
-        }
-
-        .panel-content {
-          max-height: 400px;
-          overflow-y: auto;
-        }
-
-        .mcp-actions {
-          margin-top: 16px;
-          border-top: 1px solid #444;
-          padding-top: 12px;
-        }
-      `}</style>
     </div>
   );
 };

@@ -1,101 +1,249 @@
+// frontend/src/features/config/components/tabs/McpTab/McpTab.jsx
 import React, { useState } from 'react';
-import { useMCPClient } from '@/components/controller/hooks/useMCPClient';
+import McpTestMode from './components/McpTestMode';
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { MCPSearchPanel } from '@/components/ui/SearchBar/utils/MCPSearchPanel';
+import { useConnectGoogleCalendar } from "@/features/auth/services/authServices.jsx";
 import { FcGoogle } from 'react-icons/fc';
-import { VscTools } from 'react-icons/vsc';
-import { TfiReload } from "react-icons/tfi";
-import { GrResources } from 'react-icons/gr';
 import { AiOutlineCloudServer } from 'react-icons/ai';
-import { FaGithub, FaDatabase } from 'react-icons/fa';
-import { SiNotion, SiMysql, SiRed } from 'react-icons/si';
-import { IoPrismOutline, IoDocumentTextOutline } from 'react-icons/io5';
+import { SiNotion, SiMysql, SiMicrosoftaccess} from 'react-icons/si';
+import { IoPrismOutline, } from 'react-icons/io5';
+import { FaGithub, FaCheckCircle, FaTimesCircle} from 'react-icons/fa';
+import {  apiLogger, mcpLogger } from '@/components/controller/log/logger.jsx';
+import apiClient from '@/service/api';
 import './McpTab.css';
 
 const McpTab = () => {
   const [mainView, setMainView] = useState(''); // '', 'server', 'prueba'
-  const [activeTab, setActiveTab] = useState('tools');
-  const { isConnected, isLoading, error, tools: serverTools, prompts: serverPrompts, resources: serverResources, reconnect } = useMCPClient();
+  const location = useLocation();
 
+  // Simulación del servicio para obtener datos
+  // NOTA: Reemplaza esto con tu llamada real a la API (fetch/axios)
+  const integrationApi = {
+    getStatus: async () => {
+      // GET /api/v1/integrations/status
+      const response = await apiClient.get('/api/v1/integrations/status'); 
+      return response.data; // Axios devuelve los datos en la propiedad .data
+    },
+    disconnect: async (provider) => {
+      // POST /api/v1/integrations/disconnect/<provider>
+      const response = await apiClient.post(`/api/v1/integrations/disconnect/${provider}`);
+      return response.data;
+    }
+  };
+
+  const fetchIntegrationStatus = async () => {
+    try {
+      const status = await integrationApi.getStatus();
+      setServiceConnections(prev => ({ ...prev, ...status }));
+    } catch (error) {
+      apiLogger.error("Error fetching integration status:", error);
+      // Manejar error de forma visible si es necesario
+    }
+  };
+
+  // Cargar el estado al montar y al cambiar location (post-callback)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const connectionSuccess = params.get("connection_success"); // Nuevo parámetro del backend
+    const connectionError = params.get("error");
+
+    fetchIntegrationStatus();
+
+    if (connectionSuccess) {
+      // La conexión fue exitosa (Google Calendar, etc.)
+      alert(`Connection successful: ${connectionSuccess.replace('_', ' ')}`);
+      
+      // 1. Recargar el estado de conexión (ya se hace con fetchIntegrationStatus() arriba)
+      // 2. Limpiar la URL después de procesar
+      window.history.replaceState({}, "", location.pathname);
+    } else if (connectionError) {
+      alert(`Connection failed: ${params.get("details") || connectionError}`);
+      // Limpiar la URL después de procesar
+      window.history.replaceState({}, "", location.pathname);
+    }
+    
+    // Volver a ejecutar cuando la URL o el estado del location cambien
+  }, [location.search]);
+
+  const connectGoogleCalendar = useConnectGoogleCalendar();
   
-  // Simulando datos de ejemplo - Prueba
-  const mockTools = [
-    { name: 'google_calendar_create_event', description: 'Crea un nuevo evento en Google Calendar' },
-    { name: 'google_calendar_delete_event', description: 'Elimina un evento de Google Calendar' },
-    { name: 'google_calendar_daily_summary', description: 'Resumen diario de Google Calendar' },
-    { name: 'notion_create_database', description: 'Crea una base de datos en Notion' },
-    { name: 'notion_create_page', description: 'Crea una nueva página en Notion' },
-    { name: 'github_create_repo', description: 'Crea un repositorio en GitHub' },
-    { name: 'github_list_repos', description: 'Lista repositorios de GitHub' },
-    { name: 'mysql_execute_query', description: 'Ejecuta una consulta MySQL' },
-  ];
+  const [serviceConnections, setServiceConnections] = useState({
+    google_calendar: false,
+    github: false,
+    microsoft_access: false,
+    notion: false,
+    mysql: false,
+  });
 
-  const mockPrompts = [
-    { name: 'calendar_meeting_scheduler', description: 'Asistente para programar reuniones' },
-    { name: 'github_pr_reviewer', description: 'Revisor automático de Pull Requests' }
-  ];
+  const [connectingService, setConnectingService] = useState(null);
 
-  const mockResources = [
-    { name: 'google_calendar_data', type: 'calendar_events' },
-    { name: 'notion_workspace', type: 'workspace_data' }
-  ];
+  const handleServiceConnect = async (serviceName) => {
+    setConnectingService(serviceName);
+    try {
+        if (serviceName === 'google_calendar') {
+          // LÓGICA ESPECÍFICA PARA GOOGLE CALENDAR (REDIRECCIÓN)
+          await connectGoogleCalendar();
+          return; 
+          
+        } else {
+          // LÓGICA DE SIMULACIÓN PARA OTROS SERVICIOS (GitHub, Notion, MySQL, etc.)
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          setServiceConnections(prev => ({
+            ...prev,
+            [serviceName]: true
+          }));
+          
+          alert(`${serviceName} connected successfully (Simulated)`);
+        }
 
-  // Mapeo de servicios con sus iconos
-  const serviceIcons = {
-    google_calendar: <FcGoogle size={16} />,
-    google: <FcGoogle size={16} />,
-    notion: <SiNotion size={16} color="#fff" />,
-    github: <FaGithub size={16} color="#fff" />,
-    mysql: <SiMysql size={16} color="#4479A1" />,
-    default: <FaDatabase size={16} color="#fff" />
-  };
-
-  // Función para obtener el servicio desde el nombre de la herramienta
-  const getServiceFromToolName = (toolName) => {
-    if (toolName.startsWith('google_calendar_')) return 'google_calendar';
-    if (toolName.startsWith('google_')) return 'google';
-    if (toolName.startsWith('notion_')) return 'notion';
-    if (toolName.startsWith('github_')) return 'github';
-    if (toolName.startsWith('mysql_')) return 'mysql';
-    return 'default';
-  };
-
-  // Función para obtener nombre amigable del servicio
-  const getServiceDisplayName = (service) => {
-    const names = {
-      google_calendar: 'Google Calendar',
-      google: 'Google',
-      notion: 'Notion',
-      github: 'GitHub',
-      mysql: 'MySQL',
-      default: 'Otro'
+      } catch (error) {
+        apiLogger.error(`[MCPTAB] Error connecting to ${serviceName}:`, error);
+        alert(`Connection failed for ${serviceName}: ${error.message || error}`);
+      } finally {
+        if (serviceName !== 'google_calendar') {
+            setConnectingService(null);
+        }
+      }
     };
-    return names[service] || service;
-  };
 
-  // Función para limpiar el nombre de la herramienta para mostrar
-  const cleanToolName = (toolName) => {
-    return toolName
-      .replace(/^(google_calendar_|google_|notion_|github_|mysql_)/, '')
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, l => l.toUpperCase());
-  };
-
-  // Agrupar herramientas por servicio
-  const groupedTools = mockTools.reduce((acc, tool) => {
-    const service = getServiceFromToolName(tool.name);
-    if (!acc[service]) acc[service] = [];
-    acc[service].push(tool);
-    return acc;
-  }, {});
-
+    const handleServiceDisconnect = async (serviceName) => {
+      try{
+      // 1. Llamada a la API de desconexión (Real para Google Calendar)
+        await integrationApi.disconnect(serviceName); 
+        // 2. Recargar el estado completo desde el backend
+        await fetchIntegrationStatus();
+        alert(`${serviceName} disconnected`)
+      } catch (error) {
+        apiLogger.error(`Error disconnecting ${serviceName}:`, error);
+      }
+    };
+    
+    // ServiceConnectionCard (se mantiene igual)
+    const ServiceConnectionCard = ({ service, icon, name, description, connected, onConnect, onDisconnect, isConnecting, badge }) => (
+      <div className={`service-connection-card ${connected ? 'connected' : ''}`}>
+        {/* ... Resto del contenido de la tarjeta ... */}
+        <div className="service-connection-header">
+          <div className="service-connection-icon">
+            {icon}
+          </div>
+          <div className="service-connection-info">
+            <h4 className="service-connection-name">
+              {name}
+              {badge && <span className="service-connection-badge developing"> {badge}</span>}
+            </h4>
+            <p className="service-connection-description">{description}</p>
+          </div>
+          <div className="service-connection-status">
+            {connected ? (
+              <FaCheckCircle className="status-icon connected" />
+            ) : (
+              <FaTimesCircle className="status-icon disconnected" />
+            )}
+          </div>
+        </div>
+        
+        <div className="service-connection-actions">
+          {!connected ? (
+            <button
+              className="service-connect-btn"
+              onClick={() => onConnect(service)}
+              disabled={isConnecting}
+            >
+              {isConnecting ? 'Conectando...' : 'Conectar'}
+            </button>
+          ) : (
+            <button
+              className="service-disconnect-btn"
+              onClick={() => onDisconnect(service)}
+            >
+              Disconnect
+            </button>
+          )}
+        </div>
+      </div>
+    );
   // Vista principal con los dos botones
   if (mainView === '') {
     return (
       <div className="mcp-main-view">
         <h2 className="mcp-main-title">Model Context Protocol</h2>
-        
+
+        {/* Service Connections Section */}
+        <div className="service-connections-section">
+          <h4 className="service-connections-title">Connect Services</h4>
+          <div className="service-connections-grid">
+            {/* Google Calendar */}
+            <ServiceConnectionCard
+              service="google_calendar"
+              icon={<FcGoogle size={32} />}
+              name="Google Calendar"
+              description="Manage events and reminders"
+              connected={serviceConnections.google_calendar}
+              onConnect={handleServiceConnect} 
+              onDisconnect={handleServiceDisconnect}
+              isConnecting={connectingService === 'google_calendar'}
+            />
+            {/* GitHub */}
+            <ServiceConnectionCard
+              service="github"
+              icon={<FaGithub size={32} color="#fff" />}
+              name="GitHub"
+              description="Manage repositories and PRs"
+              connected={serviceConnections.github}
+              onConnect={handleServiceConnect}
+              onDisconnect={handleServiceDisconnect}
+              isConnecting={connectingService === 'github'}
+            />
+            {/* Microsoft Access */}
+            <ServiceConnectionCard
+              service="microsoft_access"
+              icon={<SiMicrosoftaccess size={32} color="#B01D1D" />}
+              name="Microsoft Access"
+              description="Connect and query local Access databases"
+              connected={serviceConnections.microsoft_access}
+              onConnect={handleServiceConnect}
+              onDisconnect={handleServiceDisconnect}
+              isConnecting={connectingService === 'microsoft_access'}
+              badge="Developing"
+            />
+            {/* Notion */}
+            <ServiceConnectionCard
+              service="notion"
+              icon={<SiNotion size={32} color="#fff" />}
+              name="Notion"
+              description="Interact with pages and databases"
+              connected={serviceConnections.notion}
+              onConnect={handleServiceConnect}
+              onDisconnect={handleServiceDisconnect}
+              isConnecting={connectingService === 'notion'}
+              badge="Developing"
+            />
+
+            {/* Nueva tarjeta: MySQL */}
+            <ServiceConnectionCard
+              service="mysql"
+              icon={<SiMysql size={32} color="#4479A1" />}
+              name="MySQL"
+              description="Execute queries against your database"
+              connected={serviceConnections.mysql}
+              onConnect={handleServiceConnect}
+              onDisconnect={handleServiceDisconnect}
+              isConnecting={connectingService === 'mysql'}
+              badge="Developing"
+            />
+          </div>
+        </div>
+
+        <h3 className="mcp-section-header">
+          <IoPrismOutline size={24} />
+          Test Mode - MCP Services
+        </h3>
+
         <div className="mcp-main-buttons">
-          {/* Botón Server */}
+          {/* Server Button */}
           <button
             onClick={() => setMainView('server')}
             className="mcp-main-button server"
@@ -103,19 +251,19 @@ const McpTab = () => {
             <AiOutlineCloudServer size={48} color="#fff" />
             <span className="mcp-main-button-label">Server</span>
             <span className="mcp-main-button-description">
-              Conectar con servidores MCP reales
+              Connect to real MCP servers
             </span>
           </button>
 
-          {/* Botón Prueba */}
+          {/* Test Button */}
           <button
             onClick={() => setMainView('prueba')}
             className="mcp-main-button prueba"
           >
             <IoPrismOutline size={48} color="#fff" />
-            <span className="mcp-main-button-label">Prueba</span>
+            <span className="mcp-main-button-label">Test</span>
             <span className="mcp-main-button-description">
-              Explorar funcionalidades de demostración
+              Explore demo functionalities
             </span>
           </button>
         </div>
@@ -136,7 +284,7 @@ const McpTab = () => {
             onClick={() => setMainView('')}
             className="mcp-back-button red"
           >
-            Volver
+            Back
           </button>
         </div>
       </div>
@@ -144,147 +292,11 @@ const McpTab = () => {
   }
 
   // Vista Prueba (Mock)
-  return (
-    <div className="mcp-tab-container">
-      <h3 className="mcp-section-header">
-        <IoPrismOutline size={24} />
-        Modo de Prueba - Servicios MCP
-      </h3>
-      
-      {/* Tabs */}
-      <div className="tabs">
-        {[
-          { id: 'tools', label: 'Tools', icon: <VscTools size={18} /> },
-          { id: 'prompts', label: 'Prompts', icon: <IoDocumentTextOutline size={18} /> },
-          { id: 'resources', label: 'Resources', icon: <GrResources size={18} /> }
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`tab ${activeTab === tab.id ? 'active' : ''}`}
-          >
-            {tab.icon}
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Content */}
-      <div className="panel-content">
-        {activeTab === 'tools' && (
-          <div>
-            <h4 className="panel-content-header">
-              Herramientas disponibles ({mockTools.length})
-            </h4>
-            
-            {Object.entries(groupedTools).map(([service, tools]) => (
-              <div key={service} className="service-group">
-                <div className="service-group-header">
-                  <span className="service-group-icon">
-                    {serviceIcons[service]}
-                  </span>
-                  <span className="service-group-name">
-                    {getServiceDisplayName(service)}
-                  </span>
-                  <span className="service-group-count">
-                    {tools.length} herramienta{tools.length !== 1 ? 's' : ''}
-                  </span>
-                </div>
-                
-                <div className="service-tools-grid">
-                  {tools.map((tool) => (
-                    <div key={tool.name} className="tool-card">
-                      <div className="tool-card-name">
-                        {cleanToolName(tool.name)}
-                      </div>
-                      <div className="tool-card-description">
-                        {tool.description}
-                      </div>
-                      <div className="tool-card-id">
-                        {tool.name}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {activeTab === 'prompts' && (
-          <div>
-            <h4 className="panel-content-header">
-              Prompts disponibles ({mockPrompts.length})
-            </h4>
-            {mockPrompts.length === 0 ? (
-              <p className="empty-message">No hay prompts disponibles.</p>
-            ) : (
-              <div className="items-grid">
-                {mockPrompts.map((prompt, idx) => (
-                  <div key={idx} className="prompt-card">
-                    <strong className="prompt-card-name">{prompt.name}</strong>
-                    <p className="prompt-card-description">
-                      {prompt.description}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'resources' && (
-          <div>
-            <h4 className="panel-content-header">
-              Recursos disponibles ({mockResources.length})
-            </h4>
-            {mockResources.length === 0 ? (
-              <p className="empty-message">No hay recursos disponibles.</p>
-            ) : (
-              <div className="items-grid">
-                {mockResources.map((resource, idx) => (
-                  <div key={idx} className="resource-card">
-                    <strong className="resource-card-name">{resource.name}</strong>
-                    <p className="resource-card-type">
-                      Tipo: {resource.type}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Estado de conexión MCP */}
-      <div className="mcp-status">
-        <span className="mcp-status-label">Estado MCP (Prueba):</span>{' '}
-        <span className="mcp-status-value active">
-          8 herramientas de demostración activas
-        </span>
-      </div>
-
-      {/* Botones de acción MCP */}
-      <div className="mcp-actions">
-        <button className="mcp-action-button">
-          🔄 Actualizar
-        </button>
-        
-        <button className="mcp-action-button primary prueba">
-          ⚡ Simular Conexión
-        </button>
-      </div>
-      {/* Botón de volver abajo */}
-      <div className="mcp-footer">
-        <button
-          onClick={() => setMainView('')}
-          className="mcp-back-button red"
-        >
-          Volver
-        </button>
-      </div>
-    </div>
-  );
+  if (mainView === 'prueba') {
+    return (
+      <McpTestMode setMainView={setMainView} />
+    );
+  }
 };
 
 export default McpTab;

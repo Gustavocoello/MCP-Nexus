@@ -1,15 +1,14 @@
 // src/features/auth/components/context/AuthGate.jsx
 import React from 'react';
-import useCurrentUser from './useCurrentUser';
+import { useAuth } from '@clerk/clerk-react';
 
-const AuthGate = ({ children }) => {
-  const { loading } = useCurrentUser();
+export default function AuthGate({ children }) {
+  const { isLoaded } = useAuth();
 
-  if (loading) {
-    return <div className="auth-loading">Cargando...</div>; // Puedes hacer un spinner aquí
+  if (!isLoaded) {
+    return <div className="auth-loading">Cargando...</div>;
   }
 
   return children;
-};
+}
 
-export default AuthGate;

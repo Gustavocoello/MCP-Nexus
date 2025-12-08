@@ -1,21 +1,27 @@
 import { GiAstronautHelmet } from "react-icons/gi";
 import { useNavigate } from "react-router-dom";
-//import useCurrentUser from "../../../features/auth/components/context/useCurrentUser";
-import useAuthStatus from '@/service/useAuthStatus';
+import { useAuthContext } from '@/features/auth/components/context/AuthContext';
+import { useAuth } from '@clerk/clerk-react';
 import "./Navbar.css";
 
 const Navbar = ({ isWhiteTheme }) => {
-  const isAuthenticated = useAuthStatus();
+  const { isAuthenticated } = useAuthContext();
+  const { isLoaded } = useAuth();
   const navigate = useNavigate();
 
-  const tooltip = isAuthenticated ? "Logeado" : "Identifícate";
+  const tooltip = !isLoaded
+    ? "Cargando..."
+    : isAuthenticated
+    ? "Logeado"
+    : "Identifícate";
 
   const handleAstronautClick = () => {
     if (!isAuthenticated) {
-        navigate("/login");
+      navigate("/login");
+    } else {
+      navigate("/"); 
     }
-    // si está autenticado, no hace nada
-    };
+  };
 
 
   return (
@@ -47,7 +53,7 @@ const Navbar = ({ isWhiteTheme }) => {
           onClick={handleAstronautClick}
           title={tooltip}
           aria-label={tooltip}
-          disabled={isAuthenticated} // deshabilita si está autenticado
+          disabled={!isLoaded} // deshabilita si está autenticado
         >
           <GiAstronautHelmet className="astronaut-icon" />
         </button>

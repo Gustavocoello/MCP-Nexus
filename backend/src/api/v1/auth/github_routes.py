@@ -1,5 +1,5 @@
 from flask import Blueprint
-from src.services.auth.github_auth import github_login, github_callback
+from src.services.auth.github.github_auth import github_login, github_callback
 
 github_auth_bp = Blueprint('github_auth', __name__, url_prefix='/api/v1/auth/github')
 
