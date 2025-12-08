@@ -64,7 +64,7 @@ def sync_clerk_user(clerk_user_id: str) -> User:
             picture=clerk_data.get('image_url'),
             email_verified=True,  # Clerk ya verificó
             is_active=True,
-            auth_provider="CLERK"
+            auth_provider="clerk"
         )
         
         db.session.add(new_user)
