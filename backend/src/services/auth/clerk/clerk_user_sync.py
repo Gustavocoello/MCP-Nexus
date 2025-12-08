@@ -56,6 +56,8 @@ def sync_clerk_user(clerk_user_id: str) -> User:
         last_name = clerk_data.get('last_name', '')
         full_name = f"{first_name} {last_name}".strip()
 
+        provider = "clerk".lower()
+        
         # Crear el nuevo usuario
         new_user = User(
             id=clerk_user_id,
@@ -64,7 +66,7 @@ def sync_clerk_user(clerk_user_id: str) -> User:
             picture=clerk_data.get('image_url'),
             email_verified=True,  # Clerk ya verificó
             is_active=True,
-            auth_provider="clerk"
+            auth_provider=provider
         )
         
         db.session.add(new_user)
