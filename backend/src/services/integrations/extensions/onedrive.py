@@ -1,12 +1,13 @@
-from flask import Blueprint, redirect, request, session, url_for
+from flask import Blueprint, redirect, request
 import os
 import requests
+from flask import g
 from extensions import db
 from dotenv import load_dotenv
 from urllib.parse import urlencode
 from datetime import datetime, timedelta
-from flask_login import login_required, current_user
 from src.database.models.models import UserToken
+from src.services.auth.clerk.clerk_middleware import clerk_required
 
 load_dotenv()
 
@@ -34,7 +35,7 @@ def onedrive_login():
 
 
 @onedrive_bp.route("/callback")
-@login_required
+@clerk_required
 def callback():
     code = request.args.get("code")
     if not code:
@@ -53,7 +54,7 @@ def callback():
     token_data = resp.json()
 
     # Guardamos en DB
-    user_token = UserToken.query.filter_by(user_id=current_user.id, provider="onedrive").first()
+    user_token = UserToken.query.filter_by(user_id=g.user_id, provider="onedrive").first()
     expires_at = datetime.utcnow() + timedelta(seconds=token_data["expires_in"])
     if user_token:
         user_token.access_token = token_data["access_token"]
@@ -61,7 +62,7 @@ def callback():
         user_token.expires_at = expires_at
     else:
         user_token = UserToken(
-            user_id=current_user.id,
+            user_id=g.user_id,
             provider="onedrive",
             access_token=token_data["access_token"],
             refresh_token=token_data.get("refresh_token"),

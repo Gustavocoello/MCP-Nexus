@@ -6,7 +6,9 @@ import MarkdownIt from 'markdown-it';
 import { CgMoreAlt } from "react-icons/cg";
 import AnimatedJarvis from '@/components/ui/Animated/AnimatedJarvis';
 import ChatMenu from '@/features/chat/components/ChatMenu/ChatMenu';
-import useCurrentUser from '@/features/auth/components/context/useCurrentUser';
+import { useAuthContext } from '@/features/auth/components/context/AuthContext';
+import { useAuth } from '@clerk/clerk-react';
+import { hookLogger } from '@/components/controller/log/logger';
 import '../Sidebar/Sidebar.css';
 
 // Servicios
@@ -20,7 +22,10 @@ const Sidebar = () => {
   const [chats, setChats] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
-  const { user, loading } = useCurrentUser();
+  const { user } = useAuthContext();
+  const { isLoaded } = useAuth();
+  const loading = !isLoaded;
+
   // Cargar los chats desde localStorage
   const fetchAndSetChats = async () => {
   try {
@@ -32,7 +37,7 @@ const Sidebar = () => {
     }));
     setChats(chatsConTitulo);
   } catch (error) {
-    console.error('Error cargando chats:', error);
+    hookLogger.error(' [Sidebar] Error cargando chats:', error);
   }
 };
 
@@ -120,7 +125,7 @@ const categorizedChats = chats.reduce((acc, chat) => {
       window.dispatchEvent(new CustomEvent('chat-loaded', { detail: { chatId } }));
     }
   } catch (error) {
-    console.error('Error eliminando chat:', error);
+    hookLogger.error(' [Sidebar] Error eliminando chat:', error);
   }
 };
   
@@ -161,13 +166,12 @@ const categorizedChats = chats.reduce((acc, chat) => {
     }));
 
     // Disparar evento para cargar mensajes en ChatPage
-    // console.log("Mensajes desde backend:", messages); 
     window.dispatchEvent(new CustomEvent('chat-loaded', {
       detail: { chatId, messages }
       
     }));
   } catch (error) {
-    console.error('Error cargando chat:', error);
+    hookLogger.error(' [Sidebar] Error al cargar los mensajes al chat seleccionado:', error);
   }
 };
 
@@ -264,9 +268,11 @@ const categorizedChats = chats.reduce((acc, chat) => {
      
       {/* Settings */}
       <Link 
-         to={user ? `/c/${user.id}/config` : '/login'} 
-        className={`sidebar-item ${location.pathname.endsWith('/config') ? 'active' : ''}`}
+        to={`/c/${user?.id}/settings`}
+        state={{ returnTo: location.pathname }}
+        className={`sidebar-item ${location.pathname.endsWith('/settings') ? 'active' : ''}`}
       >
+
         <FaCog className="icon" />
         <span className="label">Settings</span>
       </Link>

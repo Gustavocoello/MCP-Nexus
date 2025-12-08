@@ -1,11 +1,38 @@
 // src//service/api_service.js
 import axios from 'axios';
+import { apiLogger } from '@/components/controller/log/logger.jsx';
 //import apiClient from './api'; // Tu instancia configurada de axios
 
 //const REACT_APP = process.env.REACT_APP_URL; Localhost:5000 o la URL de tu backend en producción
 //const REACT_APP_URL = process.env.REACT_APP_URL_AZURE_PROMPT; // Azure Functions Nube
 // Vite
 const VITE_APP = import.meta.env.VITE_URL;
+
+// Función global para obtener el token
+let getTokenFunction = null;
+
+export const setAuthToken = (getTokenFn) => {
+  getTokenFunction = getTokenFn;
+};
+
+// Helper para obtener headers con token
+const getAuthHeaders = async (additionalHeaders = {}) => {
+  const headers = { ...additionalHeaders };
+  
+  if (getTokenFunction) {
+    try {
+      const token = await getTokenFunction({ template: 'backend-api-jarvis' });
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    } catch (error) {
+      apiLogger.error('Error obteniendo token:', error);
+    }
+  }
+  
+  return headers;
+};
+
 
 
 export const sendAnonymousMessage = async (promptText) => {
@@ -17,24 +44,28 @@ export const sendAnonymousMessage = async (promptText) => {
           'Content-Type': 'application/json; charset=utf-8"',
         }
       });
-      return response.data; // Asegúrate de que esto coincida con la estructura de tu backend
+      return response.data; 
     } catch (error) {
       throw new Error(error.response?.data?.error || 'Error al introducir el prompt');
     }
   };
    
 
-
+// ========== Enviar mensaje con streaming (requiere auth) ==========
 export const sendMessage = async ({chatId, text, hidden_context = '', tool = ''}, onPartialResponse = null, signal) => {
   try {
     // Verificamos si la señal ya fue abortada antes de iniciar la petición
     if (signal?.aborted) {
       throw new DOMException('Operation aborted by the user', 'AbortError');
     }
+    // Obtener headers con token
+    const headers = await getAuthHeaders({
+      'Content-Type': 'application/json'
+    });
 
 const response = await fetch(`${VITE_APP}/api/chat/${chatId}/message`, {
   method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+  headers,
   credentials: 'include',
   body: JSON.stringify({ text, hidden_context, tool }),
   signal, // Pasamos el signal al fetch para que pueda ser abortado
@@ -88,20 +119,25 @@ try {
   } catch (error) {
     // Distinguimos entre errores de aborto y otros errores
     if (error.name === 'AbortError') {
-      console.log('Request aborted by user');
+      apiLogger.info('Request aborted by user');
       throw error; // Relanzamos para manejo específico en el componente
     }
 throw new Error(`Error sending message: ${error.message}`);
 
   }
 };
+// ========== Extraer contenido de archivos (requiere auth) ==========
 export const extractFileContent = async (file) => {
   const formData = new FormData();
   formData.append('file', file);
 
+  // Obtener headers con token
+  const authHeaders = await getAuthHeaders({});
+
   const response = await fetch(`${VITE_APP}/api/chat/extract_file`, {
     method: 'POST',
-    credentials: 'include', // ✅ agregado como pediste
+    credentials: 'include',
+    headers: authHeaders,
     body: formData,
   });
 

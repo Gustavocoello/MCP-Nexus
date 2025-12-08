@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaCheck } from 'react-icons/fa';
 import { IoCopy } from 'react-icons/io5';
+import { streamLogger } from '@/components/controller/log/logger.jsx';
 import hljs from 'highlight.js';
 import './github-dark.css';
 import 'highlight.js/styles/github-dark.css';
@@ -11,7 +12,7 @@ const CodeBlock = ({ code, language, isHtml = false, stable = false }) => {
   const codeRef = useRef(null);
 
   useEffect(() => {
-    console.log(`[CodeBlock] useEffect run: stable=${stable}, isHtml=${isHtml}`);
+    streamLogger.info(`[CodeBlock] useEffect run: stable=${stable}, isHtml=${isHtml}`);
     if (!codeRef.current) return;
 
      const el = codeRef.current;
@@ -20,12 +21,12 @@ const CodeBlock = ({ code, language, isHtml = false, stable = false }) => {
     if (stable && !el.dataset.highlighted) {
       hljs.highlightElement(el);
       el.dataset.highlighted = 'true';
-      console.log(`[CodeBlock] Highlight aplicado al final:`, el);
+      streamLogger.info(`[CodeBlock] Highlight aplicado al final:`, el);
     }
   }, [code, language, isHtml, stable]);
 
   useEffect(() => {
-    console.log(`[CodeBlock] Render - language: ${language} | stable: ${stable}`);
+    streamLogger.info(`[CodeBlock] Render - language: ${language} | stable: ${stable}`);
   }, [code, stable, language]);
 
   const handleCopy = () => {

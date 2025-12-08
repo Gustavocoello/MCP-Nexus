@@ -1,9 +1,7 @@
-# src/mcps/mcp_manager.py
+# src/mcps/client_manager.py
 import asyncio
 from typing import Any, Dict, List, Optional
-
-# Importamos el cliente de calendario que ya tienes
-from client.calendar.client_google_calendar import MCPToolsClient as GoogleCalendarClient
+from .calendar.client_google_calendar import MCPToolsClient as GoogleCalendarClient
 
 
 class MCPManager:
@@ -96,6 +94,38 @@ class MCPManager:
         """Devuelve la lista de todas las herramientas disponibles"""
         return list(self._tool_to_client_map.keys())
 
+    async def call_tool_with_auth(self, tool_name: str, user_id: str, auth_token: str, **params) -> Any:
+        """
+        Llama a una herramienta de forma segura, inyectando el JWT de autenticación.
+        """
+        if not self._initialized:
+            await self.initialize()
+
+        tool_name = tool_name.strip()
+        
+        # Buscar qué cliente maneja esta herramienta
+        client_name = self._tool_to_client_map.get(tool_name)
+        if not client_name:
+            available_tools = list(self._tool_to_client_map.keys())
+            raise ValueError(f"No se encontró un cliente MCP para la tool '{tool_name}'. Herramientas disponibles: {available_tools}")
+
+        client_class = self._clients.get(client_name)
+        if not client_class:
+            raise ValueError(f"Cliente '{client_name}' no encontrado")
+
+        # 🔑 Instanciar el cliente con el user_id y el auth_token
+        # (Asumimos que client_class acepta user_id y auth_token en __init__)
+        client_instance = client_class(user_id=user_id, auth_token=auth_token) # ⬅️ PASAMOS EL TOKEN
+
+        # Llamar a la herramienta usando el método genérico _call_tool
+        try:
+            # El _call_tool del cliente ahora usa self.auth_token para el header
+            result = await client_instance._call_tool(tool_name, **params)
+            return result
+        except Exception as e:
+            print(f"Error ejecutando tool '{tool_name}' con cliente '{client_name}': {e}")
+            raise
 
 # Instancia global del manager
 mcp_manager = MCPManager()
+

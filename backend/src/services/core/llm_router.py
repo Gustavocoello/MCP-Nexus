@@ -6,35 +6,35 @@ import os, logging
 load_dotenv()
 logger = logging.getLogger("__name__")
 
-OPEN_ROUTER_0  = os.getenv("OPEN_ROUTER_0")
-OPEN_ROUTER_1 = os.getenv("OPEN_ROUTER_1")
-OPEN_ROUTER_2  = os.getenv("OPEN_ROUTER_2")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+OPENROUTER2 = os.getenv("OPEN_ROUTER_2")
+OPENROUTER3 = os.getenv("OPEN_ROUTER_3")
+OPENROUTER4 = os.getenv("OPEN_ROUTER_4")
+OPENROUTER5 = os.getenv("OPEN_ROUTER_5")
 
 API_PROVIDERS = [
     {
-        "name": "deepseek",
+        "name": "TNG: DeepSeek R1T2 Chimera",
         "client": OpenAI(base_url="https://openrouter.ai/api/v1",
-                         api_key=OPEN_ROUTER_0),
-        "model": "deepseek/deepseek-chat-v3.1:free"
+                         api_key=OPENROUTER3),
+        "model": "tngtech/deepseek-r1t2-chimera:free"
     },
     {
-        "name": "qwen-3",
+        "name": "Kwaipilot: KAT-Coder-Pro V1",
         "client": OpenAI(base_url="https://openrouter.ai/api/v1",
-                         api_key=OPEN_ROUTER_1),
+                         api_key=OPENROUTER4),
+        "model": "kwaipilot/kat-coder-pro:free"
+    },
+    {
+        "name": "Qwen: Qwen3 Coder 480B A35B",
+        "client": OpenAI(base_url="https://openrouter.ai/api/v1",
+                         api_key=OPENROUTER5),
         "model": "qwen/qwen3-coder:free"
     },
     {
-        "name": "Deep-seek",
+        "name": "Amazon: Nova 2 Lite (free",
         "client": OpenAI(base_url="https://openrouter.ai/api/v1",
-                         api_key=OPEN_ROUTER_2),
-        "model": "qwen/qwen3-235b-a22b:free"
-    },
-    {
-        "name": "gemini",
-        "client": OpenAI(api_key=GEMINI_API_KEY,
-                         base_url="https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"),
-        "model": "gemini-pro"
+                         api_key=OPENROUTER2),
+        "model": "amazon/nova-2-lite-v1:free"
     }
 ]
 

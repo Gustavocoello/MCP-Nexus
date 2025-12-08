@@ -12,7 +12,7 @@
 }
 
 .drawer-panel {
-  width: 500px;
+  width: 700px;
   max-height: 90vh;
   background: #1e1e1e;
   color: white;
@@ -164,5 +164,11 @@
   }
   100% { 
     transform: translateX(100%) rotate(45deg); 
+  }
+}
+@media (max-width: 768px) {
+  .drawer-panel {
+    width: 80%;
+    
   }
 }

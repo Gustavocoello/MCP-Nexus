@@ -4,24 +4,44 @@ import Sidebar from '@/components/layout/Sidebar/Sidebar';
 import ChatPage from '@/features/chat/ChatPage';
 import ConfigPage from '@/features/config/ConfigPage';
 import BackgroundTechPattern from '@/features/config/components/tabs/Theme/BackgroundTechPattern';
-import LoginPage from '@/features/auth/components/LoginPage/LoginPage'; 
-import RegisterPage from '@/features/auth/components/RegisterPage/RegisterPage'; 
-import OAuthCallback from '@/features/auth/utils/McpOauthCallback';
-import useCurrentUser from '@/features/auth/components/context/useCurrentUser';
 import DashboardPage from '@/pages/DashboardPage';
 import LandingPage from '@/pages/Landing/LandingPage';
 import SpherePage from '@/pages/SpherePage';
 import PrivacyPage from '@/pages/Legal/PrivacyPage';
 import GuidesPage from '@/pages/Resources/GuidesPage';
+import MissionPage from '@/pages/About/MissionPage';
+import ContactPage from '@/pages/About/ContactPage';
+import TermsPage from '@/pages/Legal/TermsPage';
+import ClerkLayout from '@/components/layout/Clerk/ClerkLayout';
 import {inject} from '@vercel/analytics';
+import { SignIn, SignUp, useUser } from "@clerk/clerk-react";
+import { useSyncUser } from '@/features/auth/hook/useSyncUser';
+import { setAuthToken as setApiAuthToken } from '@/service/api';
+import { useAuthContext } from '@/features/auth/components/context/AuthContext';
+import { setAuthToken as setApiServiceAuthToken } from '@/service/api_service'; 
+import { authLogger } from '@/components/controller/log/logger.jsx';
+import Logger from '@/components/controller/log/logger.jsx';
 import '@/styles/App.css';
 
 // Inicializar Vercel Analytics 
-inject({ mode: import.meta.env.DEV ? 'development' : 'production' })
+if (import.meta.env.VITE_DEBUG === 'true') {
+  inject({ mode: 'debug' }); // puedes poner lo que quieras
+}
 
 function App() {
   const [theme, setTheme] = useState(document.documentElement.getAttribute('data-theme'));
   const location = useLocation();
+  const { isSignedIn } = useUser();
+  const { isSynced, syncError, isLoadingSync } = useSyncUser();
+  const { getToken } = useAuthContext();
+
+  useEffect(() => {
+    if (getToken && isSignedIn) {
+      setApiAuthToken(getToken);        // Para axios (chatService)
+      setApiServiceAuthToken(getToken); // Para fetch (api_service)
+      authLogger.info('✅ Token configurado globalmente');
+    }
+  }, [getToken, isSignedIn]);
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
@@ -32,88 +52,115 @@ function App() {
     return () => observer.disconnect();
   }, []);
 
-  // Rutas exactas que deben ocultar sidebar
-  const hideExact = [
-    '/',
-    '/jarvis',
-    '/login',
-    '/register',
-    '/oauth-callback',
-    '/privacy',
-  ];
+  // Opcional: Mostrar error de sincronización si ocurre
+  useEffect(() => {
+    if (syncError) {
+      authLogger.error('Error sincronizando usuario:', syncError);
+      // Aquí podrías mostrar un toast o notificación al usuario
+    }
+  }, [syncError])
 
-  // Rutas que funcionan como prefijo
-  const hidePrefix = [
-    '/docs',
-    '/api',
-    '/guides',
-    '/overview',
-    '/mission',
-    '/contact',
-    '/terms',
-    '/data'
-  ];
-
-  const path = location.pathname;
-
-  // Detectar si coincide con exactas
-  const hideByExact = hideExact.includes(path);
-
-  // Detectar si coincide con prefijo real (pero no colisionar con /c/xxx)
-  const hideByPrefix = hidePrefix.some(route => path.startsWith(route));
-
-  const hideSidebar = hideByExact || hideByPrefix;
-
-  const shouldLoadUser = !hideSidebar;
-  const { user: currentUser } = useCurrentUser();
-  const user = hideSidebar ? null : currentUser;
-
+  // Determinar si mostrar sidebar basado en la ruta actual
+  const showSidebar = () => {
+    const path = location.pathname;
+    
+    // Mostrar en dashboard
+    if (path === '/dashboard') return true;
+    
+    // Mostrar en chat de invitados
+    if (path === '/chat') return true;
+    
+    // Mostrar en chat de usuarios (rutas que empiezan con /c/)
+    if (path.startsWith('/c/')) return true;
+    
+    // No mostrar en ninguna otra ruta
+    return false;
+  };
 
   return (
     <div className="app-container">
       {theme === 'custom' && <BackgroundTechPattern />}
-      {!hideSidebar && <Sidebar />}
+      
+      {/* Sidebar solo en chat y dashboard */}
+      {showSidebar() && <Sidebar />}
+      
       <Routes>
-      {/* Landing fuera del main-content */}
-      <Route path="/" element={<LandingPage />} />
+        {/* Landing sin main-content */}
+        <Route path="/" element={<LandingPage />} />
 
-      <Route
-        path="*"
-        element={
-          <div className="main-content">
-            <Routes>
-              {/* Chat invitados */}
-              <Route path="/chat" element={<ChatPage guest />} />
+        {/* Rutas con main-content */}
+        <Route
+          path="*"
+          element={
+            <div className="main-content">
+              <Routes>
+                {/* Chat invitados */}
+                <Route path="/chat" element={<ChatPage guest />} />
 
-              {/* Chat usuarios */}
-              <Route path="/c/:userId" element={<ChatPage />}>
-                <Route path="config" element={<ConfigPage />} />
-              </Route>
+                {/* Chat usuarios */}
+                <Route 
+                  path="/c/:userId" 
+                  element={isSignedIn ? <ChatPage /> : <SignIn redirectUrl={location.pathname} />} 
+                >
+                  <Route 
+                    path="settings" 
+                    element={<ConfigPage />} 
+                  />
+                </Route>
 
-              {/* Otras rutas */}
-              <Route path="/oauth-callback" element={<OAuthCallback />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/jarvis" element={<SpherePage />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              {/*<Route path="/terms" element={<TermsPage />} />
-              <Route path="/data" element={<DataPracticesPage />} />
-              <Route path="/overview" element={<OverviewPage />} />
-              <Route path="/mission" element={<MissionPage />} />
-              <Route path="/contact" element={<ContactPage />} />
-              <Route path="/docs" element={<DocsPage />} />
-              <Route path="/api" element={<ApiPage />} /> */}
-              <Route path="/guides" element={<GuidesPage />} />
+                {/* Dashboard */}
+                <Route
+                  path="/dashboard"
+                  element={isSignedIn ? <DashboardPage /> : <SignIn redirectUrl="/dashboard" />}
+                />
+                
+                {/* Auth routes */}
+                <Route 
+                  path="/login/*" 
+                  element={
+                    <ClerkLayout>
+                      <SignIn routing="path" path="/login" />
+                    </ClerkLayout>
+                  } 
+                />
+                <Route 
+                  path="/register/*" 
+                  element={
+                    <ClerkLayout>
+                      <SignUp routing="path" path="/register" />
+                    </ClerkLayout>
+                  } 
+                />
+                <Route 
+                  path="/login/sso-callback" 
+                  element={
+                    <ClerkLayout>
+                      <SignIn routing="path" path="/login" />
+                    </ClerkLayout>
+                  } 
+                />
 
-            </Routes>
-          </div>
-        }
-      />
-    </Routes>
-  </div>
-);
+                {/* Páginas públicas */}
+                <Route path="/jarvis" element={<SpherePage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/guides" element={<GuidesPage />} />
+                <Route path="/mission" element={<MissionPage />} />
+                <Route path="/contact" element={<ContactPage />} />
+                <Route path="/terms" element={<TermsPage />} />
 
+                {/* Rutas comentadas para cuando las necesites
+                <Route path="/data" element={<DataPracticesPage />} />
+                <Route path="/overview" element={<OverviewPage />} />
+                <Route path="/docs" element={<DocsPage />} />
+                <Route path="/api" element={<ApiPage />} />
+                */}
+              </Routes>
+            </div>
+          }
+        />
+      </Routes>
+    </div>
+  );
 }
 
 export default App;

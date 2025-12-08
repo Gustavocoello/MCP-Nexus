@@ -1,5 +1,5 @@
 // src/features/config/ConfigPage.jsx
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import ConfigDrawer from './components/ConfigDrawer';
 import './components/ConfigDrawer.css';
 

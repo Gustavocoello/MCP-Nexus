@@ -1,3 +1,4 @@
+# src/mcps/sources/calendar/google_calendar.py
 import os
 import sys
 import pytz
@@ -12,23 +13,12 @@ from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import all_
 
 try: # Para el app.py
     from src.mcps.core.models import Event
 except ImportError: # Para el MCP inspector
     from mcps.core.models import Event
     
-# --- Fix Paths ---
-current_dir = Path(__file__).resolve().parent
-backend_dir = current_dir.parent.parent.parent.parent
-sys.path.insert(0, str(backend_dir))
-
-from src.services.auth.token_crypto import decrypt_token, encrypt_token
-from src.database.models import UserToken
-from extensions import db
 
 load_dotenv()
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
@@ -57,27 +47,29 @@ def ensure_aware(dt):
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 class GoogleCalendarConnector:
-    def __init__(self, user_id=None):
+    def __init__(self, user_id: str, access_token: str, refresh_token: Optional[str] = None):
         if not user_id:
-            raise ValueError("Falta el user_id (obligatorio en producción)")
+            raise ValueError("Falta el user_id")
+        if not access_token:
+            raise ValueError("Falta el access_token de Google")
+            
         self.user_id = user_id
+        self.access_token = access_token
+        self.refresh_token = refresh_token
         self.creds = None
         self.service = None
 
     def authenticate(self):
         """
-        Autenticación OAuth2 con Google Calendar API.
-        Guarda/recupera token para evitar autenticación repetida.
-        Elimnar el tokens si se quiere forzar una nueva autenticación.
+        Autenticación OAuth2 con Google Calendar API usando tokens inyectados.
+        Si refresca, devuelve el nuevo access_token.
         """
+        access_token = self.access_token
+        refresh_token = self.refresh_token
+        new_access_token = access_token
+        new_refresh_token = refresh_token
+        
         try:
-            token_entry = UserToken.query.filter_by(user_id=self.user_id, provider="google_calendar").first()
-            if not token_entry:
-                raise Exception("🔐 No se encontró token para este usuario. ¿Autenticó con Google?")
-
-            access_token = decrypt_token(token_entry.access_token)
-            refresh_token = decrypt_token(token_entry.refresh_token) if token_entry.refresh_token else None
-
             # Construye el objeto de credenciales
             creds = Credentials(
                 token=access_token,
@@ -96,20 +88,25 @@ class GoogleCalendarConnector:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
 
-                # 🛡️ Opcional: actualiza el nuevo access_token en base de datos
-                token_entry.access_token = encrypt_token(creds.token)
-                token_entry.expires_at = datetime.utcnow() + creds.expiry if creds.expiry else None
-                db.session.commit()
+                # CAPTURAMOS EL NUEVO TOKEN (sin guardarlo en DB)
+                new_access_token = creds.token
+                
+                # Si Google devolvió un nuevo refresh token (raro), lo capturamos
+                if creds.refresh_token != refresh_token:
+                    new_refresh_token = creds.refresh_token
 
             self.creds = creds
             self.service = build("calendar", "v3", credentials=self.creds)
-            return self.service
-        except SQLAlchemyError as e:
-            db.session.rollback()
-            print(f"Error de la base de datos: {e}")
+            
+            # Retornamos el servicio Y los tokens (nuevos o originales)
+            return self.service, new_access_token, new_refresh_token
+            
+        except RefreshError as e:
+            # Error crítico: el refresh token falló o ya no es válido
+            print(f"Error al refrescar el token de Google: {e}")
+            raise Exception("Token de Google expirado e irrecuperable. Re-autenticar en Jarvis.")
         except Exception as e:
-            db.session.rollback()
-            print(f"Error inesperado: {e}")
+            print(f"Error inesperado en autenticación de Google: {e}")
             raise
     # ============= OBTENCIÓN DE EVENTOS POR RANGO FECHAS ===============
     def get_events_by_range(self, calendar_id: str, start: Union[str, datetime], end: Union[str, datetime]):

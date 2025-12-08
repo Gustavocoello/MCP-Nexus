@@ -8,19 +8,21 @@ from datetime import datetime
 from werkzeug.utils import secure_filename
 from src.services.providers.utils import generate_prompt, extract_text_from_file, analyze_image_with_azure, can_upload_image
 from src.services.core.llm_router import completion,completion_stream
-from src.database.models.models import Chat, Message, MemoryType, UserMemory, Document, User
+from src.database.models.models import Chat, Message, MemoryType, UserMemory, Document, UserToken
 from src.services.integrations.extensions.onedrive_service import upload_to_onedrive, get_user_onedrive_token
 from src.config.logging_config import get_logger
 from src.services.memory.service import get_user_memory, save_memory
 from src.services.memory.utils import build_memory_context, extract_memory_from_text, calculate_priority, classify_memory
-from flask_login import login_required, current_user
-from flask import Blueprint, jsonify, Response, request, stream_with_context, session, copy_current_request_context
-from src.mcps.client.calendar.client_google_calendar import MCPToolsClient
+from flask import Blueprint, jsonify, Response, request, stream_with_context, session, copy_current_request_context, g
+from src.mcps.client.client_manager import mcp_manager
+from src.services.auth.clerk.clerk_middleware import clerk_required
 from src.mcps.client.utils.utils import safe_serialize_call_result
+from src.services.auth.utils.token_crypto import encrypt_token
+from src.services.auth.mcp.mcp_jwt import generate_mcp_jwt
 
 logger = get_logger('routes')
 
-mcp_client = MCPToolsClient()
+mcp_client = mcp_manager
 
 ## ----------- Mensajes de la IA sin memoria --------------
 """ Create a blueprint for search API """
@@ -28,13 +30,6 @@ search_bp = Blueprint('search', __name__, url_prefix='/api/search')
 
 @search_bp.route("/prompt", methods=["POST"])
 def handle_search_prompt():
-    # Si el usuario está logueado, lo redirigimos al endpoint de memoria
-    if current_user.is_authenticated:
-        return jsonify({
-            "error": "Este endpoint es solo para usuarios no registrados.",
-            "use": "/api/chat/<chat_id>/message"
-        }), 403
-
     # Limitar a 5 intentos por sesión para usuarios anónimos
     counter = session.get('anon_prompt_count', 0)
 
@@ -155,9 +150,9 @@ def summarize_and_trim(chat):
 
 # ----------------- GET ---------------------
 @chat_bp.route('', methods=['GET'], strict_slashes=False)
-@login_required
+@clerk_required
 def get_all_chats():
-    chats = Chat.query.filter_by(user_id=current_user.id).order_by(Chat.updated_at.desc()).all()
+    chats = Chat.query.filter_by(user_id=g.user_id).order_by(Chat.updated_at.desc()).all()
     return jsonify([{
         "id": chat.id,
         "created_at": chat.created_at.isoformat(),
@@ -167,10 +162,10 @@ def get_all_chats():
     } for chat in chats])
 
 @chat_bp.route('/<chat_id>/messages', methods=['GET'])
-@login_required
+@clerk_required
 def get_chat_messages(chat_id):
     chat = Chat.query.get(chat_id)
-    if not chat or chat.user_id != current_user.id:
+    if not chat or chat.user_id != g.user_id:
         return jsonify({'error': 'Acceso denegado'}), 403
     messages = (Message.query
                 .filter_by(chat_id=chat_id)
@@ -186,10 +181,10 @@ def get_chat_messages(chat_id):
 # ----------------- DELETE -------------------
     
 @chat_bp.route('/<chat_id>', methods=['DELETE'])
-@login_required
+@clerk_required
 def delete_chat(chat_id):
     chat = Chat.query.get(chat_id)
-    if not chat or chat.user_id != current_user.id:
+    if not chat or chat.user_id != g.user_id:
         return jsonify({"error": "Acceso denegado"}), 403
 
     db.session.delete(chat)
@@ -200,17 +195,17 @@ def delete_chat(chat_id):
 # ----------------- POST ---------------------    
     
 @chat_bp.route('', methods=['POST'], strict_slashes=False)
-@login_required
+@clerk_required
 def create_chat():
-    if not current_user.is_authenticated or not current_user.get_id():
+    if not g.user_id:
         return jsonify({"error": "Usuario no autenticado o ID inválido"}), 401
 
     try:
-        chat = Chat(user_id=current_user.get_id())
+        chat = Chat(user_id=g.user_id)
         db.session.add(chat)
         db.session.commit()
         
-        print(f"[DEBUG] current_user: {current_user}, ID: {current_user.get_id()}")
+        print(f"[DEBUG] user_id: {g.user_id}")
         return jsonify({
             "id": chat.id,
             "created_at": chat.created_at.isoformat()
@@ -221,15 +216,15 @@ def create_chat():
 
 
 @chat_bp.route('/<chat_id>/message', methods=['POST'], strict_slashes=False)
-@login_required
+@clerk_required
 def send_message(chat_id):
     chat = Chat.query.get(chat_id)
 
     if not chat:
         # Si no existe, crearlo y asignarlo al usuario actual
-        chat = Chat(id=chat_id, user_id=current_user.id)
+        chat = Chat(id=chat_id, user_id=g.user_id)
         db.session.add(chat)
-    elif chat.user_id != current_user.id:
+    elif chat.user_id != g.user_id:
         return jsonify({"error": "Acceso denegado"}), 403
     
     user_text = (request.json.get("text") or "").strip()
@@ -277,26 +272,77 @@ def send_message(chat_id):
             db.session.add(context_msg)
             
         # MCP - Model Context Protocol
+        
         tool_name = request.json.get("tool", "").strip()
         params = request.json.get("params", {})
-        mcp_client.user_id = current_user.id
         mcp_context = None
         if tool_name:
+        
+        # 🔑 PASO 1: Determinar el cliente. Asumiremos que si tool_name existe,
+        # pertenece a un cliente MCP. Si el manager no lo encuentra, lanzará una excepción.
+        
             try:
-                #Creamos un nuevo loop
-                loop = asyncio.new_event_loop() # Creamos un nuevo event loop
+                # 🔑 PASO 2: Generar el JWT SOLO si es una herramienta que lo requiere (ej. google_calendar)
+                # Como todas tus tools son google_, asumimos que el JWT siempre es necesario.
+                
+                # Nota: El user_id ya está en g.user_id, lo pasamos al manager.
+                
+                # --- LÓGICA CLAVE DE JWT/MANAGER ---
+                
+                # 1. Generar el JWT para la integración de Google Calendar
+                mcp_auth_token = generate_mcp_jwt(g.user_id, "google_calendar")
+                
+                # 2. Si no hay token, el usuario no está conectado a Google.
+                if not mcp_auth_token:
+                    # No podemos llamar a la tool de Google.
+                    print(f"❌ [Jarvis] No se pudo generar JWT para user_id={g.user_id}")
+                    return jsonify({"error": f"La herramienta '{tool_name}' requiere conexión con Google Calendar."}), 400
+                    
+                # 3. Llamada al Manager
+                # Creamos un nuevo loop (como ya lo tienes)
+                loop = asyncio.new_event_loop() 
                 try:
-                    result = loop.run_until_complete(mcp_client._call_tool(tool_name, **params))
+                    # 🔄 El Manager DEBE instanciar el cliente con el auth_token
+                    # Implementaremos un método en el Manager para manejar esto:
+                    result = loop.run_until_complete(
+                        mcp_manager.call_tool_with_auth(
+                            tool_name=tool_name, 
+                            user_id=g.user_id, 
+                            auth_token=mcp_auth_token, # ⬅️ Pasamos el JWT
+                            **params
+                        )
+                    )
                 finally:
-                    loop.close()  # Cerramos el event loop
+                    loop.close()
                     print(f"MCP Results: ({tool_name}):", result)
+                    
+                # 🔄 PASO 4: CHEQUEAR SI HUBO UN REFRESH DE TOKEN
+                # El resultado de la tool (ToolResult) trae el contexto si hubo cambios.
+                response_context = getattr(result, 'context', {})
+                
+                if "google_new_access_token" in response_context:
+                    new_access = response_context["google_new_access_token"]
+                    new_refresh = response_context.get("google_new_refresh_token")
+                    
+                    # Persistir los nuevos tokens en la DB de Jarvis
+                    token_entry = UserToken.query.filter_by(user_id=g.user_id, provider="google_calendar").first()
+                    
+                    if token_entry:
+                        token_entry.access_token = encrypt_token(new_access)
+                        if new_refresh:
+                            token_entry.refresh_token = encrypt_token(new_refresh)
+                        
+                        db.session.add(token_entry)
+                        db.session.commit() # Commit inmediato para el token
+                        print("[Jarvis] Google Token refrescado y persistido.")
                 
                 # Convertir a JSON serializable manualmente
                 result_dict = safe_serialize_call_result(result)
                 # construir mcp_context como JSON plano
                 mcp_context = json.dumps({
                     "response": result_dict,
-                    "tool_used": tool_name
+                    "tool_used": tool_name,
+                    "token_refreshed": "google_new_access_token" in response_context
                 })
 
                 # guardar en DB como oculto (no se renderiza en frontend)
@@ -374,7 +420,7 @@ def send_message(chat_id):
 
 # --------------- POST (extraer texto de archivos) ---------------
 @chat_bp.route('/extract_file', methods=['POST'])
-@login_required
+@clerk_required
 def extract_file():
     if 'file' not in request.files:
         return jsonify({'error': 'No se proporcionó ningún archivo'}), 400
@@ -406,7 +452,7 @@ def extract_file():
 
         # --- background upload ---
         @copy_current_request_context
-        def background_task(file_bytes=file_bytes, filename=filename, content_type=content_type, user_id=current_user.id):
+        def background_task(file_bytes=file_bytes, filename=filename, content_type=content_type, user_id=g.user_id):
             try:
                 """
                 # Traer el usuario completo
@@ -445,10 +491,10 @@ def extract_file():
 
 # --------------- PUT ---------------
 @chat_bp.route('/<chat_id>/title', methods=['PUT'])
-@login_required
+@clerk_required
 def update_chat_title(chat_id):
     chat = Chat.query.get(chat_id)
-    if not chat or chat.user_id != current_user.id:
+    if not chat or chat.user_id != g.user_id:
         return jsonify({'error': 'Acceso denegado'}), 403
     
     data = request.get_json()

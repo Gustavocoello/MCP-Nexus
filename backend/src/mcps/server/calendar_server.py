@@ -7,26 +7,105 @@ import uvicorn
 from pathlib import Path
 from typing import Optional, List, Tuple, Dict
 from fastmcp import FastMCP, Context
+from contextvars import ContextVar
+from fastmcp.server import FastMCP
 from fastmcp.tools.tool import ToolResult
+from functools import wraps
+from starlette.middleware.base import Request
 from starlette.applications import Starlette
 from starlette.routing import Mount, Route
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
-from starlette.middleware.wsgi import WSGIMiddleware
 from starlette.responses import JSONResponse
 from datetime import datetime, timezone, time, timedelta
-
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+import jwt
 # --- Fix Paths ---
 current_dir = Path(__file__).resolve().parent
-backend_dir = current_dir.parent.parent.parent
+backend_dir = current_dir.parent.parent
 sys.path.insert(0, str(backend_dir))
 
-from src.mcps.sources.calendar.google_calendar import GoogleCalendarConnector
-from src.mcps.sources.calendar.natural_parser import parse_natural_language_to_event
-from src.services.auth.Keep_alive_mcp import keep_alive_mcp
-from src.mcps.core.models import Event
-from app import app as flask_app
-from extensions import db
+from mcps.sources.calendar.google_calendar import GoogleCalendarConnector
+from mcps.sources.calendar.natural_parser import parse_natural_language_to_event
+from mcps.core.utils.Keep_alive_mcp import keep_alive_mcp
+from mcps.core.models import Event
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Añadir la clave secreta de autenticación (Jarvis y MCP deben compartirla)
+MCP_SECRET_KEY = os.getenv("MCP_SECRET_KEY")
+# Asegúrate de que la clave secreta se cargó
+if not MCP_SECRET_KEY:
+    print("ADVERTENCIA: La clave secreta MCP_SECRET_KEY no está configurada.")
+    
+# Variable ahora con ContextVar para almacenar el contexto de la request actual
+_current_request_context: ContextVar[dict] = ContextVar('mcp_context', default={})
+
+# Middleware modificado para almacenar el contexto globalmente
+class JWTAuthMiddleware(BaseHTTPMiddleware):
+    """Middleware para validar JWT en requests al MCP Server"""
+    
+    def __init__(self, app, auth_secret: str):
+        super().__init__(app)
+        self.auth_secret = auth_secret
+    
+    async def dispatch(self, request: Request, call_next):
+        
+        # Permitir ping sin autenticación
+        if request.url.path.endswith("/ping"):
+            return await call_next(request)
+        
+        # Extraer el token del header Authorization
+        auth_header = request.headers.get("Authorization", "")
+        
+        print(f"🔍 [Middleware] Path: {request.url.path}")
+        print(f"🔍 [Middleware] Auth header: {auth_header[:50]}..." if auth_header else "❌ No auth header")
+        
+        if not auth_header.startswith("Bearer "):
+            return JSONResponse(
+                {"error": "Missing or invalid Authorization header"},
+                status_code=401
+            )
+        
+        token = auth_header.replace("Bearer ", "")
+        
+        try:
+            # Decodificar y validar el JWT
+            payload = jwt.decode(token, self.auth_secret, algorithms=["HS256"])
+            
+            print(f" - [Middleware] JWT decodificado correctamente")
+            print(f"   - user_id: {payload.get('user_id')}")
+            print(f"   - provider: {payload.get('provider')}")
+            
+            # Guardar en variable global
+            mcp_context = {
+                "user_id": payload.get("user_id"),
+                "provider": payload.get("provider"),
+                "google_access_token": payload.get("google_access_token"),
+                "google_refresh_token": payload.get("google_refresh_token"),
+            }
+            
+            _current_request_context.set(mcp_context)
+            print(f"[Middleware] Context guardado globalmente: {mcp_context.get('user_id')}")
+            
+            response = await call_next(request)
+            
+            return response
+            
+        except jwt.ExpiredSignatureError:
+            print(f"[Middleware] Token expirado")
+            return JSONResponse(
+                {"error": "Token expired"},
+                status_code=401
+            )
+        except jwt.InvalidTokenError as e:
+            print(f"[Middleware] Token inválido: {e}")
+            return JSONResponse(
+                {"error": f"Invalid token: {str(e)}"},
+                status_code=401
+            )
 
 async def ping(request):
     return JSONResponse({"status": "ok", "service": "mcp-render"})
@@ -34,9 +113,19 @@ async def ping(request):
 #mcp = CustomFastMCP(name="Google Calendar MCP", stateless_http=True)
 mcp = FastMCP(name="Google Calendar MCP")  # Antes esta esto stateless_http=True
 
+# Crear la app HTTP
 mcp_app = mcp.http_app(path="/mcp")
 
-mcp_app_cors = CORSMiddleware(mcp_app,
+# Aplicar middleware JWT personalizado
+mcp_app_with_auth = Starlette(
+    routes=[],
+    middleware=[
+        Middleware(JWTAuthMiddleware, auth_secret=MCP_SECRET_KEY)
+    ]
+)
+mcp_app_with_auth.mount("/", mcp_app)
+
+mcp_app_cors = CORSMiddleware(mcp_app_with_auth,
     allow_origins=[
         "https://mcp-nexus-gustavo-coellos-projects.vercel.app",
         "https://mcp-nexus.vercel.app", 
@@ -57,9 +146,9 @@ app = Starlette(
         Mount("/mcp-server", app=mcp_app_cors),
         Route("/ping", ping)
     ], 
-    lifespan=mcp_app.lifespan)
+    lifespan=mcp_app.lifespan
+)
 
-app.mount("/", WSGIMiddleware(flask_app))
 # Configuración del servidor MCP
 #os.environ["DANGEROUSLY_OMIT_AUTH"] = "true"
 #os.environ["MCP_SERVER_HOST"] = "0.0.0.0" 
@@ -67,17 +156,58 @@ app.mount("/", WSGIMiddleware(flask_app))
 
 def get_connector(context):
     user_id = context.get("user_id")
+    access_token = context.get("google_access_token") 
+    refresh_token = context.get("google_refresh_token")
     try:
-        if not user_id:
-            raise ValueError("Falta user_id en el contexto")
-        connector = GoogleCalendarConnector(user_id=user_id)
-        connector.authenticate()
+        if not user_id or not access_token:
+            raise ValueError("Falta user_id o access_token en el contexto")
+        
+        connector = GoogleCalendarConnector(
+            user_id=user_id, 
+            access_token=access_token, 
+            refresh_token=refresh_token
+            )
+        
+        # Ejecutamos la autenticación y capturamos los posibles nuevos tokens
+        service, new_access_token, new_refresh_token = connector.authenticate()
+        
+        # Si hubo un refresh en Google, inyectamos los nuevos tokens al contexto
+        # para que Jarvis los guarde.
+        if new_access_token and new_access_token != access_token:
+            context["google_new_access_token"] = new_access_token
+        if new_refresh_token and new_refresh_token != refresh_token:
+            context["google_new_refresh_token"] = new_refresh_token
+            
         return connector
+        
     except Exception as e:
         print(f"Error al obtener el conector de Google Calendar: {e}")
-        db.session.rollback()
         raise
     
+# =============== HELPER ================
+def extract_context_from_fastmcp(context: Context) -> dict:
+    """Extrae el contexto MCP desde la variable global inyectada por el middleware"""
+    mcp_context = _current_request_context.get()
+    
+    print(f"🔍 [extract_context] Contexto: user_id={mcp_context.get('user_id')}, "
+          f"has_token={bool(mcp_context.get('google_access_token'))}")
+    
+    if mcp_context:
+        return mcp_context.copy()
+    
+    # Fallback: intentar desde request_context
+    req_ctx = context.request_context
+    mcp_context = {
+        "user_id": getattr(req_ctx, "user_id", None),
+        "provider": getattr(req_ctx, "provider", None),
+        "google_access_token": getattr(req_ctx, "google_access_token", None),
+        "google_refresh_token": getattr(req_ctx, "google_refresh_token", None),
+    }
+    
+    print(f"🔍 [extract_context] Fallback - user_id={mcp_context.get('user_id')}, "
+          f"has_token={bool(mcp_context.get('google_access_token'))}")
+    
+    return mcp_context
     
 # Zona horaria de Ecuador (GMT-5)
 EC_TZ = pytz.timezone("America/Guayaquil")
@@ -90,11 +220,13 @@ def ensure_aware(dt: datetime) -> datetime:
 # ───────────────────── FUNCIONES BÁSICAS ─────────────────────
 
 @mcp.tool
-async def crear_evento(context: dict, summary: str, description: str, start_time: str, end_time: str, calendar_id: str = "primary") -> dict:
+async def crear_evento(context: Context, summary: str, description: str, start_time: str, end_time: str, calendar_id: str = "primary") -> dict:
     """
     Crea un nuevo evento.
     """
-    gcal = get_connector(context)
+    mcp_context = extract_context_from_fastmcp(context)  
+    gcal = get_connector(mcp_context)
+    
     event = Event(
         title=summary,
         description=description,
@@ -107,19 +239,21 @@ async def crear_evento(context: dict, summary: str, description: str, start_time
 # ───────────────────── INFORMACIÓN ─────────────────────
 
 @mcp.tool
-async def google_resumen_diario(context: dict, calendar_id: Optional[str] = None) -> str:
+async def google_resumen_diario(context: Context, calendar_id: Optional[str] = None) -> str:
     """
     Resumen diario de todos los calendarios o calendario seleccionado.
     """
-    gcal = get_connector(context)
+    mcp_context = extract_context_from_fastmcp(context)  
+    gcal = get_connector(mcp_context)
     return gcal.get_summary(calendar_id or None, range_type="daily")
 
 @mcp.tool
-async def google_resumen_semanal(context: dict, calendar_id: Optional[str] = None) -> str:
+async def google_resumen_semanal(context: Context, calendar_id: Optional[str] = None) -> str:
     """
     Resumen semanal de todos los calendarios o calendario seleccionado.
     """
-    gcal = get_connector(context)
+    mcp_context = extract_context_from_fastmcp(context)  
+    gcal = get_connector(mcp_context)
     return gcal.get_summary(calendar_id or None, range_type="weekly")
 
 
@@ -128,7 +262,7 @@ async def google_resumen_semanal(context: dict, calendar_id: Optional[str] = Non
     description="Disponibilidad diaria: espacios libres entre eventos para una fecha dada en horario de Ecuador (GMT-5).",
 )
 async def google_disponibilidad_diaria(
-    context: dict,
+    context: Context,
     date: Optional[str] = None,
     duration_minutes: int = 60
 ):
@@ -151,8 +285,9 @@ async def google_disponibilidad_diaria(
             structured_content={"result": {}},
         )
 
-    g = get_connector(context)
-    res = g.get_free_slots(day, duration_minutes)  # dict con 'free_slots', 'busy_events'
+    mcp_context = extract_context_from_fastmcp(context)  
+    gcal = get_connector(mcp_context)
+    res = gcal.get_free_slots(day, duration_minutes)  # dict con 'free_slots', 'busy_events'
 
     # Formato humano
     if not res["free_slots"]:
@@ -195,15 +330,16 @@ async def google_disponibilidad_diaria(
     description="Disponibilidad semanal: espacios libres para los próximos 7 días en horario de Ecuador (GMT-5).",
 )
 
-async def google_disponibilidad_semanal(context: dict, duration_minutes: int = 60):
+async def google_disponibilidad_semanal(context: Context, duration_minutes: int = 60):
     if duration_minutes <= 0:
         return ToolResult(
             content=[{"type":"text","text":"La duración mínima debe ser mayor que 0."}],
             structured_content={"result": []},
         )
 
-    g = get_connector(context)
-    week = g.get_weekly_free_slots(duration_minutes=duration_minutes)  # lista de dicts con iso strings
+    mcp_context = extract_context_from_fastmcp(context)  
+    gcal = get_connector(mcp_context)
+    week = gcal.get_weekly_free_slots(duration_minutes=duration_minutes)  # lista de dicts con iso strings
 
     content_lines = ["Disponibilidad para los próximos 7 días:"]
     for day_entry in week:
@@ -225,11 +361,13 @@ async def google_disponibilidad_semanal(context: dict, duration_minutes: int = 6
         structured_content={"result": week},
     )
 @mcp.tool()
-async def google_listar_calendarios(context: dict) -> list:
+async def google_listar_calendarios(context: Context) -> list:
     """
     Lista todos los calendarios disponibles del usuario.
     """
-    gcal = get_connector(context)
+    mcp_context = extract_context_from_fastmcp(context)  
+    gcal = get_connector(mcp_context)
+    
     calendarios = gcal.list_calendars()
     return [
         {"id": c["id"], "name": c["name"]}
@@ -239,22 +377,25 @@ async def google_listar_calendarios(context: dict) -> list:
 @mcp.tool(
     name="Filtro de eventos por titulo"
 )
-async def eventos_por_titulo(context: dict, calendar_id: str, keyword: str) -> list:
+async def eventos_por_titulo(context: Context, calendar_id: str, keyword: str) -> list:
     """
     Devuelve eventos que contienen la palabra clave en el título.
     """
-    gcal = get_connector(context)
+    mcp_context = extract_context_from_fastmcp(context)  
+    gcal = get_connector(mcp_context)
     
     time_min = datetime.now(timezone.utc).isoformat()
     return gcal.filter_events_by_title(calendar_id, keyword, time_min=time_min)
 
 # ───────────────────── NLP → EVENT ─────────────────────
 @mcp.tool(name="Crear evento desde texto natural")
-async def crear_evento_desde_texto(context: dict, texto_usuario: str, calendar_id: str = None) -> dict:
+async def crear_evento_desde_texto(context: Context, texto_usuario: str, calendar_id: str = None) -> dict:
     """
     Convierte texto en evento y lo crea en el calendario.
     """
-    gcal = get_connector(context)
+    mcp_context = extract_context_from_fastmcp(context)  
+    gcal = get_connector(mcp_context)
+
     event = parse_natural_language_to_event(texto_usuario)
 
     if not event:
@@ -268,11 +409,13 @@ async def crear_evento_desde_texto(context: dict, texto_usuario: str, calendar_i
     }
 
 @mcp.tool(name="Eventos por rango")
-async def eventos_por_rango(context: dict, calendar_id: str, start_date: str, end_date: str) -> list:
+async def eventos_por_rango(context: Context, calendar_id: str, start_date: str, end_date: str) -> list:
     """
     Recupera eventos de un calendario específico dentro de un rango de fechas.
     """
-    gcal = get_connector(context)
+    mcp_context = extract_context_from_fastmcp(context)  
+    gcal = get_connector(mcp_context)
+
     start = datetime.fromisoformat(start_date)
     end = datetime.fromisoformat(end_date)
     events = gcal.get_events_by_range(calendar_id, start, end)
@@ -280,11 +423,13 @@ async def eventos_por_rango(context: dict, calendar_id: str, start_date: str, en
 
 
 @mcp.tool(name="Eventos de todos los calendarios por rango")
-async def eventos_todos_calendarios_rango(context: dict, start_date: str, end_date: str) -> list:
+async def eventos_todos_calendarios_rango(context: Context, start_date: str, end_date: str) -> list:
     """
     Recupera eventos de todos los calendarios del usuario en un rango de fechas.
     """
-    gcal = get_connector(context)
+    mcp_context = extract_context_from_fastmcp(context)  
+    gcal = get_connector(mcp_context)
+    
     start = datetime.fromisoformat(start_date)
     end = datetime.fromisoformat(end_date)
     events = gcal.fetch_events_by_range(start, end)
@@ -301,12 +446,10 @@ def debug_list_tools():
 debug_list_tools()
 #""" # Para utilizarlo en local
 if __name__ == "__main__":
-        from app import app as flask_app
         keep_alive_mcp()
-        with flask_app.app_context():
-            uvicorn.run(
-                app,
-                host="0.0.0.0",
-                port=8000,
+        uvicorn.run(
+            app,
+            host="0.0.0.0",
+            port=8000,
             )
 #"""       

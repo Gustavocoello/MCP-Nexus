@@ -1,0 +1,1015 @@
+/* --------------------------------------
+ * 1. Estilos Base y Contenedor
+ * -------------------------------------- */
+
+.legal-container {
+    /* **AJUSTES CLAVE para centrado y responsive:** */
+    max-width: 900px; /* Ancho máximo en escritorios */
+    width: 95%; /* Siempre ocupa el 95% del espacio del padre */
+    margin: 0 auto; /* Centrado */
+    padding: 2rem;
+    border-radius: 12px; 
+    box-sizing: border-box; /* **CLAVE: El padding se incluye DENTRO del 95% de width** */
+}
+
+/* Botón de regreso */
+.back-button {
+    background: transparent;
+    border: 1px solid #333;
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-bottom: 2rem;
+    transition: all 0.3s ease;
+    font-weight: 600;
+}
+
+.back-button:hover {
+    background: #1a1a1a;
+    border-color: #1a1a1a; /* Púrpura de acento */
+    transform: translateX(-5px);
+}
+
+/* --------------------------------------
+ * 2. Cabecera y Contenido
+ * -------------------------------------- */
+
+.legal-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    position: relative;
+    padding-bottom: 20px;
+}
+
+.legal-header h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 800;
+    margin-bottom: 0.5rem;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+}
+
+.legal-header .header-icon {
+    color: #eeeeee; 
+    margin-bottom: 0.5rem;
+}
+
+.legal-header .subtitle {
+    font-size: 1.1rem;
+    color: #bbb;
+}
+
+/* Línea decorativa (similar a services-title::after) */
+.legal-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 3px;
+    background: linear-gradient(135deg, #7c3aed, #3b82f6);
+    border-radius: 2px;
+}
+
+.legal-content h2 {
+    font-size: clamp(1.8rem, 4vw, 2.5rem);
+    font-weight: 700;
+    margin-top: 2.5rem;
+    margin-bottom: 1.5rem;
+    color: #ffffff;
+    letter-spacing: -0.01em;
+    border-left: 5px solid #3b82f6; /* Azul de acento */
+    padding-left: 1rem;
+}
+
+.legal-content p {
+    line-height: 1.7;
+    color: #ccc;
+    margin-bottom: 1rem;
+}
+
+/* --------------------------------------
+ * 3. Secciones Específicas de ContactPage
+ * -------------------------------------- */
+.contact-section {
+    margin-bottom: 3rem;
+}
+
+/* Sección Hero con el SVG de la Tierra */
+.contact-hero {
+    display: flex;
+    align-items: center;
+    gap: 3rem;
+    padding: 2rem 0;
+    margin-bottom: 3rem;
+    border-bottom: 1px dashed #222;
+}
+
+.earth-animation {
+    flex-shrink: 0; /* No se encoge */
+}
+
+.earth-svg {
+    width: 150px;
+    height: auto;
+    /* Puedes añadir animaciones aquí si el SVG lo permite, similar a las estrellas */
+    animation: rotateEarth 30s linear infinite;
+    filter: drop-shadow(0 0 10px rgba(60, 130, 250, 0.4));
+}
+
+@keyframes rotateEarth {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.contact-hero .hero-text h2 {
+    font-size: 2rem;
+    border-left: none;
+    padding-left: 0;
+}
+
+/* Contact Cards Grid */
+.contact-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.contact-card {
+    background: rgba(15, 15, 15, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+}
+
+.contact-card:hover {
+    transform: translateY(-5px);
+    border-color: #3b82f6;
+    box-shadow: 0 10px 30px rgba(124, 58, 237, 0.15);
+}
+
+.card-icon {
+    color: #3b82f6; /* Azul por defecto */
+    margin-bottom: 0.8rem;
+}
+
+.card-icon.linkedin {
+    color: #0a66c2;
+}
+.card-icon.github {
+    color: #e8e8e8;
+}
+
+.contact-card h3 {
+    color: #fff;
+    font-size: 1.3rem;
+    margin-bottom: 0.5rem;
+}
+
+.contact-detail {
+    color: #aaa;
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+}
+
+.card-actions {
+    margin-top: auto; /* Empuja los botones hacia abajo */
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+/* Botones de acción */
+.contact-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0.7rem 1rem;
+    border-radius: 6px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.3s ease, transform 0.1s;
+    font-size: 0.95rem;
+}
+
+.contact-btn.primary {
+    background: #3b82f6; /* Púrpura */
+    color: white;
+    border: none;
+}
+.contact-btn.primary:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+}
+
+.contact-btn.secondary {
+    background: #222;
+    color: #bbb;
+    border: 1px solid #444;
+}
+.contact-btn.secondary:hover {
+    background: #333;
+    color: #fff;
+}
+
+/* Oportunidades */
+.opportunities-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.opportunity-card {
+    background: #111;
+    padding: 1.5rem;
+    border-radius: 10px;
+    border-left: 5px solid #3b82f6;
+    transition: all 0.3s ease;
+}
+
+.opportunity-card:hover {
+    background: #181818;
+    border-left-color: #ffffff;
+}
+
+.opportunity-card h3 {
+    margin-top: 0.5rem;
+    color: #fff;
+}
+
+.opp-icon {
+    color: #ffffff;
+    width: 28px;
+    height: 28px;
+}
+
+/* Tech Stack Badges */
+.tech-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 2rem;
+    justify-content: center; /* Centrar los badges */
+}
+
+.tech-badge {
+    background: #1a1a1a;
+    color: #3b82f6;
+    border: 1px solid #3b82f6;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.tech-badge:hover {
+    background: #3b82f6;
+    color: #fff;
+    border-color: #7c3aed;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(59, 130, 246, 0.2);
+}
+
+/* Call to Action (CTA) */
+.cta-box {
+    background: linear-gradient(135deg, #111, #222);
+    padding: 2.5rem;
+    border-radius: 15px;
+    text-align: center;
+    border: 1px solid #333;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+.cta-box h2 {
+    font-size: 2.5rem;
+    color: #ffffff;
+    margin-top: 0;
+    border-left: none;
+    padding-left: 0;
+}
+
+.cta-box p {
+    max-width: 600px;
+    margin: 1rem auto 2rem auto;
+    color: #ccc;
+}
+
+.cta-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+}
+
+.cta-button {
+    /* Estilos base de los botones de contacto */
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    font-weight: bold;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+.cta-button.primary {
+    background: #3b82f6;
+    color: white;
+}
+.cta-button.secondary {
+    background: #333;
+    color: #fff;
+    border: 1px solid #555;
+}
+.cta-button.primary:hover {
+    background: #3b82f6;
+    box-shadow: 0 5px 20px rgba(59, 130, 246, 0.4);
+}
+.cta-button.secondary:hover {
+    background: #555;
+    border-color: #ffffff;
+}
+
+
+/* --------------------------------------
+ * 4. Secciones Específicas de MissionPage
+ * -------------------------------------- */
+
+/* Misión principal */
+.mission-card {
+    background: rgba(15, 15, 15, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 2rem;
+    margin-top: 1rem;
+    transition: all 0.3s ease;
+}
+.mission-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.mission-card.primary {
+    background: #111;
+    border-left: 5px solid #ffffff;
+}
+
+.mission-card.warning {
+    background: #311111; /* Rojo oscuro sutil */
+    border-left: 5px solid #ff4d4f; /* Rojo de advertencia */
+}
+
+.mission-card .section-icon {
+    color: #3b82f6;
+    margin-bottom: 0.5rem;
+}
+
+.mission-card h2 {
+    border-left: none;
+    padding-left: 0;
+    color: #fff;
+    margin-top: 0.5rem;
+}
+
+/* Grid de Valores (Core Values) */
+.mission-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+/* Grid Problema/Solución */
+.problem-solution {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.problem-box, .solution-box {
+    background: #111;
+    border-radius: 10px;
+    padding: 1.5rem;
+    border: 1px solid #333;
+}
+
+.problem-box h3 { color: #ff4d4f; } /* Rojo para problema */
+.solution-box h3 { color: #3b82f6; } /* Azul para solución */
+
+.problem-solution ul {
+    list-style: none;
+    padding-left: 0;
+    margin-top: 1rem;
+}
+
+.problem-solution li {
+    margin-bottom: 0.75rem;
+    color: #bbb;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.solution-box li::before {
+    content: "✅"; /* Checkmark para soluciones */
+    margin-right: 0.5rem;
+}
+.problem-box li::before {
+    content: "❌"; /* X para problemas */
+    margin-right: 0.5rem;
+}
+
+/* Enfoque / Approach */
+.approach-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.approach-item {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+    padding: 1.5rem;
+    background: #080808;
+    border-radius: 10px;
+    border-left: 4px solid #3b82f6;
+}
+
+.approach-number {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #ffffff;
+    color: rgb(1, 1, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.approach-content h3 {
+    margin-top: 0;
+    color: #fff;
+    border-left: none;
+    padding-left: 0;
+}
+
+/* --------------------------------------
+ * 5. Pie de Página
+ * -------------------------------------- */
+
+.legal-footer {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    font-size: 0.85rem;
+    color: #aaa;
+    border-top: 1px solid #333;
+    margin-top: 4rem;
+}
+
+/* --------------------------------------
+ * 6. Responsive (Ajustes para todos los dispositivos)
+ * -------------------------------------- */
+
+/* Tabletas y dispositivos más pequeños (<= 768px) */
+@media (max-width: 768px) {
+    .legal-container {
+        padding: 1.5rem; /* Reducir padding horizontal */
+        width: 95%; /* Mantenemos 95% para un pequeño margen */
+    }
+    
+    .legal-header h1 {
+        font-size: 2.2rem;
+    }
+
+    /* Contact Page */
+    .contact-hero {
+        flex-direction: column;
+        text-align: center;
+        gap: 1.5rem;
+    }
+    
+    .earth-svg {
+        width: 100px; /* Reducir tamaño de la Tierra */
+    }
+
+    .contact-hero .hero-text h2 {
+        font-size: 1.75rem;
+    }
+
+    /* Grid de 2 o 3 columnas pasa a 1 columna */
+    .contact-grid,
+    .opportunities-grid,
+    .mission-grid,
+    .problem-solution {
+        grid-template-columns: 1fr; 
+    }
+    
+    .card-actions {
+        flex-direction: row; /* En tabletas pueden ir lado a lado */
+        gap: 0.75rem;
+        justify-content: center;
+    }
+    
+    /* CTA */
+    .cta-buttons {
+        flex-direction: column; /* Apilar botones de CTA */
+        gap: 1rem;
+    }
+}
+
+/* Teléfonos pequeños (<= 480px) */
+@media (max-width: 480px) {
+    .legal-container {
+        padding: 1rem; /* Padding mínimo para aprovechar el espacio */
+    }    
+    .legal-header h1 {
+        font-size: 2rem;
+    }
+    
+    /* Forzar que los botones de Email (Copy/Send) se apilen */
+    .card-actions {
+        flex-direction: column; 
+        gap: 0.5rem;
+    }
+}
+/* ========================================
+ * TERMS OF SERVICE - ESTILOS ADICIONALES
+ * ======================================== */
+
+.terms-section {
+    margin-bottom: 3rem;
+}
+
+.terms-list {
+    list-style: none;
+    padding-left: 0;
+    margin-top: 1rem;
+}
+
+.terms-list li {
+    padding: 0.5rem 0 0.5rem 2rem;
+    position: relative;
+    color: #ccc;
+}
+
+.terms-list li::before {
+    content: "▸";
+    position: absolute;
+    left: 0.5rem;
+    color: #3b82f6;
+    font-weight: bold;
+}
+
+/* Info, Warning, Disclaimer Boxes */
+.info-box, .warning-box, .disclaimer-box {
+    display: flex;
+    gap: 1rem;
+    padding: 1.5rem;
+    border-radius: 10px;
+    margin-top: 1rem;
+    align-items: flex-start;
+}
+
+.info-box {
+    background: rgba(59, 130, 246, 0.1);
+    border-left: 4px solid #3b82f6;
+}
+
+.warning-box {
+    background: rgba(251, 191, 36, 0.1);
+    border-left: 4px solid #fbbf24;
+}
+
+.disclaimer-box {
+    background: rgba(168, 85, 247, 0.1);
+    border-left: 4px solid #a855f7;
+}
+
+.info-icon, .warning-icon, .disclaimer-icon {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+}
+
+.info-icon { color: #3b82f6; }
+.warning-icon { color: #fbbf24; }
+.disclaimer-icon { color: #a855f7; }
+
+.warning-box h3, .disclaimer-box h3 {
+    margin-top: 0;
+    color: #fff;
+    font-size: 1.2rem;
+    border: none;
+    padding: 0;
+}
+
+.warning-list {
+    list-style: none;
+    padding: 0;
+    margin-top: 0.5rem;
+}
+
+.warning-list li {
+    padding: 0.3rem 0 0.3rem 1.5rem;
+    position: relative;
+    color: #fbbf24;
+}
+
+.warning-list li::before {
+    content: "⚠";
+    position: absolute;
+    left: 0;
+}
+
+/* Responsibility Cards (Do / Don't) */
+.responsibility-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-top: 1.5rem;
+}
+
+.responsibility-card {
+    background: #111;
+    border-radius: 10px;
+    padding: 1.5rem;
+    border: 2px solid;
+}
+
+.responsibility-card.do {
+    border-color: #22c55e;
+}
+
+.responsibility-card.dont {
+    border-color: #ef4444;
+}
+
+.responsibility-card .card-icon {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 0.5rem;
+}
+
+.responsibility-card.do .card-icon { color: #22c55e; }
+.responsibility-card.dont .card-icon { color: #ef4444; }
+
+.responsibility-card h3 {
+    margin-top: 0;
+    color: #fff;
+    font-size: 1.3rem;
+    border: none;
+    padding: 0;
+}
+
+.responsibility-card ul {
+    list-style: none;
+    padding: 0;
+    margin-top: 1rem;
+}
+
+.responsibility-card ul li {
+    padding: 0.4rem 0 0.4rem 1.5rem;
+    position: relative;
+    color: #ccc;
+}
+
+.responsibility-card.do ul li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: #22c55e;
+    font-weight: bold;
+}
+
+.responsibility-card.dont ul li::before {
+    content: "✗";
+    position: absolute;
+    left: 0;
+    color: #ef4444;
+    font-weight: bold;
+}
+
+/* Service Badges */
+.service-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 1rem 0;
+}
+
+.service-badge {
+    background: #1a1a1a;
+    color: #3b82f6;
+    border: 1px solid #3b82f6;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+/* Contact Info Box */
+.contact-info {
+    background: #111;
+    padding: 1.5rem;
+    border-radius: 10px;
+    border-left: 4px solid #3b82f6;
+    margin: 1rem 0 1.5rem 0;
+}
+
+.contact-info p {
+    margin: 0.5rem 0;
+    color: #ccc;
+}
+
+/* Final Acknowledgment Box */
+.acknowledgment-box {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    padding: 2rem;
+    border-radius: 12px;
+    border: 2px solid #3b82f6;
+}
+
+.acknowledgment-box h3 {
+    color: #fff;
+    margin-top: 0;
+    font-size: 1.5rem;
+    border: none;
+    padding: 0;
+}
+
+.acknowledgment-box ul {
+    list-style: none;
+    padding: 0;
+    margin-top: 1rem;
+}
+
+.acknowledgment-box li {
+    padding: 0.5rem 0 0.5rem 2rem;
+    position: relative;
+    color: #e0e0e0;
+}
+
+.acknowledgment-box li::before {
+    content: "✓";
+    position: absolute;
+    left: 0.5rem;
+    color: #3b82f6;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+/* Responsive para Terms */
+@media (max-width: 768px) {
+    .responsibility-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .info-box, .warning-box, .disclaimer-box {
+        flex-direction: column;
+    }
+}
+/* ========================================
+ * DATA RETENTION TABLE
+ * ======================================== */
+
+.retention-table {
+    background: #111;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 1.5rem;
+    border: 1px solid #333;
+}
+
+.retention-row {
+    display: grid;
+    grid-template-columns: 2fr 1.5fr 1.5fr;
+    gap: 1rem;
+    padding: 1.2rem 1.5rem;
+    border-bottom: 1px solid #222;
+    align-items: center;
+}
+
+.retention-row:last-child {
+    border-bottom: none;
+}
+
+.retention-row.header {
+    background: #1a1a1a;
+    font-weight: 700;
+    color: #3b82f6;
+    border-bottom: 2px solid #3b82f6;
+}
+
+.retention-col {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #ccc;
+}
+
+.retention-row.header .retention-col {
+    color: #3b82f6;
+    font-size: 0.95rem;
+}
+
+.retention-row:not(.header):hover {
+    background: #1a1a1a;
+}
+
+/* Data Grid (para la sección de Data We Access) */
+.data-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.data-card {
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.data-card:hover {
+    border-color: #3b82f6;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.15);
+}
+
+.data-icon {
+    color: #3b82f6;
+    margin-bottom: 0.8rem;
+    width: 32px;
+    height: 32px;
+}
+
+.data-card h3 {
+    color: #fff;
+    margin-bottom: 0.8rem;
+    font-size: 1.2rem;
+    border: none;
+    padding: 0;
+}
+
+.data-card p {
+    color: #bbb;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+/* Security Grid */
+.security-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.security-feature {
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 1.2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.security-feature:hover {
+    border-color: #22c55e;
+    transform: translateY(-3px);
+}
+
+.security-feature svg {
+    color: #22c55e;
+    margin-bottom: 0.5rem;
+}
+
+.security-feature h4 {
+    color: #fff;
+    margin: 0.5rem 0;
+    font-size: 1.1rem;
+}
+
+.security-feature p {
+    color: #bbb;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+/* Rights Grid */
+.rights-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.right-card {
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.right-card:hover {
+    border-color: #3b82f6;
+    transform: translateY(-3px);
+}
+
+.right-icon {
+    color: #3b82f6;
+    margin-bottom: 0.5rem;
+    width: 28px;
+    height: 28px;
+}
+
+.right-card h3 {
+    color: #fff;
+    margin: 0.5rem 0;
+    font-size: 1.1rem;
+    border: none;
+    padding: 0;
+}
+
+.right-card p {
+    color: #bbb;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+/* Service Policies Links */
+.service-policies {
+    background: #111;
+    padding: 1.5rem;
+    border-radius: 10px;
+    margin-top: 1rem;
+    border-left: 4px solid #3b82f6;
+}
+
+.service-policies h3 {
+    color: #fff;
+    margin-top: 0;
+    font-size: 1.2rem;
+    border: none;
+    padding: 0;
+}
+
+.service-policies a {
+    color: #3b82f6;
+    text-decoration: underline;
+    transition: color 0.2s;
+}
+
+.service-policies a:hover {
+    color: #60a5fa;
+}
+
+/* Responsive para Privacy Page */
+@media (max-width: 768px) {
+    .retention-row {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .retention-row.header {
+        display: none; /* Ocultar headers en móvil */
+    }
+    
+    .retention-col {
+        justify-content: space-between;
+        padding: 0.5rem 0;
+    }
+    
+    .retention-col::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #3b82f6;
+    }
+    
+    .data-grid,
+    .security-grid,
+    .rights-grid {
+        grid-template-columns: 1fr;
+    }
+}

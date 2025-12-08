@@ -4,23 +4,31 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
-   resolve: {
+  resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
   },
-  build: {
-    outDir: "dist"
-  },
   server: {
     open: true
   },
-  // Para resolver las importaciones del SDK
+  // Optimización de dependencias
   optimizeDeps: {
     include: [
       "@modelcontextprotocol/sdk/client",
       "@modelcontextprotocol/sdk/client/streamableHttp"
     ]
+  },
+  // Configuración de build (solo una vez)
+  build: {
+    outDir: "dist",
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'clerk': ['@clerk/clerk-react'],
+          'vendor': ['react', 'react-dom', 'react-router-dom'],
+        }
+      }
+    }
   }
 })
-

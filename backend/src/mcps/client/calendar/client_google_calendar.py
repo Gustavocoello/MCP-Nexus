@@ -33,16 +33,18 @@ class MCPToolsClient:
     "google_listar_calendarios"
     ]
 
-    def __init__(self, url: Optional[str] = None, user_id: Optional[str] = None):
+    def __init__(self, url: Optional[str] = None, user_id: Optional[str] = None, auth_token: Optional[str] = None):
         self.url = url or MCP_URL
         if not self.url:
-            raise ValueError("MCP_URL no configurado. Define la variable de entorno MCP.")
-        self.transport = StreamableHttpTransport(self.url)
+            raise ValueError("MCP_URL no configurado.")
+        
         self.user_id = user_id or USUARIO_TEST
         if not self.user_id:
-            raise ValueError("USUARIO_TEST no configurado. Define la variable de entorno USUARIO_TEST o pasa user_id.")
-
+            raise ValueError("USUARIO_TEST no configurado.")
+        
         self._discovered_tools = {}
+        # 🔑 Nuevo atributo para el JWT:
+        self.auth_token = auth_token
             
     def _save_auto_tool(self, frontend_name: str, server_name: str):
         """Guarda herramienta descubierta automáticamente SOLO si comienza con google_"""
@@ -81,19 +83,29 @@ class MCPToolsClient:
         # Verificamos si es nueva tool o no estaba en el mapa
         server_tool_name = key  
         is_new_tool = key not in self.SUPPORTED_TOOLS
-
+        # 1. Creamos el payload con el user_id (que será sobrescrito por el JWT en el MCP Server, pero es buena práctica)
         payload = {"context": {"user_id": self.user_id}}
         if kwargs:
             payload.update(kwargs)
-
-        async with Client(transport=self.transport) as client:
+        
+        headers = {}
+        if self.auth_token:
+            headers["Authorization"] = f"Bearer {self.auth_token}"
+        
+        # ✅ Crear transport con headers
+        transport = StreamableHttpTransport(
+            self.url,
+            headers=headers  # ⬅️ Parámetro correcto según la doc
+        )
+        
+        async with Client(transport=transport) as client:
             await client.ping()
             try:
                 result = await client.call_tool(server_tool_name, payload)
                 # Si era una herramienta nueva y funciona!, la guardamos automáticamente
                 if is_new_tool and not getattr(result, 'is_error', False):
                     self._save_auto_tool(key, server_tool_name)
-                                
+                                    
                 return result
                 
             except Exception as e:
@@ -115,7 +127,17 @@ class MCPToolsClient:
         if kwargs:
             payload.update(kwargs)
 
-        async with Client(transport=self.transport) as client:
+        headers = {}
+        if self.auth_token:
+            headers["Authorization"] = f"Bearer {self.auth_token}"
+
+        # Crear transport con headers
+        transport = StreamableHttpTransport(
+            self.url,
+            headers=headers
+        )
+        
+        async with Client(transport=transport) as client:
             await client.ping()
             result = await client.call_tool(key, payload)
 
