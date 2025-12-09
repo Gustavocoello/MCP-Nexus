@@ -1,9 +1,10 @@
 # src/services/auth/clerk/clerk_user_sync.py
 
 import os
+from httpx import Auth
 import requests
 from extensions import db
-from src.database.models import User
+from src.database.models import User, AuthProvider
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -56,7 +57,6 @@ def sync_clerk_user(clerk_user_id: str) -> User:
         last_name = clerk_data.get('last_name', '')
         full_name = f"{first_name} {last_name}".strip()
 
-        provider = "clerk".lower()
         
         # Crear el nuevo usuario
         new_user = User(
@@ -66,7 +66,7 @@ def sync_clerk_user(clerk_user_id: str) -> User:
             picture=clerk_data.get('image_url'),
             email_verified=True,  # Clerk ya verificó
             is_active=True,
-            auth_provider=provider
+            auth_provider=AuthProvider.CLERK,
         )
         
         db.session.add(new_user)
