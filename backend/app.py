@@ -15,7 +15,7 @@ from src.api.v1.chat.mcp_tools import mcp_tools_bp
 from src.api.v1.auth.github_routes import github_auth_bp
 from src.api.v1.auth.google_routes import google_auth_bp
 from src.api.v1.auth.user_routes import user_bp, integrations_bp
-from src.api.v2.security.routes import ping_bp
+from src.api.v2.security.routes import ping_bp, health_bp
 from src.services.integrations.extensions.onedrive import onedrive_bp
 from src.database.config.connection import get_database_url
 from src.services.auth.utils.keep_alive_jarvis import keep_alive
@@ -74,6 +74,8 @@ app.register_blueprint(onedrive_bp, url_prefix='/api/onedrive')
 
 """Rutas de seguridad v2"""
 app.register_blueprint(ping_bp, url_prefix="/v2")
+
+app.register_blueprint(health_bp, url_prefix="/v2")
 
 """Rutas de usuario"""
 app.register_blueprint(user_bp, url_prefix="/api/v1/user")

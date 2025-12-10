@@ -42,7 +42,7 @@ def get_azure_engine():
         pool_recycle=1800,            # Recicla cada 30 min (Azure timeout ~30-40 min)
         pool_size=5,                  # Conexiones permanentes en el pool
         max_overflow=10,              # Conexiones adicionales si es necesario
-        pool_timeout=30,              # Timeout para obtener conexión del pool
+        pool_timeout=60,              # Timeout para obtener conexión del pool
         
         # Configuración de echo para debugging (cambiar a False en producción)
         echo=False,                   # Cambia a True solo para debug
@@ -53,8 +53,9 @@ def get_azure_engine():
         
         # Configuración adicional para manejar desconexiones
         connect_args={
-            'timeout': 30,
+            'timeout': 60,
             'check_same_thread': False,  # Para multithreading
+            'keepalives': 1,
         }
     )
     
