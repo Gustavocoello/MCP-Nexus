@@ -4,14 +4,19 @@ from flask import Blueprint, redirect, request, jsonify, g
 from src.services.auth.google.google_oauth import start_google_oauth, handle_google_callback
 from src.services.auth.clerk.clerk_middleware import clerk_required
 from src.services.auth.clerk.clerk_user_sync import sync_clerk_user
+from src.config.logging_config import get_logger
 from dotenv import load_dotenv
 import os 
 
 load_dotenv()
 
 FRONTEND_URL = os.getenv("FRONTEND_URL")
+BACKEND_URL = os.getenv("BACKEND_URL")
 
 google_auth_bp = Blueprint("google_auth", __name__, url_prefix="/api/v1/auth/google")
+
+# Configurar logger
+logger = get_logger(__name__)
 
 # 1) Login: Ruta protegida por Clerk JWT
 @google_auth_bp.route("/login")
@@ -29,7 +34,7 @@ def login():
         return jsonify({"error": f"User synchronization failed: {str(e)}"}), 500
 
     # OBTENEMOS LA URL BASE DINÁMICA DEL SERVIDOR (ej. http://localhost:5000)
-    backend_base_url = request.url_root.rstrip('/')
+    backend_base_url = BACKEND_URL or request.url_root.rstrip('/')
     
     auth_url, state = start_google_oauth(
         user_id=local_user.id,
@@ -44,6 +49,8 @@ def login():
 # 2) Callback: Ruta que recibe la respuesta de Google
 @google_auth_bp.route("/callback")
 def callback():
+    user_id_from_redis = None
+    
     try:
         # El state viene en el query param de Google 
         state_param = request.args.get("state")
@@ -63,9 +70,14 @@ def callback():
         return redirect(f"{FRONTEND_URL}/c/{user_id_from_redis}/settings")
         
     except Exception as e:
-        # Captura errores de State/CSRF o cualquier error interno de handle_google_callback
-        print(f"Google OAuth Callback Error: {e}")
+        # Captura errores de State/CSRF o cualquier error interno
+        logger.error(f"Google OAuth Callback Error: {e}")
         
-        # Redirige a una URL de error legible por el usuario
-        # Nota: Usamos str(e) para pasar los detalles del error interno de forma segura
-        return redirect(f"{FRONTEND_URL}/c/{user_id_from_redis}/settings?error=oauth_failed&details={str(e)}")
+        # ✅ CORREGIDO: Si user_id_from_redis es None, redirigir a una ruta genérica
+        if user_id_from_redis:
+            error_url = f"{FRONTEND_URL}/c/{user_id_from_redis}/settings?error=oauth_failed&details={str(e)}"
+        else:
+            # Si no tenemos user_id, redirigir a una página de error genérica
+            error_url = f"{FRONTEND_URL}/auth/error?error=oauth_failed&details={str(e)}"
+        
+        return redirect(error_url)
