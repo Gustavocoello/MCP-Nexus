@@ -8,6 +8,7 @@
 // ===================================
 
 const LOG_LEVELS = {
+  NONE: -1,
   ERROR: 0,
   WARN: 1,
   INFO: 2,
@@ -16,19 +17,16 @@ const LOG_LEVELS = {
 
 const getDebugMode = () => {
   try {
-    return (
-      import.meta.env.VITE_DEBUG === 'true'
-    );
-  } catch (error) {
     return import.meta.env.VITE_DEBUG === 'true';
+  } catch (error) {
+    return false; 
   }
 };
 
 const DEBUG_MODE = getDebugMode();
 
 // Configura el nivel mínimo
-const CURRENT_LEVEL = DEBUG_MODE ? LOG_LEVELS.DEBUG : LOG_LEVELS.ERROR;
-
+const CURRENT_LEVEL = DEBUG_MODE ? LOG_LEVELS.DEBUG : LOG_LEVELS.NONE;
 // ===================================
 // 2. CLASE LOGGER
 // ===================================
