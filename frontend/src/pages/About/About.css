@@ -988,16 +988,10 @@
 /* Responsive para Privacy Page */
 @media (max-width: 768px) {
     .retention-row {
-        grid-template-columns: 1fr;
         gap: 0.5rem;
     }
     
-    .retention-row.header {
-        display: none; /* Ocultar headers en móvil */
-    }
-    
     .retention-col {
-        justify-content: space-between;
         padding: 0.5rem 0;
     }
     
