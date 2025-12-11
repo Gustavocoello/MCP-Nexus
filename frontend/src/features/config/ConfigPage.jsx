@@ -5,9 +5,15 @@ import './components/ConfigDrawer.css';
 
 const ConfigPage = () => {
   const navigate = useNavigate();
+  const { userId } = useParams();
 
   const handleClose = () => {
-    navigate(-1); // vuelve a la ruta anterior (como cerrar modal)
+    // 1. Verificamos si tenemos el userId
+    if (userId) {
+      navigate(`/c/${userId}`, { replace: true });
+    } else {
+      navigate('/', { replace: true });
+    }
   };
 
   return <ConfigDrawer onClose={handleClose} />;
