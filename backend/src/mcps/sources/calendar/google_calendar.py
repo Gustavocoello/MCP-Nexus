@@ -26,8 +26,6 @@ GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 
 # Scopes necesarios para acceder al calendario
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
-SCOPES_READONLY = ["https://www.googleapis.com/auth/calendar.readonly"]
-SCOPES_WRITE = ["https://www.googleapis.com/auth/calendar.events"]
 
 load_dotenv()
 
@@ -79,7 +77,6 @@ class GoogleCalendarConnector:
                 client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
                 scopes=[
                     "https://www.googleapis.com/auth/calendar",
-                    "https://www.googleapis.com/auth/calendar.readonly",
                     "openid", "email", "profile"
                 ]
             )
