@@ -26,6 +26,9 @@ def get_mysql_engine():
         pool_recycle=1800,
         pool_size=5,
         max_overflow=10,
+        connect_args={
+            "connection_timeout": 10, # Tiempo de espera para la conexión
+        }
         )
                         
     # Forzar conexión inmediata para validar credenciales
