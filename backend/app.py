@@ -50,9 +50,9 @@ CORS(app, supports_credentials=True, origins=[
 
 # Configuración de la aplicación Flask
 app.config.from_object(Config)
-
-# Configuración de la base de datos MYSQL, MYSQL LINUX O AZURE SQL
-app.config["SQLALCHEMY_DATABASE_URI"] = get_database_url()
+uri = get_database_url()
+app.config["SQLALCHEMY_DATABASE_URI"] = uri
+logger.info(f"URI Final aplicada: {uri}")
 
 db.init_app(app)
 
