@@ -1,4 +1,4 @@
-# src/database/config/mysql_config.py
+# src/database/config/database_linux_config.py
 
 import os
 import mysql.connector
@@ -11,12 +11,12 @@ from sqlalchemy.exc import OperationalError
 load_dotenv()
 
 
-def get_mysql_engine():
+def get_mysql_linux_engine():
     # Configuración desde .env
-    HOST_DB = os.getenv("ROOT_BD")
-    USER_DB = os.getenv("USER_BD")
-    PASS_DB = os.getenv("PASS_BD")
-    NAME_DB = os.getenv("NAME_BD")
+    HOST_DB = os.getenv("LINUX_HOST") # En local se quita 1 seria ROOT_BD
+    USER_DB = os.getenv("LINUX_USER")
+    PASS_DB = os.getenv("LINUX_PASS")
+    NAME_DB = os.getenv("LINUX_NAME")
 
     MYSQL_URL = f"mysql+mysqlconnector://{USER_DB}:{PASS_DB}@{HOST_DB}:3306/{NAME_DB}"
     
