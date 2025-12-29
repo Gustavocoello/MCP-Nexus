@@ -30,9 +30,10 @@ if (preferredTheme === 'system') {
 const queryClient = new QueryClient();
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
-  <React.StrictMode>
-    <ClerkProvider
-  publishableKey={PUBLISHABLE_KEY} fallbackRedirectUrl="/">
+  <ClerkProvider
+    publishableKey={PUBLISHABLE_KEY} 
+    fallbackRedirectUrl="/"
+  >
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
@@ -41,6 +42,6 @@ root.render(
       </AuthProvider>
   </QueryClientProvider>
   </ClerkProvider>
-  </React.StrictMode>
+  
 );
 

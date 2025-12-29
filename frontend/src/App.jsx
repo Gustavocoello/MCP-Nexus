@@ -36,12 +36,23 @@ function App() {
   const { getToken } = useAuthContext();
 
   useEffect(() => {
-    if (getToken && isSignedIn) {
-      setApiAuthToken(getToken);        // Para axios (chatService)
-      setApiServiceAuthToken(getToken); // Para fetch (api_service)
-      authLogger.info('✅ Token configurado globalmente');
-    }
-  }, [getToken, isSignedIn]);
+  // Solo configuramos el token si el usuario ya pasó todos los factores (2FA incluido)
+  if (isSignedIn && getToken) {
+    const fetchToken = async () => {
+      try {
+        const token = await getToken();
+        if (token) {
+          setApiAuthToken(token);
+          setApiServiceAuthToken(token);
+          authLogger.info('✅ Token configurado globalmente');
+        }
+      } catch (err) {
+        authLogger.error('Error al obtener token:', err);
+      }
+    };
+    fetchToken();
+  }
+}, [isSignedIn, getToken]);
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
@@ -114,28 +125,12 @@ function App() {
                   element={isSignedIn ? <DashboardPage /> : <SignIn redirectUrl="/dashboard" />}
                 />
                 
-                {/* Auth routes */}
+                {/* Auth routes - simplificadas */}
                 <Route 
-                  path="/login/*" 
+                  path="/login" 
                   element={
                     <ClerkLayout>
-                      <SignIn routing="path" path="/login" />
-                    </ClerkLayout>
-                  } 
-                />
-                <Route 
-                  path="/register/*" 
-                  element={
-                    <ClerkLayout>
-                      <SignUp routing="path" path="/register" />
-                    </ClerkLayout>
-                  } 
-                />
-                <Route 
-                  path="/login/sso-callback" 
-                  element={
-                    <ClerkLayout>
-                      <SignIn routing="path" path="/login" />
+                      <SignIn/>
                     </ClerkLayout>
                   } 
                 />
