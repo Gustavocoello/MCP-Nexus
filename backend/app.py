@@ -6,6 +6,7 @@ from flask_cors import CORS
 
 from redis import Redis
 from src.config.config import Config
+from werkzeug.middleware.proxy_fix import ProxyFix
 from src.services.integrations.extensions.limiter import limiter
 
 from extensions import db
@@ -37,6 +38,10 @@ logger = get_logger('app')
 # Inicializamos la aplicación Flask
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
+# Configurar ProxyFix para manejar proxies inversos
+app.wsgi_app = ProxyFix(
+    app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
+)
 CORS(app, supports_credentials=True, origins=[
     "https://gustavocoello.space","https://www.gustavocoello.space",
     "https://mcp-nexus.vercel.app",

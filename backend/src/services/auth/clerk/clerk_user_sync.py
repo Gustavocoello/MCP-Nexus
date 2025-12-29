@@ -20,7 +20,7 @@ def sync_clerk_user(clerk_user_id: str) -> User:
     """
     
     # 1. Buscar usuario en la DB local por Clerk ID
-    user = User.query.get(clerk_user_id)
+    user = db.session.get(User, clerk_user_id)
 
     if user:
         # El usuario ya existe, actualizar timestamp de login

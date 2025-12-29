@@ -27,7 +27,7 @@ def get_mysql_engine():
         pool_size=5,
         max_overflow=10,
         connect_args={
-            "connection_timeout": 10, # Tiempo de espera para la conexión
+            "connection_timeout": 5, # Tiempo de espera para la conexión
         }
         )
                         

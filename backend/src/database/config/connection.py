@@ -41,7 +41,7 @@ def get_database_url():
     DEV: Solo Windows
     PROD: Windows -> Linux -> Azure
     """
-    env = os.getenv("ENV", "dev").lower()
+    env = os.getenv("ENV").lower()
     logger.info(f"Entorno: {env.upper()}")
     
     if env == "prod":
