@@ -16,6 +16,7 @@ from uuid import uuid4
 load_dotenv()
 if os.getenv("ENV") == "dev":
     os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1"
+    os.environ['OAUTHLIB_RELAX_TOKEN_SCOPE'] = "1"
     
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
@@ -25,7 +26,8 @@ GOOGLE_SCOPES = [
     "openid",
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/userinfo.profile",
-    "https://www.googleapis.com/auth/calendar",
+    "https://www.googleapis.com/auth/calendar.readonly",
+    "https://www.googleapis.com/auth/calendar"
 ]
 
 
