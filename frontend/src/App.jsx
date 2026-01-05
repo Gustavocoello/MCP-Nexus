@@ -38,8 +38,8 @@ function App() {
   useEffect(() => {
   // Solo configuramos el token si el usuario ya pasó todos los factores (2FA incluido)
   if (isSignedIn && getToken) {
-    setApiAuthToken(token);
-    setApiServiceAuthToken(token);
+    setApiAuthToken(getToken);
+    setApiServiceAuthToken(getToken);
     authLogger.info('✅ Token configurado globalmente');
     }
 }, [isSignedIn, getToken]);
@@ -63,8 +63,8 @@ function App() {
 
   // Determinar si mostrar sidebar basado en la ruta actual
   const showSidebar = () => {
-    const path = location.pathname;
-    return (
+  const { pathname } = location; // Extraemos pathname directamente de location
+  return (
     pathname === '/dashboard' || 
     pathname === '/chat' || 
     pathname.startsWith('/c/')
