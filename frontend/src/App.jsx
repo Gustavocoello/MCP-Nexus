@@ -38,20 +38,10 @@ function App() {
   useEffect(() => {
   // Solo configuramos el token si el usuario ya pasó todos los factores (2FA incluido)
   if (isSignedIn && getToken) {
-    const fetchToken = async () => {
-      try {
-        const token = await getToken();
-        if (token) {
-          setApiAuthToken(token);
-          setApiServiceAuthToken(token);
-          authLogger.info('✅ Token configurado globalmente');
-        }
-      } catch (err) {
-        authLogger.error('Error al obtener token:', err);
-      }
-    };
-    fetchToken();
-  }
+    setApiAuthToken(token);
+    setApiServiceAuthToken(token);
+    authLogger.info('✅ Token configurado globalmente');
+    }
 }, [isSignedIn, getToken]);
 
   useEffect(() => {
@@ -74,19 +64,12 @@ function App() {
   // Determinar si mostrar sidebar basado en la ruta actual
   const showSidebar = () => {
     const path = location.pathname;
-    
-    // Mostrar en dashboard
-    if (path === '/dashboard') return true;
-    
-    // Mostrar en chat de invitados
-    if (path === '/chat') return true;
-    
-    // Mostrar en chat de usuarios (rutas que empiezan con /c/)
-    if (path.startsWith('/c/')) return true;
-    
-    // No mostrar en ninguna otra ruta
-    return false;
-  };
+    return (
+    pathname === '/dashboard' || 
+    pathname === '/chat' || 
+    pathname.startsWith('/c/')
+  );
+};
 
   return (
     <div className="app-container">

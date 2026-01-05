@@ -17,7 +17,6 @@ if (import.meta.env.VITE_DEBUG === 'true') {
   injectSpeedInsights();
 }
 
-
 // Aplica el tema antes de renderizar
 const preferredTheme = localStorage.getItem('preferred-theme') || 'system';
 if (preferredTheme === 'system') {

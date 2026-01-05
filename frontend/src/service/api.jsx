@@ -24,34 +24,25 @@ export const setAuthToken = (getTokenFn) => {
 // Interceptor para agregar el token JWT a cada request
 apiClient.interceptors.request.use(
   async (config) => {
-    // Solo agregar token si hay una función configurada
-    if (getTokenFunction) {
+    if (typeof getTokenFunction === 'function') { 
       try {
         const token = await getTokenFunction({ template: 'backend-api-jarvis' });
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
+        } else {
+          // Si no hay token, mejor no enviamos el header vacío o lanzamos aviso
+          apiLogger.warn('[api.js] getToken devolvió null');
         }
       } catch (error) {
         apiLogger.error('[api.js] Error obteniendo token:', error);
       }
+    } else {
+      // Esto explica por qué el Sidebar dice "Authorization header missing"
+      apiLogger.warn('[api.js] getTokenFunction no está lista todavía');
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Interceptor para manejar respuestas 401 (opcional pero útil)
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      apiLogger.error('[api.js] No autorizado - Token inválido o expirado');
-      // Aquí podrías redirigir al login si es necesario
-    }
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 export default apiClient;
