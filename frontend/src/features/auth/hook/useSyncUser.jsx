@@ -30,6 +30,12 @@ export const useSyncUser = () => {
                     // 1. Obtener el JWT
                     const token = await getToken({ template: 'backend-api-jarvis' }); 
 
+                    if (token) {
+                        // GUARDAR EN LOCALSTORAGE: Para que esté disponible al recargar
+                        localStorage.setItem('jarvis_token', token);
+                        authLogger.info("✅ Token guardado en LocalStorage.");
+                    }
+
                     // 2. Realizar la llamada a la ruta protegida de sincronización
                     const response = await fetch(`${API_BASE_URL}/api/v1/user/sync`, {
                         method: 'GET',
@@ -62,6 +68,8 @@ export const useSyncUser = () => {
         // Si el usuario se desloguea, reseteamos el estado de sincronización.
         if (isLoaded && !isSignedIn) {
             setIsSynced(false);
+            localStorage.removeItem('jarvis_token'); // 🧹 Limpiar rastro al salir
+            authLogger.info("Sesión cerrada: Token eliminado.");
         }
 
     }, [isLoaded, isSignedIn, getToken, isSynced]);

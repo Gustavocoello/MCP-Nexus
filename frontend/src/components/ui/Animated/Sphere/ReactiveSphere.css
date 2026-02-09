@@ -1,0 +1,112 @@
+/* ==================== ROOT & CANVAS ==================== */
+.rs3d-root {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: black;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.rs3d-root canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+  pointer-events: auto;
+}
+
+/* ==================== UI OVERLAY ==================== */
+.rs3d-ui-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rs3d-logo {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: rgba(248, 0, 0, 0.4);
+  text-shadow: 0 0 12px rgba(0, 212, 255, 0.3);
+  font-family: "Courier New", monospace;
+  transition: all 300ms ease;
+}
+
+.rs3d-logo:hover {
+  color: rgba(0, 212, 255, 0.8);
+  text-shadow: 0 0 20px rgba(0, 212, 255, 0.6);
+}
+
+/* ==================== MICROPHONE BUTTON ==================== */
+.rs3d-mic-btn {
+  position: absolute;
+  bottom: 32px;
+  right: 32px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  color: #ffffff;
+  font-size: 24px;
+  cursor: pointer;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 300ms ease;
+  backdrop-filter: blur(10px);
+  z-index: 20;
+}
+
+.rs3d-mic-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(0, 212, 255, 0.6);
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+}
+
+.rs3d-mic-btn.listening {
+  animation: rs3d-pulse 1.5s ease-in-out infinite;
+  box-shadow: 0 0 30px rgba(0, 212, 255, 0.6);
+  border-color: rgba(0, 212, 255, 0.8);
+}
+
+@keyframes rs3d-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(0, 212, 255, 0.8);
+  }
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 768px) {
+  .rs3d-logo {
+    font-size: 12px;
+    top: 16px;
+    left: 16px;
+  }
+
+  .rs3d-mic-btn {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+    bottom: 24px;
+    right: 24px;
+  }
+}
+

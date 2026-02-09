@@ -10,28 +10,17 @@ import { useAuthContext } from '@/features/auth/components/context/AuthContext';
 import { TbMessagePlus } from "react-icons/tb";
 import { getAllChats, createChat} from '../../service/chatService';
 import { sendMessage, sendAnonymousMessage} from '../../service/api_service';
-import { streamLogger } from '@/components/controller/log/logger.jsx';
+import { hookLogger, streamLogger } from '@/components/controller/log/logger.jsx';
 
 // Cambiando de Markdown a HTML
 const md = new MarkdownIt({
   html: false, // Antes True ahora False para no escaparse
   linkify: true,
-
 });
 
 //  Contiene todos componentes efectos de la interfaz de Jarvis
 const ChatPage = () => {
-  // Funciones auxiliares
-  const loadAllChats = async () => {
-  try {
-    const chats = await getAllChats(); // Llama al backend
-    return chats;
-  } catch (error) {
-    streamLogger.error('Error cargando chats:', error);
-    return [];
-  } 
-};
-
+  
   // Estados
   const { user, isAuthenticated } = useAuthContext();
   const { isLoaded } = useAuth();
@@ -49,79 +38,31 @@ const ChatPage = () => {
   const [pendingContext, setPendingContext] = useState([]);
   const isChatRoute = location.pathname.startsWith('/c/');
   const isConfigOpen = location.pathname.endsWith('/settings');
+  const scrollInitialized = useRef(false);
 
-// Protección de ruta: si no está autenticado y está en /c/:userId → redirigir a login
-  if (!loading && !isAuthenticated && location.pathname.startsWith('/c/')) {
-   return <Navigate to="/login" replace />;
- }
-
-
+  // ---------------- HOOKS PERSONALIZADOS ----------------  
+  // Hook personalizado para manejar mensajes del chat
   const {
     messages: cachedMessages,
     appendMessageToCache,
     updateMessageInCache,
-    prependMessagesToCache,
+    lastUserMessageId, // <-- Nuevo: para el scroll
+    isSuccess,         // <-- Nuevo: para saber cuándo terminó de cargar la RAM
   } = useChatMessages(activeChatId, {
-    enabled: isChatRoute && !!activeChatId,   // <- 'enabled' correcto
+    enabled: isChatRoute && !!activeChatId,
+    keep: 10, // Mantener máximo 10 mensajes en la memoria de 3.3GB
   });
-
-  
-  useEffect(() => {
-    const formatted = cachedMessages.map(m => {
-      if (m.role === 'assistant') {
-        return { ...m, html: md.render(m.content || '') };
-      } else {
-        const userHtml = (m.content || '')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;');
-        return { ...m, html: `<p>${userHtml}</p>` };
-      }
-    });
-    setLocalMessages(formatted);
-  }, [cachedMessages]);
-
-
-  // Efecto: Inicializar chat activo, solo seteamos activeChatId, NO mensajes
-  useEffect(() => {
-    const initChat = async () => {
-      const allChats = await loadAllChats();
-      if (allChats.length === 0) return;
-
-      const savedChatId = localStorage.getItem('activeChatId');
-      let chatToLoad = allChats.find(chat => chat.id === savedChatId);
-
-      if (!chatToLoad) {
-        chatToLoad = allChats[0]; // fallback: primer chat si no se encontró el guardado
-      }
-
-      // Eliminamos la carga manual de mensajes y el setMessages
-      setActiveChatId(chatToLoad.id);
-      localStorage.setItem('activeChatId', chatToLoad.id);
-    };
-
-    initChat();
-  }, []);
-
-  // Efecto para escuchar eventos de carga chat, solo setActiveChatId
-  useEffect(() => {
-    const handleChatLoaded = (event) => {
-      const { chatId /*, messages */ } = event.detail;
-      setActiveChatId(chatId);
-      // No usamos setMessages porque el hook lo hace
-      localStorage.setItem('activeChatId', chatId);
-    };
-
-    window.addEventListener('chat-loaded', handleChatLoaded);
-    return () => window.removeEventListener('chat-loaded', handleChatLoaded);
-  }, []);
-
-  // Cada vez que cambia el chat activo, actualiza localStorage
-  useEffect(() => {
-    if (activeChatId) {
-      localStorage.setItem('activeChatId', activeChatId);
-    }
-  }, [activeChatId]);
-
+  // -------------------- CALLBACKS ---------------------
+  // Función para cargar todos los chats del usuario
+  const loadAllChats = async () => {
+  try {
+    const chats = await getAllChats(); // Llama al backend
+    return chats;
+  } catch (error) {
+    streamLogger.error('Error cargando chats:', error);
+    return [];
+  } 
+  };
 
   // Función para crear nuevo chat
   const createNewChat = async () => {
@@ -143,7 +84,7 @@ const ChatPage = () => {
   };
 
   // Para manejar el stop generation
-    const handleStopGeneration = () => {
+  const handleStopGeneration = () => {
     if (abortController) {
       abortController.abort();
 
@@ -152,7 +93,7 @@ const ChatPage = () => {
     }
   };
 
-  // Función para manejar nuevos mensajes
+  // ==========  Función para manejar nuevos mensajes ===========
   const handleNewMessage = useCallback(async (message, contextFromFile = '', image = null, tool = '') => {
   if (message.role !== 'user') return;
    
@@ -211,11 +152,12 @@ const ChatPage = () => {
  newMessages.push({
    id: jarvisTempId,
    role: 'assistant',
+   content: '',
    html: '',
+   stable: false, // Indica que está en proceso
  });
 
-setLocalMessages(prev => [...prev, ...newMessages]);
-
+  appendMessageToCache(newMessages);
   setHasSentMessage(true);
   setIsJarvisTyping(true);
 
@@ -229,15 +171,7 @@ setLocalMessages(prev => [...prev, ...newMessages]);
 
       if (anonCount >= 5) {
         fullReply = "Has alcanzado el límite de 5 mensajes gratuitos. Por favor inicia sesión para continuar.";
-
-        setLocalMessages(prev =>
-          prev.map(msg =>
-            msg.id === jarvisTempId
-            ? { ...msg, content: fullReply, html: '', stable: false }
-            : msg
-          )
-        );
-
+        updateMessageInCache(jarvisTempId, { content: fullReply, stable: true });
         showNotification("Has alcanzado el límite de mensajes gratuitos. Inicia sesión para continuar.");
         setIsJarvisTyping(false);
         setIsStreaming(false);
@@ -257,13 +191,7 @@ setLocalMessages(prev => [...prev, ...newMessages]);
         fullReply = res.error;
       }
 
-      setLocalMessages(prev =>
-        prev.map(msg =>
-          msg.id === jarvisTempId
-            ? { ...msg, content: fullReply, html: '', stable: false }
-            : msg
-        )
-      );
+      updateMessageInCache(jarvisTempId, { content: fullReply, stable: true });
     // Mensajes para usuarios logeados
     } else {
       res = await sendMessage({
@@ -287,28 +215,24 @@ setLocalMessages(prev => [...prev, ...newMessages]);
           }
         }
 
-        setLocalMessages(prev =>
-          prev.map(msg =>
-            msg.id === jarvisTempId
-              ? { ...msg, content: cleanPartial, html: '', stable: false }
-              : msg
-          )
-        );
+        updateMessageInCache(jarvisTempId, {
+          id: jarvisTempId,
+          role: 'assistant',
+          content: cleanPartial,
+          html: md.render(cleanPartial),
+          stable: false // Sigue en proceso
+        });
+        
       }, controller.signal);
+      updateMessageInCache(jarvisTempId, { stable: true });
     }
   } catch (err) {
     if (err.name !== 'AbortError') {
       streamLogger.error(err);
-      setLocalMessages(prev =>
-        prev.map(msg =>
-          msg.id === jarvisTempId
-            ? { ...msg,
-              stable:true,
-               html: 'Error al procesar la solicitud.'
-              }
-            : msg
-        )
-      );
+      updateMessageInCache(jarvisTempId, { 
+      stable: true, 
+      html: '<p style="color: red;">Error al procesar la solicitud.</p>' 
+    });
     }
 
   } finally {
@@ -316,16 +240,9 @@ setLocalMessages(prev => [...prev, ...newMessages]);
     setIsStreaming(false);
     setAbortController(null);
     setPendingContext([]);
-    setLocalMessages(prev =>
-    prev.map(msg =>
-      msg.id === jarvisTempId
-        ? { ...msg, stable: true }
-        : msg
-    )
-  ); 
+    updateMessageInCache(jarvisTempId, (prev) => ({ ...prev, stable: true })); 
   }
 }, [activeChatId, isAuthenticated]);
-
 
 
   // Funcion para scrollear directamente al final
@@ -345,22 +262,187 @@ setLocalMessages(prev => [...prev, ...newMessages]);
   const clearPendingContext = () => {
     setPendingContext([]);
   };
+
   // Funcion para eliminar un contexto pendiente por nombre
   const removeContextByName = (name) => {
     setPendingContext(prev => prev.filter(ctx => ctx.name !== name));
   };
+  
+  // ------------------- EFECTOS --------------------------
 
+  // Efecto para saltar a la última pregunta (Anclaje)
+  useEffect(() => {
+    if (isSuccess && lastUserMessageId && !scrollInitialized.current) {
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`msg-${lastUserMessageId}`);
+        if (element) {
+          streamLogger.info(`[Anclaje] Saltando a la última pregunta: ${lastUserMessageId}`);
+          element.scrollIntoView({ behavior: 'auto', block: 'start' });
+          scrollInitialized.current = true;
+        }
+      }, 150); // Pequeño margen para que el HTML se renderice
+      return () => clearTimeout(timer);
+    }
+  }, [isSuccess, lastUserMessageId, activeChatId]);
+
+  // Resetear el ancla si cambias de chat
+  useEffect(() => {
+    scrollInitialized.current = false;
+  }, [activeChatId]);
+
+  // Efecto: Sincronizar mensajes cacheados con mensajes locales
+  useEffect(() => {
+    const formatted = cachedMessages.map(m => {
+      if (m.role === 'assistant') {
+        return { ...m, html: md.render(m.content || '') };
+      } else {
+        const userHtml = (m.content || '')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+        return { ...m, html: `<p>${userHtml}</p>` };
+      }
+    });
+    setLocalMessages(formatted);
+  }, [cachedMessages]);
+
+
+  // Efecto: Inicializar chat activo, solo seteamos activeChatId, NO mensajes
+  useEffect(() => {
+    const initChat = async () => {
+      const allChats = await loadAllChats();
+      if (allChats.length === 0) return;
+
+      const savedChatId = localStorage.getItem('activeChatId');
+      let chatToLoad = allChats.find(chat => chat.id === savedChatId);
+
+      if (!chatToLoad) {
+        chatToLoad = allChats[0]; // fallback: primer chat si no se encontró el guardado
+      }
+
+      // Eliminamos la carga manual de mensajes y el setMessages
+      setActiveChatId(chatToLoad.id);
+      localStorage.setItem('activeChatId', chatToLoad.id);
+    };
+
+    initChat();
+  }, []);
+
+  // Efecto para escuchar eventos de carga chat, solo setActiveChatId
+  // 1. Un solo lugar para reaccionar al cambio de chat
+  useEffect(() => {
+    if (activeChatId) {
+      localStorage.setItem('activeChatId', activeChatId);
+      // Al cambiar el activeChatId, el hook useChatMessages 
+      // automáticamente detectará el cambio y traerá los mensajes nuevos.
+    }
+  }, [activeChatId]);
+  
+  // 2. Escuchar al sidebar de forma limpia
+  useEffect(() => {
+    const handleChatLoaded = (event) => {
+      const { chatId } = event.detail;
+      if (chatId !== activeChatId) {
+        setActiveChatId(chatId);
+      }
+    };
+    window.addEventListener('chat-loaded', handleChatLoaded);
+    return () => window.removeEventListener('chat-loaded', handleChatLoaded);
+  }, [activeChatId]);
+
+  // Cada vez que cambia el chat activo, actualiza localStorage
+  useEffect(() => {
+    if (activeChatId) {
+      localStorage.setItem('activeChatId', activeChatId);
+    }
+  }, [activeChatId]);
+
+  // Efecto: Limpiar contador de mensajes anónimos al autenticarse
   useEffect(() => {
     if (isAuthenticated === true) {
       localStorage.removeItem('anonMessageCount');
     }
   }, [isAuthenticated]);
-
+  
   if (loading) {
     streamLogger.info('Usuario actual:', user);
     return <div className="loading-screen">Cargando usuario...</div>;
-
+  
   }
+  // Efecto: Vigilar cambios en la RAM y actualizar mensajes locales
+  // ChatPage.jsx - Efecto de Sincronización Corregido
+  useEffect(() => {
+    if (!cachedMessages || cachedMessages.length === 0) return;
+  
+    const formatted = cachedMessages.map(m => {
+      const isAssistant = m.role === 'assistant';
+      
+      // Si es asistente y NO tiene contenido aún (está empezando)
+      if (isAssistant && !m.content && !m.html) {
+        return { ...m, html: '<span class="typing-dots">...</span>', stable: false };
+      }
+  
+      // GENERAR HTML SIEMPRE QUE NO EXISTA
+      // Esto asegura que si viene null del backend (como en tu JSON), se genere ahora
+      let generatedHtml = m.html;
+  
+      if (!generatedHtml) {
+        if (isAssistant) {
+          generatedHtml = md.render(m.content || '');
+        } else {
+          // Escapado de seguridad para mensajes del usuario
+          const safeContent = (m.content || '')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\n/g, '<br>');
+          generatedHtml = `<p>${safeContent}</p>`;
+        }
+      }
+  
+      return {
+        ...m,
+        html: generatedHtml,
+        stable: m.stable !== undefined ? m.stable : true
+      };
+    });
+  
+    streamLogger.info("Sincronizando mensajes locales con HTML generado");
+    setLocalMessages(formatted);
+  
+    // Control del indicador de escritura
+    const lastMsg = formatted[formatted.length - 1];
+    if (lastMsg && lastMsg.role === 'assistant' && lastMsg.stable === false) {
+      setIsJarvisTyping(true);
+      setIsStreaming(true);
+    } else if (!isStreaming) {
+      setIsJarvisTyping(false);
+    }
+  }, [cachedMessages, isStreaming]);
+  
+  // Efecto: Loguear estado del chat en cada cambio de mensajes
+  useEffect(() => {
+    if (localMessages.length > 0) {
+      streamLogger.group('📊 ESTADO DEL CHAT', () => {
+        streamLogger.info('Chat ID:', activeChatId);
+        streamLogger.info('Total en pantalla:', localMessages.length);
+        streamLogger.info('Total en caché:', cachedMessages?.length || 0);
+        
+        // Ver últimos 3 mensajes
+        const last3 = localMessages.slice(-3).map(m => ({
+          id: m.id,
+          role: m.role,
+          preview: (m.content || '').substring(0, 30) + '...'
+        }));
+        streamLogger.table(last3);
+      });
+    }
+  }, [activeChatId, localMessages.length]);
+
+  
+  // Protección de ruta: si no está autenticado y está en /c/:userId → redirigir a login
+    if (!loading && !isAuthenticated && location.pathname.startsWith('/c/')) {
+     return <Navigate to="/login" replace />;
+   }
+
 
   return (
   <div className="page">

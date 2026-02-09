@@ -1,7 +1,83 @@
 /* ================= */
+/* == BOTÓN TOGGLE FLOTANTE == */
+/* ================= */
+.sidebar-toggle-floating {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  width: 40px;
+  height: 40px;
+  background-color: #151413;
+  color: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1002;
+  transition: all 0.3s ease-in-out;
+}
+
+.sidebar-toggle-floating:hover {
+  background-color: #333;
+  transform: scale(1.1);
+}
+
+/* ================= */
+/* == SETTINGS FLOTANTE (SOLO CUANDO SIDEBAR CERRADO) == */
+/* ================= */
+.sidebar-settings-floating {
+  position: fixed;
+  bottom: 30px;
+  left: 20px;
+  width: 40px;
+  height: 40px;
+  background-color: #151413;
+  color: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1002;
+  transition: all 0.3s ease-in-out;
+  text-decoration: none;
+}
+
+.sidebar-settings-floating:hover {
+  background-color: #333;
+  transform: scale(1.1);
+}
+
+.sidebar-settings-floating.active {
+  background-color: #444;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* ================= */
+/* == OVERLAY == */
+/* ================= */
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ================= */
 /* == SIDEBAR GENERAL == */
 /* ================= */
-
 .sidebar {
   width: 240px;
   background: #151413;
@@ -15,7 +91,17 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  transition: all 0.5s ease-in-out;
+  transition: transform 0.5s ease-in-out,
+}
+
+/* Estado CERRADO: Ocultar completamente */
+.sidebar.closed {
+  transform: translateX(-100%);
+}
+
+/* Estado ABIERTO */
+.sidebar.open {
+  transform: translateX(0);
 }
 
 .sidebar-upper {
@@ -24,35 +110,8 @@
 }
 
 /* ================= */
-/* == BOTÓN TOGGLE == */
-/* ================= */
-
-.sidebar-toggle {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  right: 0px;
-  top: 1px;
-  width: 40px;
-  height: 40px;
-  color: #ffffff;
-  border-radius: 50%;
-  font-size: 11px;
-  cursor: pointer;
-  z-index: 1000;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-  transition: all 0.3s ease-in-out;
-}
-
-.sidebar-toggle:hover {
-  transform: scale(1.1);
-}
-
-/* ================= */
 /* == LOGO JARVIS == */
 /* ================= */
-
 .jarvis-logo {
   width: 200px;
   height: 30px;
@@ -63,37 +122,15 @@
   margin: 0 auto;
 }
 
-.logo-full {
-  display: block;
-}
-
-.logo-icon {
-  display: none !important;
-  font-size: 1.5rem;
-  color: white;
-}
-
-.sidebar.closed .logo-full {
-  display: none !important;
-}
-
-.sidebar.closed .logo-icon {
-  display: flex !important;
-  align-items: center;
-  justify-content: center;
-}
-
 /* ================= */
 /* == ITEMS DEL SIDEBAR == */
 /* ================= */
-
 .sidebar-item {
   display: flex;
   align-items: center;
   justify-content: flex-start;
   color: white;
   padding: 11px 10px;
-  margin: 8px 0;
   border-radius: 6px;
   text-decoration: none;
   font-size: 0.9rem;
@@ -106,29 +143,31 @@
 }
 
 .sidebar-item.active {
+  background: #333;
   box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
 }
-.chats-scroll {
-  overflow-y: auto;
-  flex: 1;
-  margin-top: -20px;
+
+.sidebar-item.jarvis:hover {
+  background: transparent !important;
 }
-.sidebar-section {
-  flex: 1; 
-  overflow-y: auto; 
-}
-.sidebar-item:last-child {
+
+/* Settings con el MISMO ESTILO que Dashboard - FIJO AL FINAL */
+.sidebar-settings {
   margin-top: auto;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 }
+
 /* ================= */
 /* == ICONOS Y TEXTO == */
 /* ================= */
-
 .icon {
   font-size: 1.25rem;
-  margin-right: 10px;
+  min-width: 20px;
   transition: all 0.3s ease;
+}
+
+.sidebar.open .icon {
+  margin-right: 10px;
 }
 
 .label {
@@ -136,23 +175,45 @@
   white-space: nowrap;
 }
 
-.logo-icon {
-  display: none;
-  font-size: 1.5rem;
-  color: white;
-}
-
 /* ================= */
 /* == CHATS == */
 /* ================= */
+.sidebar-section {
+  flex: 1; 
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+}
+
+.chats-scroll {
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 4px;
+}
+
+.chats-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chats-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chats-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.chats-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
 
 /* ==== Lista de chats ==== */
 .chats-list {
   list-style: none;
   padding-left: 0;
   margin-top: 5px;
-  overflow-y: auto;
-  max-height: calc(100vh - 150px);
   width: 100%;
 }
 
@@ -161,19 +222,33 @@
   display: block;
   margin-top: 10px;
   margin-bottom: 5px;
+  padding-left: 10px;
   font-weight: bold;
+  font-size: 11px;
+  text-transform: uppercase;
   color: #aaa;
+  letter-spacing: 0.5px;
 }
 
 .no-chats-message {
   color: #777;
-  margin-left: 15px;
+  text-align: center;
+  padding: 20px;
   font-size: 0.85rem;
+}
+
+/* ==== Contenedor del chat ==== */
+.chat-item-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 4px;
 }
 
 /* ==== Botones de chat ==== */
 .sidebar-chat-item {
-  flex:1;
+  flex: 1;
   text-align: left;
   background-color: transparent;
   border: none;
@@ -184,66 +259,49 @@
   transition: all 0.3s ease;
   overflow: hidden;
   white-space: nowrap;
-  max-width:none;
   text-overflow: ellipsis;
+  border-radius: 6px;
 }
 
 .sidebar-chat-item:hover {
   background-color: #333;
-  border-radius: 6px;
 }
 
 .sidebar-chat-item.active {
   background-color: #222;
   color: #fff;
   font-weight: bold;
-  padding: 8px 12px;
-  border-radius: 8px;
-  text-overflow: ellipsis;
+}
+
+.sidebar-chat-item .label {
   overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  text-align: left;
+  max-width: 160px;
 }
 
-/* ==== Contenedor del chat ==== */
-.chat-item-container {
-  position: relative;
-  display: flex;
-  align-items: center;
-  width: 100%;
-}
-
-/* ==== Icono de 3 puntos ==== */
-.more-options {
-  position: absolute;
-  top: 50%;
-  right: 0;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
+/* ==== Botón de 3 puntos ==== */
 .more-button {
   background-color: transparent;
   border: none;
   cursor: pointer;
   color: #aaa;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
   opacity: 0.6;
   transition: all 0.3s ease;
+  flex-shrink: 0;
 }
 
 .more-button:hover {
   color: white;
+  background-color: rgba(255, 255, 255, 0.1);
   opacity: 1;
 }
-.more-options, .more-button {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
 
 /* ================= */
 /* == ICONO PARA NUEVO CHAT == */
@@ -263,7 +321,7 @@
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  z-index: 1001; /* Asegura que esté por encima del sidebar */
+  z-index: 1001;
   transition: background-color 0.3s ease;
 }
 
@@ -271,181 +329,36 @@
   background-color: #333;
 }
 
-
-/* ================= */
-/* == ESTADOS DE SIDEBAR == */
-/* ================= */
-
-.sidebar.open {
-  width: 220px;
-}
-
-.sidebar.open.sidebar-toggle {
-  right: calc(150px - 20px);
-}
-
-.sidebar.open .jarvis-logo {
-  margin: 0 auto;
-}
-
-.sidebar.open .logo-icon {
-  display: none;
-}
-
-.sidebar.closed {
-  width: 40px;
-  padding: 0.5rem;
-}
-
-.sidebar.closed .label {
-  display: none;
-}
-
-.sidebar.closed .icon {
-  margin-right: 0;
-  display: block;
-  margin: 0 auto;
-}
-
-.sidebar.closed .sidebar-toggle {
-  right: calc(50% - 20px);
-}
-
-.sidebar.closed .logo-icon {
-  margin: 0;
-  position: absolute;
-  top: 65px;
-  transform: translateY(-50%);
-  display: flex;
-}
-
-.logo-icon { /* Letra J */
-  display: none;
-}
-
-.sidebar.closed .logo-full {
-  display: none;
-}
-
-.sidebar.closed .logo-icon {
-  display: flex;
-}
-
-.sidebar-item:not(.jarvis):hover {
-  background: #706b6b;
-}
-
-.sidebar-item.jarvis:hover {
-  background: transparent !important;
-}
-
 /* ================= */
 /* == RESPONSIVE == */
 /* ================= */
-
-/* ================= RESPONSIVE: Solo este bloque ================= */
 @media (max-width: 768px) {
-  /* Sidebar arrancando cerrado */
-  .sidebar {
-    width: 40px;
-    padding: 0.5rem;
+  .sidebar-toggle-floating {
+    top: 15px;
+    left: 15px;
   }
 
-  /* Al hacer click en toggle pasa a abierto igual que en desktop */
+  .sidebar-settings-floating {
+    bottom: 20px;
+    left: 15px;
+  }
+
   .sidebar.open {
-    width: 150px;            /* Ancho de escritorio */
-    padding: 20px 15px;      /* Mismo padding que en desktop */
+    width: 240px;
   }
 
-  /* Logo completo oculto por defecto en móvil */
-  .logo-full {
-    display: none !important;
+  .sidebar-settings {
+    margin-bottom: 30px;
   }
-  /* Logo ícono visible por defecto en móvil */
-  .logo-icon {
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
+  .sidebar-overlay {
+    z-index: 999;
   }
-
-  /* Al abrir, mostrar logo completo y ocultar el ícono */
-  .sidebar.open .logo-full {
-    display: block !important;
-  }
-  .sidebar.open .logo-icon {
-    display: none !important;
-  }
-
-  /* Ítems centrados y solo icono cuando está cerrado */
-  .sidebar-item {
-    padding: 10px 5px;
-  }
-  .sidebar-item .label {
-    display: none;
-  }
-  .sidebar.open .sidebar-item .label {
-    display: inline;
-    opacity: 1;
-    width: auto;
-  }
-
-  /* Iconos más grandes y centrados */
-  .icon {
-    margin-right: 0;
-    font-size: 1.25rem;
-  }
-  .sidebar.open .icon {
-    margin-right: 10px;
-  }
-
-  /* Ajuste de contenido principal */
-  .main-content {
-    margin-left: 0;
-    padding: 15px;
-  }
-  .page {
-    padding: 0;
-  }
-
-  /* Logo “jarvis” reducido en cerrado */
-  .jarvis-logo {
-    width: 20px;
-    height: 20px;
-    margin: 0 auto;
-  }
-  .sidebar.open .jarvis-logo {
-    width: 200px;
-    height: 30px;
-    padding: 5px;
-    margin: 0 auto;
-  }
-  .sidebar-item:not(.jarvis):hover {
-    background: #706b6b;
-  }
-
-  /* == Anular hover en el logo == */
-  .sidebar-item.jarvis:hover {
-    background: transparent !important;
-  }
-  /* ======== Ajuste para evitar solapamiento ======== */
-
-  .sidebar.open ~ .main-content {
-    margin-left: 150px;
-    transition: margin-left 0.5s ease-in-out;
-
-  }
-  .sidebar.closed {
-  width: 30px;
-  padding: 0.5rem;
-}
-
-@media (min-width: 768px) {
-  .sidebar.open ~ .main-content {
-    margin-left: 150px;
-    transition: margin-left 0.5s ease-in-out;
+  .sidebar.open {
+  box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
   }
 }
-
+@media (max-width: 360px) {
+  .sidebar.open {
+    width: 180px;
+  }
 }
-/* ================= FIN RESPONSIVE ================= */
-

@@ -26,15 +26,50 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
   const [selectedTool, setSelectedTool] = useState(null);
   const [selectedPrompt, setSelectedPrompt] = useState(null);
   const [selectedResource, setSelectedResource] = useState(null);
+  const VITE_APP = import.meta.env.VITE_URL;
 
 
   // ----------------- SEARCHBAR LOGIC -----------------
+  // Auto-ajustar altura del textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 100) + 'px';
     }
   }, [query]);
+
+  // Para escuchar eventos de SSE
+  useEffect(() => {
+    let eventSource = new EventSource(`${VITE_APP}/api/chat/events`, {
+      withCredentials: true 
+    });
+
+    eventSource.onmessage = (e) => {
+      const event = JSON.parse(e.data);
+      if (event.type === 'ping') return; // Ignorar el pulso de vida
+
+      setPendingFilePreview(prev => prev.map(f => {
+        // IMPORTANTE: Asegúrate de que event.filename coincida exactamente con f.name
+        if (f.name === event.filename) {
+          if (event.type === "upload_started") return { ...f, loading: true, progress: 60 };
+          if (event.type === "upload_completed") return { ...f, loading: false, progress: 100 };
+          if (event.type === "upload_error") return { ...f, loading: false, progress: 0, error: true };
+        }
+        return f;
+      }));
+    };
+
+    eventSource.onerror = (err) => {
+      apiLogger.error("SSE Error - Intentando reconectar...", err);
+      eventSource.close();
+      // Reintentar conexión tras 3 segundos si falla
+      setTimeout(() => {
+        // Aquí podrías disparar un estado para forzar la reconexión
+      }, 3000);
+    };
+
+    return () => eventSource.close();
+  }, [VITE_APP]);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey && query.trim()) {
@@ -97,7 +132,7 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
         type: fileType,
         icon,
         previewUrl,
-        progress: 0,
+        progress: 10,
         loading: true
       };
 
@@ -116,7 +151,7 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
 
         setPendingFilePreview(prev =>
           prev.map(f =>
-            f.name === file.name ? { ...f, progress: 100, loading: false } : f
+            f.name === file.name ? { ...f, progress: 50} : f
           )
         );
       } catch (err) {
@@ -156,8 +191,8 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
           icon: '🖼️',
           previewUrl: base64Image,
           file,
-          progress: 0,
-          loading: false
+          progress: 10,
+          loading: true
         };
 
         // Actualiza los estados visuales
@@ -171,7 +206,7 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
 
           setPendingFilePreview(prev =>
             prev.map(f =>
-              f.name === file.name ? { ...f, progress: 100, loading: false } : f
+              f.name === file.name ? { ...f, progress: 50} : f
             )
           );
         } catch (err) {
@@ -270,7 +305,7 @@ const SearchBar = ({ onSearch, showIcon, isStreaming, onStop, onScrollToBottom, 
             </button>
             {file.loading && (
               <div className="circular-progress-overlay">
-                <svg className="circular-progress" viewBox="0 0 36 36">
+                <svg className={`circular-progress ${file.error ? 'error' : ''}`} viewBox="0 0 36 36">
                   <path
                     className="circle-bg"
                     d="M18 2.0845

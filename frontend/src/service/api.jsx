@@ -24,22 +24,32 @@ export const setAuthToken = (getTokenFn) => {
 // Interceptor para agregar el token JWT a cada request
 apiClient.interceptors.request.use(
   async (config) => {
+    let token = null;
+
+    // 1. Intentar obtener el token de Clerk (Plan A)
     if (typeof getTokenFunction === 'function') { 
       try {
-        const token = await getTokenFunction({ template: 'backend-api-jarvis' });
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        } else {
-          // Si no hay token, mejor no enviamos el header vacío o lanzamos aviso
-          apiLogger.warn('[api.js] getToken devolvió null');
-        }
+        token = await getTokenFunction({ template: 'backend-api-jarvis' });
       } catch (error) {
-        apiLogger.error('[api.js] Error obteniendo token:', error);
+        apiLogger.error('[api.js] Error obteniendo token de Clerk:', error);
       }
-    } else {
-      // Esto explica por qué el Sidebar dice "Authorization header missing"
-      apiLogger.warn('[api.js] getTokenFunction no está lista todavía');
     }
+
+    // 2. Si Clerk no está listo, buscar en LocalStorage (Plan B - Paracaídas)
+    if (!token) {
+      token = localStorage.getItem('jarvis_token');
+      if (token) {
+        apiLogger.info('[api.js] Usando token de respaldo (LocalStorage)');
+      }
+    }
+
+    // 3. Inyectar el token si existe
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      apiLogger.warn('[api.js] No se encontró token en ninguna fuente');
+    }
+
     return config;
   },
   (error) => Promise.reject(error)

@@ -1,4 +1,5 @@
 /**
+ * src/components/controller/log/logger.jsx
  * Sistema de logs con niveles y modo debug
  * @file logger.js
  */

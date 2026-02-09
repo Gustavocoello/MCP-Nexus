@@ -248,25 +248,6 @@ body {
   user-select: none;
   pointer-events: none; /* para que no moleste al click */
 }
-@keyframes fadeInOut {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  10% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  90% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-}
-
 
 @keyframes fadeInOut {
   0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
@@ -337,6 +318,18 @@ body {
   display: block;
 }
 
+.load-more-indicator {
+  text-align: center;
+  padding: 10px;
+  color: #666;
+  font-size: 14px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
 
 @media (max-width: 768px) {
   /* ========== HEADER ========== */

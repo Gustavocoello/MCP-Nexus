@@ -1,15 +1,39 @@
-import React, { useRef } from 'react';
+///features/chat/components/Messagelist.jsx
+import React, { useEffect, useCallback, useRef } from 'react';
 import CodeBlock from '../CodeBlock/CodeBlock';
 import './MessageList.css'; // Archivo CSS modificado
 import DOMPurify from 'dompurify';
 import hljs from 'highlight.js';
 import MarkdownRenderer from '../../utils/MarkdownRenderer';
 
-//import { marked } from 'marked';
-
-
-const MessageList = ({ messages = [] }) => {
+const MessageList = ({ messages = [], onLoadMore, hasMore }) => {
   const messagesEndRef = useRef(null);
+  const containerRef = useRef(null);
+  const loadingRef = useRef(false);
+
+  //Detectar scroll arriba
+  const handleScroll = useCallback(() => {
+    if (!containerRef.current || loadingRef.current || !hasMore) return;
+
+    const { scrollTop } = containerRef.current;
+    
+    // Si está cerca del tope (menos de 100px)
+    if (scrollTop < 100) {
+      loadingRef.current = true;
+      onLoadMore?.();
+      setTimeout(() => {
+        loadingRef.current = false;
+      }, 1000);
+    }
+  }, [hasMore, onLoadMore]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
 
   const filteredMessages = messages.filter(
     msg => !msg.html?.includes('[NOTIFICATION]')
@@ -79,9 +103,17 @@ useEffect(() => {
 */
 
 return (
-  <div className="message-list">
+  <div className="message-list" ref={containerRef}>
+    {hasMore && (
+        <div className="load-more-indicator">
+          Scroll arriba para cargar mensajes antiguos...
+        </div>
+      )}
     {filteredMessages.map((msg, index) => (
-      <div key={msg.id || index} className={`message ${msg.role}`}>
+      <div 
+      key={msg.id || index} 
+      id={`msg-${msg.id}`}
+      className={`message ${msg.role}`}>
         <div className="message-bubble">
           {/* 🖼️ Renderizar imágenes base64 directamente */}
           {msg.type === 'image' ? (
@@ -105,7 +137,7 @@ return (
     ))}
     <div ref={messagesEndRef} />
   </div>
-);
+  );
 };
 
 export default MessageList;

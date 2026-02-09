@@ -17,7 +17,7 @@ const CodeBlock = ({ code, language, isHtml = false, stable = false }) => {
 
      const el = codeRef.current;
 
-    // ✅ Evita resaltar dos veces
+    // Evita resaltar dos veces
     if (stable && !el.dataset.highlighted) {
       hljs.highlightElement(el);
       el.dataset.highlighted = 'true';

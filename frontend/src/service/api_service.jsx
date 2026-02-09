@@ -74,6 +74,8 @@ const response = await fetch(`${VITE_APP}/api/chat/${chatId}/message`, {
 if (!response.ok || !response.body) {
   throw new Error("No se pudo conectar al servidor");
 }
+// Avisamos que los chats pueden haber cambiado
+window.dispatchEvent(new CustomEvent('chats-updated'));
 
 const reader = response.body.getReader();
 const decoder = new TextDecoder();

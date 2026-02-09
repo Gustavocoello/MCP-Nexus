@@ -73,11 +73,6 @@ const AnimatedJarvis = () => {
       <div className="logo-full">
         <JarvisSVG />
       </div>
-
-      {/* Icono solo con la "J" */}
-      <div className="logo-icon">
-        <JarvisIcon />
-      </div>
     </>
   );
 };
