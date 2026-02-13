@@ -56,9 +56,9 @@ root_dir = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(root_dir))
 
 from sqlalchemy import inspect, MetaData
-from src.database.config.mysql_config import get_mysql_engine
-from src.database.config.azure_config import get_azure_engine
-from src.database.config.database_linux_config import get_mysql_linux_engine
+from src.database.config.azure.azure_config import get_azure_engine
+from src.database.config.postgres.database_win_config import get_pg_engine as win_pg_engine
+from src.database.config.postgres.database_linux_config import get_pg_engine as linux_pg_engine
 from src.config.logging_config import get_logger
 
 logger = get_logger("backend.create_tables")
@@ -90,7 +90,7 @@ class TableCreator:
         
         # Windows
         try:
-            self.databases['windows'] = get_mysql_engine()
+            self.databases['windows'] = win_pg_engine()
             self.available_databases.append('windows')
             logger.info("Windows disponible")
         except Exception as e:
@@ -98,7 +98,7 @@ class TableCreator:
         
         # Linux
         try:
-            self.databases['linux'] = get_mysql_linux_engine()
+            self.databases['linux'] = linux_pg_engine()
             self.available_databases.append('linux')
             logger.info("Linux disponible")
         except Exception as e:
@@ -130,41 +130,38 @@ class TableCreator:
     
     def get_model_tables(self):
         """Obtiene lista de tablas definidas en models.py"""
-        if USE_FLASK_DB:
-            # Flask-SQLAlchemy: Importar modelos para registrarlos
-            import src.database.models.models  # Esto registra los modelos
-            return [table.name for table in db.metadata.sorted_tables]
-        else:
-            # SQLAlchemy puro
-            from src.database.models.models import Base
-            return [table.name for table in Base.metadata.sorted_tables]
+        # IMPORTANTE: Importar Base y todos los modelos aquí
+        from src.database.models.models import Base, User, Chat, Message, Document, UserToken, LLMLog, SystemStats, PingLog
+        
+        # Esto fuerza a SQLAlchemy a reconocer las tablas
+        return [table.name for table in Base.metadata.sorted_tables]
     
     def create_tables(self, db_name, drop_first=False):
-        """Crea tablas en una base de datos especifica"""
         engine = self.databases.get(db_name)
         if not engine:
             logger.error(f"Base de datos {db_name} no disponible")
             return False
         
         try:
+            # --- AJUSTE PARA POSTGRES/PGVECTOR ---
+            from sqlalchemy import text
+            with engine.connect() as conn:
+                logger.info(f"🛠 Activando extension pgvector en {db_name}...")
+                conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+                conn.commit()
+            # -------------------------------------
+
             logger.info(f"Creando tablas en {db_name}...")
             
-            if USE_FLASK_DB:
-                # Flask-SQLAlchemy: Importar modelos para registrarlos
-                import src.database.models.models
-                metadata = db.metadata
-            else:
-                # SQLAlchemy puro
-                from src.database.models.models import Base
-                metadata = Base.metadata
-            
+            # Forzamos el uso de la Metadata de nuestro nuevo models.py
+            from src.database.models.models import Base, User, Chat, Message, Document, UserToken, LLMLog, SystemStats, PingLog
+            metadata = Base.metadata
+                        
             if drop_first:
                 logger.warning(f"ELIMINANDO TODAS LAS TABLAS EN {db_name}")
                 metadata.drop_all(bind=engine)
             
-            # Crear todas las tablas
-            metadata.create_all(bind=engine)
-            
+            metadata.create_all(bind=engine)            
             # Verificar tablas creadas
             tables = self.get_existing_tables(db_name)
             model_tables = self.get_model_tables()

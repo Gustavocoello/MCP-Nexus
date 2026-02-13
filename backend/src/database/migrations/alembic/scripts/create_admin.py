@@ -5,6 +5,7 @@ import uuid
 from pathlib import Path
 from flask import Flask
 from dotenv import load_dotenv
+from src.database.config.connection import SessionLocal
 
 # Ajustar el path
 current_dir = Path(__file__).resolve().parent
@@ -27,6 +28,7 @@ app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+mysqlconnector://{USER_DB}:{PASS_DB}@{HOST_DB}:3306/{NAME_DB}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
+db_session = SessionLocal()
 with app.app_context():
     # Verificar si ya hay un admin
     existing = User.query.filter_by(is_admin=True).first()
@@ -39,6 +41,6 @@ with app.app_context():
             email=None,
             is_admin=True
         )
-        db.session.add(admin)
-        db.session.commit()
+        db_session.add(admin)
+        db_session.commit()
         print(f"Admin creado con ID: {admin.id}")

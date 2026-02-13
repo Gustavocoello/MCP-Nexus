@@ -7,7 +7,6 @@ from flask_cors import CORS
 from redis import Redis
 from src.config.config import Config
 from werkzeug.middleware.proxy_fix import ProxyFix
-from src.services.integrations.extensions.limiter import limiter
 
 from extensions import db
 from src.config.logging_config import get_logger
@@ -15,9 +14,9 @@ from src.api.v1.chat.routes import search_bp, chat_bp
 from src.api.v1.chat.mcp_tools import mcp_tools_bp
 from src.api.v1.auth.github_routes import github_auth_bp
 from src.api.v1.auth.google_routes import google_auth_bp
+from src.api.v1.auth.onedrive_routes import onedrive_bp
 from src.api.v1.auth.user_routes import user_bp, integrations_bp
 from src.api.v2.security.routes import ping_bp, health_bp
-from src.services.integrations.extensions.onedrive import onedrive_bp
 from src.database.config.connection import get_database_url
 from src.services.auth.utils.keep_alive_jarvis import keep_alive
 from dotenv import load_dotenv
@@ -90,9 +89,6 @@ app.register_blueprint(integrations_bp, url_prefix="/api/v1/integrations")
 
 """Rutas de herramientas MCP"""
 app.register_blueprint(mcp_tools_bp, url_prefix='/api/v1/mcp')
-
-# Limitar - login -
-limiter.init_app(app)
 
 # Iniciar keep-alive SOLO si se especifica la variable de entorno
 # (necesario para Render donde gunicorn no ejecuta if __name__)

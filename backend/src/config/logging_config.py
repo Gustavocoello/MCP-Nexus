@@ -33,6 +33,8 @@ LOGGING_CONFIG = {
 
 # Aplicar configuración
 logging.config.dictConfig(LOGGING_CONFIG)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 def get_logger(name):
     return logging.getLogger(f'backend.{name}')

@@ -1,27 +1,35 @@
+from ast import stmt
+import os
 import json
 import asyncio
-import os
 import threading
-from httpx import get
 from extensions import db
-from datetime import datetime
+from queue import Queue, Empty
+from sqlalchemy import select, delete
+from datetime import datetime, timezone
 from werkzeug.utils import secure_filename
-from src.services.providers.utils import generate_prompt, extract_text_from_file, analyze_image_with_azure, can_upload_image
-from src.services.core.llm_router import completion,completion_stream
-from src.database.models.models import Chat, Message, MemoryType, UserMemory, Document, UserToken
-from src.services.integrations.extensions.onedrive_service import upload_to_onedrive, get_user_onedrive_token
+from src.database.models.models import TIMEZONE, Chat, Message, Document, UserToken
+from src.database.config.connection import SessionLocal
+from src.services.cache.redis_sidebar import SidebarCache
+from src.services.cache.redis_cache import ChatCache
 from src.config.logging_config import get_logger
-from src.services.memory.service import get_user_memory, save_memory
-from src.services.memory.utils import build_memory_context, extract_memory_from_text, calculate_priority, classify_memory
+from src.services.integrations.onedrive_service import upload_to_onedrive, get_user_onedrive_token
+from src.services.llm.providers.utils import generate_prompt, extract_text_from_file, analyze_image_with_azure, can_upload_image
+from src.services.llm.llm_router import completion,completion_stream
+from src.services.auth.clerk.clerk_middleware import clerk_required
+from src.services.auth.mcp.mcp_jwt import generate_mcp_jwt
+#from src.services.llm.memory.service import get_user_memory, save_memory
+#from src.services.llm.memory.utils import build_memory_context, extract_memory_from_text, calculate_priority, classify_memory
 from flask import Blueprint, jsonify, Response, request, stream_with_context, session, copy_current_request_context, g
 from src.mcps.client.client_manager import mcp_manager
-from src.services.auth.clerk.clerk_middleware import clerk_required
 from src.mcps.client.utils.utils import safe_serialize_call_result
 from src.services.auth.utils.token_crypto import encrypt_token
-from src.services.auth.mcp.mcp_jwt import generate_mcp_jwt
 
+# -- Logger --
 logger = get_logger('routes')
-
+# -- Event Queue --
+event_queue = Queue()
+# -- MCP Client --
 mcp_client = mcp_manager
 
 ## ----------- Mensajes de la IA sin memoria --------------
@@ -121,75 +129,151 @@ def build_payload(chat, recent, user_text, memory_context=None, hidden_context=N
     messages.append({"role": "user", "content": user_text})
     return messages
 
-def summarize_and_trim(chat):
-    all_msgs = (Message.query
-                .filter_by(chat_id=chat.id)
-                .order_by(Message.created_at)
-                .all())
+def summarize_and_trim(chat, db_session):
+    # 1. Obtener todos los mensajes usando la sintaxis de Session.execute
+    stmt = select(Message).filter_by(chat_id=chat.id).order_by(Message.created_at.asc())
+    all_msgs = db_session.execute(stmt).scalars().all()
+    
     if len(all_msgs) <= MAX_TOTAL:
         return
 
-    to_summarize = all_msgs[:-MAX_RAW]         # todo menos los 10 últimos
+    # 2. Dividir mensajes (los que se resumen y los que se quedan)
+    to_summarize = all_msgs[:-MAX_RAW] 
+    
     summary_prompt = [
-        {"role": "system",
-         "content": "Resume brevemente la siguiente conversación:"},
+        {"role": "system", "content": "Resume brevemente la siguiente conversación:"},
         *[{"role": m.role, "content": m.content} for m in to_summarize]
     ]
-    new_summary = completion(summary_prompt) # se cambio a completion
+    
+    # 3. Generar el resumen
+    new_summary = completion(summary_prompt)
     logger.info(f"Nuevo resumen: {new_summary}")
 
+    # 4. Actualizar el chat
     chat.summary = ((chat.summary or "") + "\n" + new_summary).strip()
-    db.session.add(chat)
-    # borrar mensajes resumidos
-    ids = [m.id for m in to_summarize]
-    Message.query.filter(Message.id.in_(ids)).delete(synchronize_session=False)
-    db.session.commit()
+    
+    # 🚀 PASO CLAVE: Si agregamos updated_at, actualízalo aquí también
+    if hasattr(chat, 'updated_at'):
+        chat.updated_at = datetime.now(timezone.utc)
+        
+    db_session.add(chat)
+
+    # 5. Borrar mensajes antiguos de forma eficiente (SQLAlchemy 2.0 style)
+    ids_to_delete = [m.id for m in to_summarize]
+    delete_stmt = delete(Message).where(Message.id.in_(ids_to_delete))
+    
+    db_session.execute(delete_stmt)
+    db_session.commit()
+    print(f"Se resumieron y eliminaron {len(ids_to_delete)} mensajes.")
 
 
 # ------------- route principal -------------
 
+#--------------- EVENTS QUEUE ---------------
+@chat_bp.route("/events")
+def events():
+    def stream():
+        while True:
+            try:
+                # Espera un evento pero con un timeout de 20 segundos
+                # Esto evita que el hilo se quede bloqueado para siempre
+                try:
+                    event = event_queue.get(timeout=20)
+                    yield f"data: {json.dumps(event)}\n\n"
+                except Empty:
+                    # Esto es un "keep-alive" para que el navegador no cierre la conexión
+                    yield f"data: {json.dumps({'type': 'ping'})}\n\n"
+            except Exception as e:
+                logger.error(f"Error en stream SSE: {e}")
+                break
+
+    return Response(stream(), mimetype="text/event-stream")
 # ----------------- GET ---------------------
 @chat_bp.route('', methods=['GET'], strict_slashes=False)
 @clerk_required
 def get_all_chats():
-    chats = Chat.query.filter_by(user_id=g.user_id).order_by(Chat.updated_at.desc()).all()
-    return jsonify([{
-        "id": chat.id,
-        "created_at": chat.created_at.isoformat(),
-        "updated_at": chat.updated_at.isoformat() if chat.updated_at else None,
-        "summary": chat.summary,
-        "title": chat.title if chat.title else "Sin título"
-    } for chat in chats])
+    db_session = SessionLocal()
+    try:
+        # get_chats intenta Redis, si falla va a DB, guarda en Redis y te lo da.
+        chats = SidebarCache.get_chats(g.user_id, db_session=db_session)
+        return jsonify(chats)
+    except Exception as e:
+        logger.exception("Error al obtener chats")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        db_session.close()
+        
+@chat_bp.route('/<chat_id>/messages/recent', methods=['GET'])
+@clerk_required
+def get_recent_messages(chat_id):
+    db_session = SessionLocal()
+    try:
+        # Redis (ChatCache ya tiene lógica de fallback)
+        messages = ChatCache.get_messages(chat_id, db_session=db_session)
+        
+        return jsonify(messages)
+    except Exception as e:
+        logger.exception(f"Error en mensajes recientes de {chat_id}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        db_session.close()
 
 @chat_bp.route('/<chat_id>/messages', methods=['GET'])
 @clerk_required
 def get_chat_messages(chat_id):
-    chat = Chat.query.get(chat_id)
-    if not chat or chat.user_id != g.user_id:
-        return jsonify({'error': 'Acceso denegado'}), 403
-    messages = (Message.query
-                .filter_by(chat_id=chat_id)
-                .order_by(Message.created_at.asc())
-                .all())
-    return jsonify([{
-        "id": msg.id,
-        "role": msg.role,
-        "content": msg.content,
-        "created_at": msg.created_at.isoformat()
-    } for msg in messages])
+    db_session = SessionLocal()
+    try:
+        chat = db_session.query(Chat).filter(Chat.id == chat_id, Chat.user_id == g.user_id).first()
+        if not chat:
+            logger.warning(f"Chat no encontrado o acceso denegado al chat {chat_id}")
+            return jsonify({'error': 'Chat no encontrado o acceso denegado'}), 404
+        
+        stmt = select(Message).where(Message.chat_id == chat_id).order_by(Message.created_at.asc())
+        messages = db_session.execute(stmt).scalars().all()
+        
+        return jsonify([{
+            "id": msg.id,
+            "role": msg.role,
+            "content": msg.content,
+            "created_at": msg.created_at.isoformat()
+        } for msg in messages])
+        
+    except Exception as e:
+        logger.exception("Error al obtener mensajes del chat")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        db_session.close()
     
 # ----------------- DELETE -------------------
     
 @chat_bp.route('/<chat_id>', methods=['DELETE'])
 @clerk_required
 def delete_chat(chat_id):
-    chat = Chat.query.get(chat_id)
-    if not chat or chat.user_id != g.user_id:
-        return jsonify({"error": "Acceso denegado"}), 403
+    db_session = SessionLocal() # Inicia sesión
+    try: 
+        # 1. BUSCAMOS EL CHAT (Solo una línea, usando la sesión)
+        chat = db_session.query(Chat).filter(Chat.id == chat_id, Chat.user_id == g.user_id).first()
+        
+        # 2. VALIDACIÓN
+        if not chat:
+            return jsonify({"error": "Chat no encontrado o acceso denegado"}), 403
 
-    db.session.delete(chat)
-    db.session.commit()
-    return jsonify({"message": "Chat eliminado correctamente"}), 200
+        # 3. ACCIÓN
+        db_session.delete(chat)
+        db_session.commit() # Guarda los cambios en la DB (Windows/Linux)
+        
+        # === AVISAR A REDIS ===
+        SidebarCache.invalidate_user(g.user_id)
+        print(f"[Redis] Sidebar invalidado por eliminación de chat: {chat_id}")
+        
+        return jsonify({"message": "Chat eliminado correctamente"}), 200
+
+    except Exception as e:
+        db_session.rollback() # Si algo falla, deshace el intento de borrado
+        logger.exception("Error al eliminar chat")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        db_session.close() 
 
 
 # ----------------- POST ---------------------    
@@ -197,293 +281,315 @@ def delete_chat(chat_id):
 @chat_bp.route('', methods=['POST'], strict_slashes=False)
 @clerk_required
 def create_chat():
-    if not g.user_id:
-        return jsonify({"error": "Usuario no autenticado o ID inválido"}), 401
-
+    db_session = SessionLocal() # Inicia la sesión manual
     try:
-        chat = Chat(user_id=g.user_id)
-        db.session.add(chat)
-        db.session.commit()
+        if not g.user_id:
+            return jsonify({"error": "Usuario no autenticado"}), 401
+
+        # CREACIÓN DEL CHAT
+        # Simplemente creamos el objeto y lo añadimos a la sesión
+        new_chat = Chat(user_id=g.user_id, title="Sin título")
         
-        print(f"[DEBUG] user_id: {g.user_id}")
+        db_session.add(new_chat)
+        db_session.commit() # Guarda en la DB (Windows o Linux)
+        
+        print(f"[DEBUG] Nuevo chat creado para: {g.user_id}")
+        
+        # === AVISAR A REDIS ===
+        SidebarCache.invalidate_user(g.user_id)
+        print(f"[Redis] Sidebar invalidado por creación de chat: {new_chat.id}")
+        
         return jsonify({
-            "id": chat.id,
-            "created_at": chat.created_at.isoformat()
+            "id": new_chat.id,
+            "title": new_chat.title,
+            "created_at": new_chat.created_at.isoformat()
         }), 201
+
     except Exception as e:
-        db.session.rollback()
+        db_session.rollback() # Si falla la conexión, cancela la operación
+        logger.exception("Error al crear chat")
         return jsonify({"error": str(e)}), 500
+        
+    finally:
+        db_session.close()
 
 
 @chat_bp.route('/<chat_id>/message', methods=['POST'], strict_slashes=False)
 @clerk_required
 def send_message(chat_id):
-    chat = Chat.query.get(chat_id)
-
-    if not chat:
-        # Si no existe, crearlo y asignarlo al usuario actual
-        chat = Chat(id=chat_id, user_id=g.user_id)
-        db.session.add(chat)
-    elif chat.user_id != g.user_id:
-        return jsonify({"error": "Acceso denegado"}), 403
-    
-    user_text = (request.json.get("text") or "").strip()
-    if not user_text:
-        return jsonify({"error": "Texto vacío"}), 400
-
-    print("BODY RECIBIDO:", request.json)
-
+    db_session = SessionLocal()
     try:
-        chat = Chat.query.get(chat_id)
-        if chat is None:
-            chat = Chat(id=chat_id)
-            db.session.add(chat)
-
-        chat.updated_at = datetime.utcnow()
+        # Sintaxis correcta de query
+        chat = db_session.query(Chat).filter(Chat.id == chat_id, Chat.user_id == g.user_id).first()
+        # 1. Buscar o crear el chat
+        if not chat:
+            chat = Chat(id=chat_id, user_id=g.user_id, title="Sin título")
+            db_session.add(chat)
+            db_session.flush()
+        elif chat.user_id != g.user_id:
+            return jsonify({"error": "Acceso denegado"}), 403
         
+        # 2. Validar texto del usuario
+        user_text = (request.json.get("text") or "").strip()
+        if not user_text:
+            return jsonify({"error": "Texto vacío"}), 400
 
+        print("BODY RECIBIDO:", request.json)
+
+        # 3. Guardar el mensaje del usuario y actualizar timestamp
+        chat.updated_at = datetime.now(TIMEZONE)        
         user_message = Message(chat_id=chat.id, role="user", content=user_text)
-        db.session.add(user_message)
+        db_session.add(user_message)
 
-        if not chat.title:
-            palabras = user_text.split()
-            resumen = " ".join(palabras[:10]) + ("..." if len(palabras) > 10 else "")
-            chat.title = resumen
-
-        db.session.commit()  # 🔑
-
-        recent = (
-            Message.query
-            .filter(Message.chat_id == chat.id, Message.role != "context")
-            .order_by(Message.created_at.desc())
-            .limit(MAX_RAW)
-            .all()[::-1]
-        )
-        
-        memories = get_user_memory(chat_id, memory_type=MemoryType.LONG_TERM)
-        memory_context = build_memory_context(memories)
-        
         hidden_context = request.json.get("hidden_context", "").strip()
 
+        # 4. Manejo de Contexto Oculto (si existe)
         if hidden_context:
-            Message.query.filter_by(chat_id=chat.id, role="context").delete()
-            # Guardar como mensaje oculto (contexto), no será mostrado en frontend
+            # Usar db_session siempre
+            db_session.query(Message).filter_by(chat_id=chat.id, role="context").delete()
             context_msg = Message(chat_id=chat.id, role="context", content=hidden_context)
-            db.session.add(context_msg)
-            
-        # MCP - Model Context Protocol
+            db_session.add(context_msg)
         
+        db_session.commit()
+
+        recent = (db_session.query(Message)
+                  .filter(Message.chat_id == chat.id, Message.role != "context")
+                  .order_by(Message.created_at.desc())
+                  .limit(MAX_RAW).all()[::-1])
+            
+        # 5. Lógica de Herramientas (MCP)
         tool_name = request.json.get("tool", "").strip()
         params = request.json.get("params", {})
-        mcp_context = None
-        if tool_name:
-        
-        # 🔑 PASO 1: Determinar el cliente. Asumiremos que si tool_name existe,
-        # pertenece a un cliente MCP. Si el manager no lo encuentra, lanzará una excepción.
-        
+        mcp_context = None            
+
+        if tool_name:    
             try:
-                # 🔑 PASO 2: Generar el JWT SOLO si es una herramienta que lo requiere (ej. google_calendar)
-                # Como todas tus tools son google_, asumimos que el JWT siempre es necesario.
-                
-                # Nota: El user_id ya está en g.user_id, lo pasamos al manager.
-                
-                # --- LÓGICA CLAVE DE JWT/MANAGER ---
-                
-                # 1. Generar el JWT para la integración de Google Calendar
                 mcp_auth_token = generate_mcp_jwt(g.user_id, "google_calendar")
-                
-                # 2. Si no hay token, el usuario no está conectado a Google.
-                if not mcp_auth_token:
-                    # No podemos llamar a la tool de Google.
-                    print(f"❌ [Jarvis] No se pudo generar JWT para user_id={g.user_id}")
-                    return jsonify({"error": f"La herramienta '{tool_name}' requiere conexión con Google Calendar."}), 400
                     
-                # 3. Llamada al Manager
-                # Creamos un nuevo loop (como ya lo tienes)
+                if not mcp_auth_token:
+                    print(f"[Jarvis] No se pudo generar JWT para user_id={g.user_id}")
+                    return jsonify({"error": f"La herramienta '{tool_name}' requiere conexión con Google Calendar."}), 400
+                        
                 loop = asyncio.new_event_loop() 
                 try:
-                    # 🔄 El Manager DEBE instanciar el cliente con el auth_token
-                    # Implementaremos un método en el Manager para manejar esto:
                     result = loop.run_until_complete(
                         mcp_manager.call_tool_with_auth(
                             tool_name=tool_name, 
                             user_id=g.user_id, 
-                            auth_token=mcp_auth_token, # ⬅️ Pasamos el JWT
+                            auth_token=mcp_auth_token,
                             **params
                         )
                     )
                 finally:
                     loop.close()
                     print(f"MCP Results: ({tool_name}):", result)
-                    
-                # 🔄 PASO 4: CHEQUEAR SI HUBO UN REFRESH DE TOKEN
-                # El resultado de la tool (ToolResult) trae el contexto si hubo cambios.
-                response_context = getattr(result, 'context', {})
-                
+                        
+                response_context = getattr(result, 'context', {})    
                 if "google_new_access_token" in response_context:
                     new_access = response_context["google_new_access_token"]
                     new_refresh = response_context.get("google_new_refresh_token")
-                    
-                    # Persistir los nuevos tokens en la DB de Jarvis
-                    token_entry = UserToken.query.filter_by(user_id=g.user_id, provider="google_calendar").first()
+                        
+                    token_entry = db_session.query(UserToken).filter(
+                        UserToken.user_id ==g.user_id, 
+                        UserToken.provider == "google_calendar"
+                    ).first()
                     
                     if token_entry:
                         token_entry.access_token = encrypt_token(new_access)
                         if new_refresh:
                             token_entry.refresh_token = encrypt_token(new_refresh)
-                        
-                        db.session.add(token_entry)
-                        db.session.commit() # Commit inmediato para el token
+                        db_session.add(token_entry)
+                        db_session.commit()
                         print("[Jarvis] Google Token refrescado y persistido.")
-                
-                # Convertir a JSON serializable manualmente
+                    else:
+                        # Si la tabla está vacía, debemos crear el registro inicial
+                        print(f"[Jarvis] No se encontró registro para {g.user_id}, creando uno nuevo...")
+                        new_token = UserToken(
+                            user_id=g.user_id,
+                            provider="google_calendar",
+                            access_token=encrypt_token(new_access),
+                            refresh_token=encrypt_token(new_refresh) if new_refresh else None
+                        )
+                        
+                        db_session.add(new_token)
+                        db_session.commit()
+                        print("[Jarvis] Google Token creado y persistido.")
+                    
                 result_dict = safe_serialize_call_result(result)
-                # construir mcp_context como JSON plano
                 mcp_context = json.dumps({
                     "response": result_dict,
                     "tool_used": tool_name,
                     "token_refreshed": "google_new_access_token" in response_context
                 })
 
-                # guardar en DB como oculto (no se renderiza en frontend)
+                # Message es la clase, no atributo de sesión
                 mcp_msg = Message(
                     chat_id=chat.id,
                     role="mcp-tool",
                     content=mcp_context
                 )
-                db.session.add(mcp_msg)
+                db_session.add(mcp_msg)
+                db_session.commit()
 
             except Exception as e:
                 print("Error MCP:", e)
-
-
-        payload = build_payload(chat, recent, user_text, memory_context=memory_context, hidden_context=hidden_context, mcp_context=mcp_context)
+                
+        # 6. Preparar historial para el modelo
+        payload = build_payload(chat, recent, user_text, hidden_context=hidden_context, mcp_context=mcp_context)
         print("🔍 PAYLOAD ANTES DEL MODELO:", payload)
-
-
-        # Usar stream para respuesta parcial
+        
+        # ======= STREAMING RESPONSE ========
+        # 7. Logica del titulo (Pre-streaming)
+        # Pre-streaming: Crear título si no existe
+        if not chat.title or chat.title == "Sin título":
+            palabras = user_text.split()
+            chat.title = " ".join(palabras[:10]) + ("..." if len(palabras) > 10 else "")
+            db_session.add(chat)
+            db_session.commit()
+            # Invalidación del Sidebar (para orden y título nuevo)
+            SidebarCache.invalidate_user(g.user_id)
+            print(f"DEBUG: Cache invalidado PRE-STREAM para {chat.title}")
+            
+        # 8. Función Generadora para Streaming
         def generate():
+            # Creamos una sesión dedicada para el streaming
+            gen_session = SessionLocal()
             try:
                 full_reply = ""
-                                       
-                # Llama a tu modelo pero ahora espera que `completion()` sea un generador
                 for chunk in completion_stream(payload):  
                     full_reply += chunk
-                    yield chunk  # Streaming real al cliente
+                    yield chunk
 
-                # Guardar respuesta completa al final
-                chat.updated_at = datetime.utcnow()
-                db.session.add(Message(chat_id=chat.id, role="assistant", content=full_reply))
-                db.session.commit()
+                # Guardar respuesta final
+                inner_chat = gen_session.get(Chat, chat_id)
+                inner_chat.updated_at = datetime.now(TIMEZONE)
+                        
+                new_msg = Message(chat_id=chat_id, role="assistant", content=full_reply)
+                gen_session.add(new_msg)
                 
-                # EXTRAER Y GUARDAR MEMORIAS DESDE EL TEXTO DEL 
-                extracted_memories = extract_memory_from_text(user_text)
-                print("[DEBUG] Memorias extraídas:", extracted_memories)
-
-                notificaciones = []
+                # Ejecutar resumen (debe aceptar la sesión para funcionar)
+                summarize_and_trim(inner_chat, gen_session)
+                gen_session.commit()
                 
-                for mem_text in extracted_memories:
-                    priority = calculate_priority(mem_text)
-                    classification = classify_memory(mem_text)  # Ej: "hecho", "preferencia", etc.
-                    key = f"{classification}:{mem_text[:30]}"  # clave compuesta
-                    save_memory(chat.id, key, mem_text, memory_type=MemoryType.LONG_TERM, priority=priority)
-                    
-                    # Notificacion para enviar al frontend
-                    if priority >= 6:
-                        notificaciones.append({
-                            "type": "memory_saved",
-                            "message": f"He recordado algo importante: \"{mem_text}\""
-                        })      
-
-                summarize_and_trim(chat)  
-                                
-                if notificaciones:
-                    for nota in notificaciones:
-                        logger.info(f"Enviando notificación: [NOTIFICATION] {nota['message']}")
-                        yield "\n\n[NOTIFICATION] 💾 Memoria actualizada\n"
+                # === REDIS ===
+                # Cache mensajes en Redis
+                ChatCache.append_message(chat_id, {
+                    "id": new_msg.id,
+                    "role": "assistant",
+                    "content": full_reply,
+                    "created_at": datetime.now(TIMEZONE).isoformat()
+                })                
 
             except Exception as e:
-                db.session.rollback()
+                gen_session.rollback()
                 logger.exception("Error durante el stream")
-                yield "\n[ERROR] " + str(e)  # ⬅️ devolvé algo al cliente
+                yield "\n[ERROR] " + str(e)
             finally:
-                db.session.close()
+                gen_session.close()
 
-        return Response(stream_with_context(generate()), content_type="text/plain")  # 🔄 cambiamos jsonify
+        return Response(stream_with_context(generate()), content_type="text/plain")
 
     except Exception as e:
-        db.session.rollback()
+        db_session.rollback()
         logger.exception("Error en send_message")
         return jsonify({"error": str(e)}), 500
     finally:
-        db.session.close()
-
+        db_session.close()
 # --------------- POST (extraer texto de archivos) ---------------
 @chat_bp.route('/extract_file', methods=['POST'])
 @clerk_required
 def extract_file():
+    # En el hilo principal no necesitamos db_session a menos que consultemos algo
     if 'file' not in request.files:
         return jsonify({'error': 'No se proporcionó ningún archivo'}), 400
 
     file = request.files['file']
     if file.filename == '':
         return jsonify({'error': 'Nombre de archivo vacío'}), 400
-
-    original_name, ext = os.path.splitext(file.filename)
+    # Nombre orginal para el frontend
+    original_filename = file.filename
+    
+    original_name_base, ext = os.path.splitext(file.filename)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = secure_filename(f"{original_name}_{timestamp}{ext}")
+    filename = secure_filename(f"{original_name_base}_{timestamp}{ext}")
+    
     content_type = file.content_type
     file_bytes = file.read()
+    final_text = "" # Variable unificada
 
     try:
+        # 1. EXTRACCIÓN DE TEXTO (Lógica principal)
         if content_type.startswith("image/"):
             try:                
-                extracted_text = analyze_image_with_azure(file_bytes)
-                logger.info(f"Texto extraído de la imagen {filename} (longitud: {len(extracted_text)} caracteres)")
-                resp = jsonify({"text": f"🖼️ Imagen `{filename}`:\n\n{extracted_text}"})
+                final_text = analyze_image_with_azure(file_bytes)
+                logger.info(f"Texto extraído de imagen {original_filename}")
+                resp_text = f"🖼️ Imagen `{original_filename}`:\n\n{final_text}"
             except Exception as e:
-                logger.error(f"Error al analizar imagen con Azure Vision: {str(e)}")
+                logger.error(f"Error en Azure Vision: {str(e)}")
                 return jsonify({"error": f"Error en Azure Vision: {str(e)}"}), 500
         else:
-            file_stream = file.stream
-            text = extract_text_from_file(file_stream, filename)
-            full_text = f"### Contenido del archivo `{filename}`\n\n{text}"
-            resp = jsonify({'text': full_text})
+            # Importante: usar BytesIO para archivos no-imagen porque ya hicimos file.read()
+            from io import BytesIO
+            file_stream = BytesIO(file_bytes)
+            final_text = extract_text_from_file(file_stream, original_filename)
+            resp_text = f"### Contenido del archivo `{original_filename}`\n\n{final_text}"
 
-        # --- background upload ---
+        # 2. TAREA EN SEGUNDO PLANO (OneDrive + DB)
         @copy_current_request_context
-        def background_task(file_bytes=file_bytes, filename=filename, content_type=content_type, user_id=g.user_id):
+        def background_task(file_bytes, filename_bd, content_type, user_id, text_to_store, filename_ui):
+            bg_session = SessionLocal()
             try:
-                """
-                # Traer el usuario completo
-                user = User.query.get(user_id)
-                if not user or not can_upload_image(user.name):
-                    logger.warning(f"Usuario {user.name if user else 'desconocido'} no permitido para subir imágenes")
-                    return
-                """
-
-                logger.info("🚀 Iniciando background_task...")  # log de prueba
-                access_token = get_user_onedrive_token(user_id)  # <- usar token delegado
+                # EVENTO: Inicio
+                event_queue.put({"type": "upload_started", "filename": filename_ui, "user_id": user_id})
+                
+                logger.info(f"🚀 Background upload: {filename_ui}")
+                access_token = get_user_onedrive_token(user_id)
+                
                 if not access_token:
-                    logger.error("No hay token de OneDrive en sesión")
+                    event_queue.put({"type": "upload_error", "filename": filename_ui, "error": "No hay token de OneDrive"})
                     return
-                download_url = upload_to_onedrive(access_token, filename, file_bytes)
+
+                download_url = upload_to_onedrive(access_token, filename_bd, file_bytes)
+                
                 document = Document(
-                    mime_type=content_type,
-                    size_bytes=len(file_bytes),
+                    user_id=user_id,
+                    filename=filename_bd,          # Ahora sí existe en el modelo
+                    content=text_to_store,     # El texto que sacaste con OCR/PDF
+                    mime_type=content_type,     # Coincide con el modelo
+                    file_size=len(file_bytes),  # Ahora sí existe en el modelo
                     url=download_url,
                     source="onedrive",
-                    tag="user_upload_mcp",
-                    user_id=user_id,
+                    tag="user_upload_mcp"
                 )
-                db.session.add(document)
-                db.session.commit()
-                logger.info(f"Archivo {filename} guardado en OneDrive y DB")
-            except Exception as e:
-                logger.exception(f"Error en background upload OneDrive: {e}")
+                
+                bg_session.add(document)
+                bg_session.commit()
 
-        threading.Thread(target=background_task, daemon=True).start()
-        return resp
+                # EVENTO: Éxito
+                event_queue.put({
+                    "type": "upload_completed", 
+                    "filename": filename_ui, 
+                    "url": download_url,
+                    "user_id": user_id
+                })
+                
+            except Exception as e:
+                bg_session.rollback()
+                logger.exception("Error en background task")
+                # EVENTO: Error
+                event_queue.put({"type": "upload_error", "filename": filename_ui, "error": str(e)})
+            finally:
+                bg_session.close()
+        
+        user_uuid = g.user_id
+
+        threading.Thread(
+            target=background_task, 
+            args=(file_bytes, filename, content_type, user_uuid, final_text, original_filename),
+            daemon=True
+        ).start()
+
+        return jsonify({"text": resp_text})
 
     except Exception as e:
         logger.exception("Error procesando archivo:")
@@ -493,14 +599,26 @@ def extract_file():
 @chat_bp.route('/<chat_id>/title', methods=['PUT'])
 @clerk_required
 def update_chat_title(chat_id):
-    chat = Chat.query.get(chat_id)
-    if not chat or chat.user_id != g.user_id:
-        return jsonify({'error': 'Acceso denegado'}), 403
-    
-    data = request.get_json()
-    new_title = data.get('title')
+    db_session = SessionLocal()
+    try:
+        chat = db_session.query(Chat).filter(Chat.id == chat_id, Chat.user_id == g.user_id).first()
+        if not chat or chat.user_id != g.user_id:
+            return jsonify({'error': 'Acceso denegado'}), 403
+        
+        data = request.get_json()
+        new_title = data.get('title')
 
-    chat.title = new_title
-    db.session.commit()
+        chat.title = new_title
+        db_session.commit()
+        
+        # === AVISAR A REDIS ===
+        SidebarCache.invalidate_user(g.user_id)
+        print(f"[Redis] Sidebar invalidado por actualización de título del chat: {chat_id}")
 
-    return jsonify({'message': 'Título actualizado', 'title': new_title})
+        return jsonify({'message': 'Título actualizado', 'title': new_title})
+    except Exception as e:
+        db_session.rollback()
+        logger.exception("Error actualizando título del chat")
+        return jsonify({'error': str(e)}), 500
+    finally:
+        db_session.close()

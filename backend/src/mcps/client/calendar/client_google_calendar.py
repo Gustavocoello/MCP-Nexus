@@ -92,7 +92,7 @@ class MCPToolsClient:
         if self.auth_token:
             headers["Authorization"] = f"Bearer {self.auth_token}"
         
-        # ✅ Crear transport con headers
+        # Crear transport con headers
         transport = StreamableHttpTransport(
             self.url,
             headers=headers  # ⬅️ Parámetro correcto según la doc

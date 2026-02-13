@@ -1,8 +1,10 @@
 # src/api/v1/user_routes.py
 
 from flask import Blueprint, jsonify, g
+from sqlalchemy import select
 from src.services.auth.clerk.clerk_middleware import clerk_required
 from src.services.auth.clerk.clerk_user_sync import sync_clerk_user
+from src.database.config.connection import SessionLocal
 from src.database.models.models import UserToken
 from extensions import db
 
@@ -16,54 +18,52 @@ def sync_user_profile():
     Ruta diseñada para ser llamada inmediatamente después del login en el frontend.
     Su única función es sincronizar el perfil de Clerk con la DB local.
     """
-    clerk_user_id = g.user_id
+    user = g.user_obj
     
-    try:
-        # Llama a la función que verifica si existe y lo crea si no.
-        local_user = sync_clerk_user(clerk_user_id) 
-        
-        # Opcional: Puedes devolver los datos del usuario local
-        return jsonify({
-            "status": "success",
-            "message": "User profile synchronized successfully.",
-            "user_id": local_user.id,
-            "email": local_user.email
-        }), 200
-        
-    except Exception as e:
-        # Si la sincronización falla (ej. error de conexión a la API de Clerk)
-        return jsonify({"error": f"Failed to sync user profile: {str(e)}"}), 500
+    return jsonify({
+        "status": "success",
+        "message": "User profile is active.",
+        "user_id": str(user.id), # Este es el UUID
+        "email": user.email
+    }), 200
     
     
 @integrations_bp.route("/status", methods=["GET"])
 @clerk_required
 def get_integration_status():
-    user_id = g.user_id
+    db_session = SessionLocal()
+    try:
+        user_id = g.user_id
 
-    # Verificar si existe un token de Google Calendar
-    google_token = UserToken.query.filter_by(
-        user_id=user_id,
-        provider="google_calendar"
-    ).first()
+        # Verificar si existe un token de Google Calendar
+        stmt = select(UserToken).filter_by(user_id=user_id, provider="google_calendar")
+        google_token = db_session.execute(stmt).scalar_one_or_none()
 
-    return jsonify({
-        "google_calendar": google_token is not None
-    }), 200
+        return jsonify({
+            "google_calendar": google_token is not None
+        }), 200
+    finally:
+        db_session.close()
 
 @integrations_bp.route("/disconnect/<provider>", methods=["POST"])
 @clerk_required
 def disconnect_integration(provider):
-    user_id = g.user_id
+    db_session = SessionLocal()
+    try:
+        user_id = g.user_id
 
-    token = UserToken.query.filter_by(
-        user_id=user_id,
-        provider=provider
-    ).first()
+        stmt = select(UserToken).filter_by(user_id=user_id, provider=provider)
+        token = db_session.execute(stmt).scalar_one_or_none()
 
-    if not token:
-        return jsonify({"message": "Integration already disconnected"}), 200
+        if not token:
+            return jsonify({"message": "Integration already disconnected"}), 200
 
-    db.session.delete(token)
-    db.session.commit()
+        db_session.delete(token)
+        db_session.commit()
 
-    return jsonify({"message": f"{provider} disconnected successfully"}), 200
+        return jsonify({"message": f"{provider} disconnected successfully"}), 200
+    except Exception as e:
+        db_session.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        db_session.close()

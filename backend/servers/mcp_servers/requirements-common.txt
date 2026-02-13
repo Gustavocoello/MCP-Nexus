@@ -1,0 +1,27 @@
+# ============================================
+# DEPENDENCIAS COMUNES - TODOS LOS SERVIDORES MCP
+# ============================================
+
+# Core
+python-dotenv==1.1.0
+pytz==2025.2
+
+# Async
+anyio==4.9.0
+aiohttp==3.13.1
+aiodns==3.5.0
+aiohappyeyeballs==2.6.1
+aiosignal==1.4.0
+
+# MCP Framework
+sse-starlette==2.3.6
+
+# HTTP Server
+starlette==0.47.1
+uvicorn==0.35.0
+
+# Auth & Security
+PyJWT==2.10.1
+
+# Utilities
+isodate==0.7.2

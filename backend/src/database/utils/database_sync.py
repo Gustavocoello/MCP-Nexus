@@ -11,9 +11,9 @@ root_dir = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(root_dir))
 
 from src.config.logging_config import get_logger
-from src.database.config.mysql_config import get_mysql_engine
-from src.database.config.azure_config import get_azure_engine
-from src.database.config.database_linux_config import get_mysql_linux_engine
+from src.database.config.azure.azure_config import get_azure_engine
+from src.database.config.postgres.database_win_config import get_pg_engine as win_pg_engine
+from src.database.config.postgres.database_linux_config import get_pg_engine as linux_pg_engine
 
 logger = get_logger("backend.sync")
 
@@ -52,7 +52,7 @@ class DatabaseSync:
         
         # Windows
         try:
-            self.databases['windows'] = get_mysql_engine()
+            self.databases['windows'] = win_pg_engine()
             self.available_databases.append('windows')
             logger.info("Windows conectado")
         except Exception as e:
@@ -60,7 +60,7 @@ class DatabaseSync:
         
         # Linux
         try:
-            self.databases['linux'] = get_mysql_linux_engine()
+            self.databases['linux'] = linux_pg_engine()
             self.available_databases.append('linux')
             logger.info("Linux conectado")
         except Exception as e:
@@ -93,14 +93,9 @@ class DatabaseSync:
                         FROM sys.dm_db_partition_stats
                     """)
                 else:
-                    # MySQL
-                    db_name_env = os.getenv("NAME_BD") if db_name == 'windows' else os.getenv("LINUX_NAME")
-                    query = text(f"""
-                        SELECT 
-                            SUM(data_length + index_length) / 1024 / 1024 AS size_mb
-                        FROM information_schema.TABLES
-                        WHERE table_schema = '{db_name_env}'
-                    """)
+                    # PostgreSQL (Windows y Linux Docker)
+                    db_name_env = "jarvis_ia" # Tu base de datos actual
+                    query = text(f"SELECT pg_database_size('{db_name_env}') / 1024 / 1024 AS size_mb")
                 
                 result = conn.execute(query)
                 row = result.fetchone()
@@ -217,12 +212,14 @@ class DatabaseSync:
             
             # Definir orden manualmente basado en foreign keys
             table_order = [
-                'users',           # Sin dependencias
-                'chat',            # Depende de users
-                'user_token',      # Depende de users
-                'message',         # Depende de chat
-                'user_memory',     # Depende de chat
-                'documents'        # Depende de users
+                'users', 
+                'chat', 
+                'user_token', 
+                'message', 
+                'documents', 
+                'llm_logs',      # Agregada
+                'system_stats',  # Agregada
+                'ping_logs'      # Agregada
             ]
             
             # Agregar tablas en orden

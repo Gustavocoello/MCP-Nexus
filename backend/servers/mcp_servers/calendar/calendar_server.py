@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Optional, List, Tuple, Dict
 from fastmcp import FastMCP, Context
 from contextvars import ContextVar
-from fastmcp.server import FastMCP
 from fastmcp.tools.tool import ToolResult
 from functools import wraps
 from starlette.middleware.base import Request
@@ -26,11 +25,14 @@ current_dir = Path(__file__).resolve().parent
 backend_dir = current_dir.parent.parent
 sys.path.insert(0, str(backend_dir))
 
-from mcps.sources.calendar.google_calendar import GoogleCalendarConnector
-from mcps.sources.calendar.natural_parser import parse_natural_language_to_event
-from mcps.core.utils.Keep_alive_mcp import keep_alive_mcp
-from mcps.core.models import Event
+from sources.google_calendar import GoogleCalendarConnector
+from sources.natural_parser import parse_natural_language_to_event
+from mcp_servers.utils.Keep_alive_mcp import keep_alive_mcp
+from mcp_servers.utils.models import Event
 from dotenv import load_dotenv
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 
 load_dotenv()
 
@@ -61,7 +63,7 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
         auth_header = request.headers.get("Authorization", "")
         
         print(f"🔍 [Middleware] Path: {request.url.path}")
-        print(f"🔍 [Middleware] Auth header: {auth_header[:50]}..." if auth_header else "❌ No auth header")
+        print(f"🔍 [Middleware] Auth header: {auth_header[:50]}..." if auth_header else "No auth header")
         
         if not auth_header.startswith("Bearer "):
             return JSONResponse(
@@ -222,7 +224,7 @@ def ensure_aware(dt: datetime) -> datetime:
 @mcp.tool
 async def crear_evento(context: Context, summary: str, description: str, start_time: str, end_time: str, calendar_id: str = "primary") -> dict:
     """
-    Crea un nuevo evento.
+    crear_evento
     """
     mcp_context = extract_context_from_fastmcp(context)  
     gcal = get_connector(mcp_context)
@@ -241,7 +243,7 @@ async def crear_evento(context: Context, summary: str, description: str, start_t
 @mcp.tool
 async def google_resumen_diario(context: Context, calendar_id: Optional[str] = None) -> str:
     """
-    Resumen diario de todos los calendarios o calendario seleccionado.
+    google_resumen_diario
     """
     mcp_context = extract_context_from_fastmcp(context)  
     gcal = get_connector(mcp_context)
@@ -250,7 +252,7 @@ async def google_resumen_diario(context: Context, calendar_id: Optional[str] = N
 @mcp.tool
 async def google_resumen_semanal(context: Context, calendar_id: Optional[str] = None) -> str:
     """
-    Resumen semanal de todos los calendarios o calendario seleccionado.
+    google_resumen_semanal
     """
     mcp_context = extract_context_from_fastmcp(context)  
     gcal = get_connector(mcp_context)
@@ -375,7 +377,7 @@ async def google_listar_calendarios(context: Context) -> list:
     ]
     
 @mcp.tool(
-    name="Filtro de eventos por titulo"
+    name="eventos_por_titulo",
 )
 async def eventos_por_titulo(context: Context, calendar_id: str, keyword: str) -> list:
     """
@@ -388,7 +390,7 @@ async def eventos_por_titulo(context: Context, calendar_id: str, keyword: str) -
     return gcal.filter_events_by_title(calendar_id, keyword, time_min=time_min)
 
 # ───────────────────── NLP → EVENT ─────────────────────
-@mcp.tool(name="Crear evento desde texto natural")
+@mcp.tool(name="crear_evento_desde_texto")
 async def crear_evento_desde_texto(context: Context, texto_usuario: str, calendar_id: str = None) -> dict:
     """
     Convierte texto en evento y lo crea en el calendario.
@@ -408,7 +410,7 @@ async def crear_evento_desde_texto(context: Context, texto_usuario: str, calenda
         "evento": creado
     }
 
-@mcp.tool(name="Eventos por rango")
+@mcp.tool(name="eventos_por_rango")
 async def eventos_por_rango(context: Context, calendar_id: str, start_date: str, end_date: str) -> list:
     """
     Recupera eventos de un calendario específico dentro de un rango de fechas.
@@ -422,7 +424,7 @@ async def eventos_por_rango(context: Context, calendar_id: str, start_date: str,
     return [event.dict() for event in events]
 
 
-@mcp.tool(name="Eventos de todos los calendarios por rango")
+@mcp.tool(name="eventos_todos_calendarios_rango")
 async def eventos_todos_calendarios_rango(context: Context, start_date: str, end_date: str) -> list:
     """
     Recupera eventos de todos los calendarios del usuario en un rango de fechas.
@@ -436,14 +438,6 @@ async def eventos_todos_calendarios_rango(context: Context, start_date: str, end
     return [event.dict() for event in events]
 
 
-
-#print(tool_with_log.__name__)
-
-def debug_list_tools():
-    tools = anyio.run(lambda: mcp._tool_manager.list_tools())
-    print("🧰 Herramientas en ToolManager:", [t.name for t in tools])
-
-debug_list_tools()
 #""" # Para utilizarlo en local
 if __name__ == "__main__":
         keep_alive_mcp()

@@ -1,12 +1,11 @@
 # src/database/models/__init__.py
-from .models import User, Chat, Message, UserToken, UserMemory, AuthProvider, Document
+from .models import User, Chat, Message, UserToken, AuthProvider, Document
 
 __all__ = [
     "User",
     "Chat",
     "Message",
     "UserToken",
-    "UserMemory",
     "AuthProvider",
     "Document"
 ]

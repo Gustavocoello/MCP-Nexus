@@ -1,15 +1,15 @@
-from src.database.models.models import UserMemory, MemoryType
-from extensions import db
-
+from src.database.config.connection import SessionLocal
 def get_user_memory(chat_id, memory_type=None):
-    query = UserMemory.query.filter_by(chat_id=chat_id)
+    db_session = SessionLocal()
+    query = db_session.query(UserMemory).filter_by(chat_id=chat_id)
     if memory_type:
         query = query.filter_by(type=memory_type)
     return query.all()
 
 # Nueva función save_memory con prioridad
 def save_memory(chat_id, key, value, memory_type=MemoryType.LONG_TERM, priority=5):
-    record = UserMemory.query.filter_by(chat_id=chat_id, key=key).first()
+    db_session = SessionLocal()
+    record = db_session.query(UserMemory).filter_by(chat_id=chat_id, key=key).first()
     if record:
         record.value = value
         record.type = memory_type
@@ -22,6 +22,6 @@ def save_memory(chat_id, key, value, memory_type=MemoryType.LONG_TERM, priority=
             type=memory_type,
             priority=priority
         )
-        db.session.add(record)
+        db_session.add(record)
         print(f"[SAVE] Guardando memoria: {key} -> {value} (Prioridad: {priority})")
-    db.session.commit()
+    db_session.commit()

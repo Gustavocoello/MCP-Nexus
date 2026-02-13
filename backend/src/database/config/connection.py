@@ -1,12 +1,12 @@
 import os
 import time
 from sqlalchemy import text
-import mysql.connector.errors
-from sqlalchemy.exc import OperationalError
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from src.config.logging_config import get_logger
-from src.database.config.mysql_config import get_mysql_engine
-from src.database.config.azure_config import get_azure_engine
-from src.database.config.database_linux_config import get_mysql_linux_engine
+from src.database.config.azure.azure_config import get_azure_engine
+from src.database.config.postgres.database_win_config import get_pg_engine as win_pg_engine
+from src.database.config.postgres.database_linux_config import get_pg_engine as linux_pg_engine
 
 logger = get_logger("backend.engine")
 
@@ -50,14 +50,14 @@ def get_database_url():
         # Intentar Windows
         try:
             logger.info("Intentando Windows (principal)")
-            return try_connection(get_mysql_engine, "Windows MySQL")
+            return try_connection(win_pg_engine, "Windows PostgreSQL")
         except Exception as e:
             logger.warning("Windows no disponible, intentando Linux")
         
         # Fallback a Linux
         try:
             logger.info("Intentando Linux (fallback)")
-            return try_connection(get_mysql_linux_engine, "Linux MySQL")
+            return try_connection(linux_pg_engine, "Linux PostgreSQL")
         except Exception as e:
             logger.warning("Linux no disponible, intentando Azure")
         
@@ -73,7 +73,15 @@ def get_database_url():
         # DEV: Solo Windows
         logger.info("Modo DEV: Usando Windows unicamente")
         try:
-            return try_connection(get_mysql_engine, "Windows MySQL")
+            return try_connection(win_pg_engine, "Windows PostgreSQL")
         except Exception as e:
             logger.error(f"Fallo conexion Windows en DEV: {str(e)}")
             raise ConnectionError("No se pudo conectar a Windows en modo desarrollo")
+        
+try:
+    DATABASE_URL = get_database_url()
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=create_engine(DATABASE_URL))
+    logger.info("SessionLocal creada exitosamente")
+except Exception as e:
+    logger.critical(f"No se pudo crear SessionLocal: {str(e)}")
+    raise

@@ -6,6 +6,7 @@ from google_auth_oauthlib.flow import Flow
 from extensions import db
 from src.database.models import UserToken
 from src.services.auth.utils.token_crypto import encrypt_token
+from src.database.config.connection import SessionLocal
 from dotenv import load_dotenv
 
 # Importar Redis y uuid4 para el manejo seguro del state
@@ -20,7 +21,7 @@ if os.getenv("ENV") == "dev":
     
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-REDIS_URL = os.getenv("REDIS_URL")
+REDIS_TCP = os.getenv("REDIS_TCP")
 
 GOOGLE_SCOPES = [
     "openid",
@@ -35,7 +36,7 @@ PROVIDER_NAME = "google_calendar"
 
 # Inicializar cliente Redis (usando from_url es seguro para entornos de producción)
 # Se inicializa globalmente y se conecta al usarse por primera vez.
-redis_client = Redis.from_url(REDIS_URL)
+redis_client = Redis.from_url(REDIS_TCP)
 
 # -----------------------------------------------------
 # 1) Crear el Flow desde variables de entorno
@@ -90,6 +91,7 @@ def handle_google_callback(authorization_response_url: str):
     user_id viene desde Clerk (parámetro de consulta).
     Valida el 'state' y procesa la respuesta.
     """
+    db_session = SessionLocal()
     # 1. Extraer 'state' de la URL de respuesta
     from urllib.parse import urlparse, parse_qs
     parsed_url = urlparse(authorization_response_url)
@@ -119,40 +121,49 @@ def handle_google_callback(authorization_response_url: str):
     callback_base = parsed_auth_url.scheme + "://" + parsed_auth_url.netloc + parsed_auth_url.path
     
     # Creamos el flow con la URI de callback que Google usó
-    
-    flow = get_flow(callback_base)
-    flow.fetch_token(authorization_response=authorization_response_url)
+    try:
+        flow = get_flow(callback_base)
+        flow.fetch_token(authorization_response=authorization_response_url)
 
-    credentials = flow.credentials
+        credentials = flow.credentials
 
-    # ... (Resto de la lógica de guardar tokens cifrados se mantiene igual) ...
-    # Tokens cifrados
-    access_token = encrypt_token(credentials.token)
-    refresh_token = encrypt_token(credentials.refresh_token) if credentials.refresh_token else None
+        # ... (Resto de la lógica de guardar tokens cifrados se mantiene igual) ...
+        # Tokens cifrados
+        access_token = encrypt_token(credentials.token)
+        refresh_token = encrypt_token(credentials.refresh_token) if credentials.refresh_token else None
 
-    expires_at = (
-        datetime.now(timezone.utc) + timedelta(seconds=credentials.expiry.timestamp())
-        if credentials.expiry
-        else None
-    )
+        expires_at = (
+            datetime.now(timezone.utc) + timedelta(seconds=credentials.expiry.timestamp())
+            if credentials.expiry
+            else None
+        )
 
-    # Guardar/actualizar token
-    token = UserToken.query.filter_by(user_id=user_id, provider=PROVIDER_NAME).first()
+        # Guardar/actualizar token
+        token = db_session.query(UserToken).filter(
+                UserToken.user_id == user_id, 
+                UserToken.provider == PROVIDER_NAME
+            ).first()
 
-    if token:
-        token.access_token = access_token
-        token.refresh_token = refresh_token
-        token.expires_at = expires_at
-        token.updated_at = datetime.now(timezone.utc)
-    else:
-        db.session.add(UserToken(
-            user_id=user_id,
-            provider=PROVIDER_NAME,
-            access_token=access_token,
-            refresh_token=refresh_token,
-            expires_at=expires_at
-        ))
+        if token:
+            token.access_token = access_token
+            token.refresh_token = refresh_token
+            token.expires_at = expires_at
+            token.updated_at = datetime.now(timezone.utc)
+        else:
+            new_token = UserToken(
+                user_id=user_id,
+                provider=PROVIDER_NAME,
+                access_token=access_token,
+                refresh_token=refresh_token,
+                expires_at=expires_at
+            )
+            db_session.add(new_token)
 
-    db.session.commit()
+        db_session.commit()
 
-    return user_id 
+        return user_id
+    except Exception as e:
+        db_session.rollback()
+        raise Exception(f"Error processing Google OAuth callback: {str(e)}")
+    finally:
+        db_session.close()

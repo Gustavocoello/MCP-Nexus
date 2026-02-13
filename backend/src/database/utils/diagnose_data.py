@@ -10,7 +10,7 @@ root_dir = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(root_dir))
 
 from sqlalchemy import text
-from src.database.config.mysql_config import get_mysql_engine
+from src.database.config.postgres.database_win_config import get_pg_engine as win_pg_engine
 from src.config.logging_config import get_logger
 
 logger = get_logger("backend.diagnose")
@@ -22,7 +22,7 @@ def diagnose_orphaned_data():
     print(" DIAGNOSTICO DE DATOS HUERFANOS EN WINDOWS")
     print("="*70)
     
-    engine = get_mysql_engine()
+    engine = win_pg_engine()
     
     with engine.connect() as conn:
         # 1. Verificar user_ids en chat que no existen en users

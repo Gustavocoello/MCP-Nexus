@@ -22,14 +22,14 @@ logger = get_logger(__name__)
 @google_auth_bp.route("/login")
 @clerk_required 
 def login():
-    user_id = g.get("user_id") 
+    clerk_id = g.get("clerk_id")
     
-    if not user_id:
+    if not clerk_id:
         return jsonify({"error": "Authentication required (Clerk JWT missing or invalid)"}), 401
 
     # 1. Sincronizar/Crear el perfil de usuario en la DB local
     try:
-        local_user = sync_clerk_user(clerk_user_id=user_id)
+        local_user = sync_clerk_user(clerk_user_id=clerk_id)
     except Exception as e:
         return jsonify({"error": f"User synchronization failed: {str(e)}"}), 500
 
@@ -37,7 +37,7 @@ def login():
     backend_base_url = BACKEND_URL or request.url_root.rstrip('/')
     
     auth_url, state = start_google_oauth(
-        user_id=local_user.id,
+        user_id=str(local_user.id),
         backend_base_url=backend_base_url # <-- Pasamos la base de la URL
     )
      
@@ -73,7 +73,7 @@ def callback():
         # Captura errores de State/CSRF o cualquier error interno
         logger.error(f"Google OAuth Callback Error: {e}")
         
-        # ✅ CORREGIDO: Si user_id_from_redis es None, redirigir a una ruta genérica
+        # Si tenemos el user_id, redirigimos a la página de configuración con un mensaje de error específico
         if user_id_from_redis:
             error_url = f"{FRONTEND_URL}/c/{user_id_from_redis}/settings?error=oauth_failed&details={str(e)}"
         else:

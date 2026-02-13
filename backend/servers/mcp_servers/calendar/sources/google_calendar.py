@@ -15,9 +15,9 @@ from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
 
 try: # Para el app.py
-    from src.mcps.core.models import Event
+    from mcp_servers.utils.models import Event
 except ImportError: # Para el MCP inspector
-    from mcps.core.models import Event
+    from mcp_servers.utils.models import Event
     
 
 load_dotenv()
