@@ -6,6 +6,7 @@ import time
 from datetime import datetime, timezone
 from functools import wraps
 from flask import request, jsonify, g
+from src.config.time_helper import get_now
 from src.services.auth.clerk.clerk_user_sync import sync_clerk_user
 from dotenv import load_dotenv
 
@@ -109,7 +110,7 @@ def clerk_required(f):
             g.user_obj = user_obj   # Guardamos el objeto completo para evitar consultas repetidas
             g.clerk_id = clerk_id   # Este es el ID de Clerk, por si lo necesitas para otras cosas
             
-            print(f"DEBUG: Hora del Servidor: {datetime.now(timezone.utc).timestamp()}")
+            print(f"DEBUG: Hora del Servidor: {get_now().timestamp()}")
             header = jwt.get_unverified_header(token)
 
         except jwt.ExpiredSignatureError:

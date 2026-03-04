@@ -1,38 +1,33 @@
 # src/mcps/server/calendar_server.py
 import os
 import sys
+import jwt
 import pytz
-import anyio
 import uvicorn
 from pathlib import Path
-from typing import Optional, List, Tuple, Dict
-from fastmcp import FastMCP, Context
 from contextvars import ContextVar
+from fastmcp import FastMCP, Context
+from starlette.requests import Request
 from fastmcp.tools.tool import ToolResult
-from functools import wraps
-from starlette.middleware.base import Request
-from starlette.applications import Starlette
 from starlette.routing import Mount, Route
 from starlette.middleware import Middleware
-from starlette.middleware.cors import CORSMiddleware
+from starlette.applications import Starlette
 from starlette.responses import JSONResponse
+from typing import Optional, List, Tuple, Dict
+from starlette.middleware.cors import CORSMiddleware
 from datetime import datetime, timezone, time, timedelta
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-import jwt
+from starlette.middleware.base import BaseHTTPMiddleware, Request
 # --- Fix Paths ---
 current_dir = Path(__file__).resolve().parent
 backend_dir = current_dir.parent.parent
 sys.path.insert(0, str(backend_dir))
 
+from mcp_servers.utils.time_helper import get_now
 from sources.google_calendar import GoogleCalendarConnector
 from sources.natural_parser import parse_natural_language_to_event
 from mcp_servers.utils.Keep_alive_mcp import keep_alive_mcp
 from mcp_servers.utils.models import Event
 from dotenv import load_dotenv
-import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning)
-
 
 load_dotenv()
 
@@ -129,7 +124,6 @@ mcp_app_with_auth.mount("/", mcp_app)
 
 mcp_app_cors = CORSMiddleware(mcp_app_with_auth,
     allow_origins=[
-        "https://mcp-nexus-gustavo-coellos-projects.vercel.app",
         "https://mcp-nexus.vercel.app", 
         "https://inspector.use-mcp.dev", 
         "http://localhost:5173",
@@ -219,6 +213,10 @@ def ensure_aware(dt: datetime) -> datetime:
         return EC_TZ.localize(dt)
     return dt.astimezone(EC_TZ)
 
+# =================================================================
+#                         TOOLS DE GOOGLE CALENDAR
+# =================================================================
+
 # ───────────────────── FUNCIONES BÁSICAS ─────────────────────
 
 @mcp.tool
@@ -280,7 +278,7 @@ async def google_disponibilidad_diaria(
         if date:
             day = datetime.fromisoformat(date).date()
         else:
-            day = datetime.now(EC_TZ).date()
+            day = get_now().date()
     except Exception:
         return ToolResult(
             content=[{"type":"text","text":"Formato de fecha inválido. Usa YYYY-MM-DD."}],
@@ -386,7 +384,7 @@ async def eventos_por_titulo(context: Context, calendar_id: str, keyword: str) -
     mcp_context = extract_context_from_fastmcp(context)  
     gcal = get_connector(mcp_context)
     
-    time_min = datetime.now(timezone.utc).isoformat()
+    time_min = get_now().isoformat()
     return gcal.filter_events_by_title(calendar_id, keyword, time_min=time_min)
 
 # ───────────────────── NLP → EVENT ─────────────────────
@@ -444,6 +442,6 @@ if __name__ == "__main__":
         uvicorn.run(
             app,
             host="0.0.0.0",
-            port=8000,
+            port=8001,
             )
 #"""       

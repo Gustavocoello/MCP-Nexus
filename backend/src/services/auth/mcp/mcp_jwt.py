@@ -1,8 +1,9 @@
 import os
 import jwt
-from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any
 from sqlalchemy import select
+from typing import Optional, Dict, Any
+from src.config.time_helper import get_now
+from datetime import datetime, timedelta, timezone
 
 from src.database.models.models import UserToken
 from src.database.config.connection import SessionLocal # Usar tu conexión manual
@@ -26,27 +27,32 @@ def generate_mcp_jwt(user_id: str, provider: str) -> Optional[str]:
         token_entry = db_session.execute(stmt).scalar_one_or_none()
         
         if not token_entry:
+            print(f"Advertencia: No se encontró token para {user_id} en {provider}")
             return None
 
         # 2. Desencriptar
-        google_access_token = decrypt_token(token_entry.access_token)
-        google_refresh_token = decrypt_token(token_entry.refresh_token) if token_entry.refresh_token else None
+        main_token = decrypt_token(token_entry.access_token)
         
         # 3. Payload
         # Nota: 'sub' ahora llevará el UUID. El servidor MCP debe usar este ID para 
         # cualquier respuesta que deba persistirse.
-        expiration = datetime.now(timezone.utc) + timedelta(minutes=5)
+        expiration = get_now() + timedelta(minutes=5)
         
         payload: Dict[str, Any] = {
             "exp": expiration,
-            "iat": datetime.now(timezone.utc),
+            "iat": get_now(),
             "sub": str(user_id), 
-            "provider": provider,
-            "google_access_token": google_access_token,
+            "provider": provider
         }
+        if provider == "google_calendar":
+            payload["google_access_token"] = main_token
+            # Desencriptar refresh token solo si existe
+            if token_entry.refresh_token:
+                payload["google_refresh_token"] = decrypt_token(token_entry.refresh_token)
         
-        if google_refresh_token:
-            payload["google_refresh_token"] = google_refresh_token
+        elif provider == "notion":
+            # Para Notion, el access_token es tu "Internal Integration Secret"
+            payload["notion_token"] = main_token
         
         # 4. Firmar
         return jwt.encode(payload, MCP_SECRET_KEY, algorithm=JWT_ALGORITHM)

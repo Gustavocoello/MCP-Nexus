@@ -1,3 +1,4 @@
+# src/services/llm/providers/utils.py
 import os
 import time
 import magic
@@ -7,11 +8,13 @@ from re import A
 from flask import g
 from io import BytesIO
 from openai import OpenAI
-from datetime import datetime
+from datetime import datetime, timezone
 from dotenv import load_dotenv
-from openpyxl import load_workbook 
+from openpyxl import load_workbook
+from src.config.time_helper import get_now
 from src.database.models.models import Document
 from src.config.logging_config import get_logger 
+from src.database.config.connection import SessionLocal 
 from azure.cognitiveservices.vision.computervision import ComputerVisionClient
 from azure.cognitiveservices.vision.computervision.models import VisualFeatureTypes
 from msrest.authentication import CognitiveServicesCredentials
@@ -189,15 +192,17 @@ def analyze_image_with_azure(image_bytes):
     stream = BytesIO(image_bytes)
 
     # --- Control de límite mensual OCR ---
-    now = datetime.utcnow()
+    now = get_now()
     first_day_of_month = datetime(now.year, now.month, 1)
     
     # Contar cuántas imágenes ha subido el usuario este mes
-    ocr_count = Document.query.filter(
+    session = SessionLocal()
+    ocr_count = session.query(Document).filter(
         Document.user_id == g.user_id,
         Document.created_at >= first_day_of_month,
         Document.source == "onedrive"  # solo imágenes subidas a OneDrive
     ).count()
+    session.close()
 
     if ocr_count >= OCR_LIMIT:
         raise ValueError("Límite mensual de OCR alcanzado (5000 imágenes).")
@@ -221,10 +226,10 @@ def analyze_image_with_azure(image_bytes):
     }
     tags = [tag.name for tag in analysis.tags][:5]
 
-    visual_summary = f"""🖼️ **Imagen #{ocr_number}** (proporcionada por usuario)
+    visual_summary = f""" **Imagen #{ocr_number}** (proporcionada por usuario)
         **Descripción**: {description}
-        🎨 **Colores**: Fondo: {colors['fondo']}, Frente: {colors['frente']}, Acento: #{colors['acentos']}
-        🏷️ **Etiquetas**: {', '.join(tags)}
+        **Colores**: Fondo: {colors['fondo']}, Frente: {colors['frente']}, Acento: #{colors['acentos']}
+        **Etiquetas**: {', '.join(tags)}
         """
 
     # --- Parte 2: OCR ---
@@ -250,7 +255,7 @@ def analyze_image_with_azure(image_bytes):
     ocr_text = "\n".join(ocr_lines) if ocr_lines else "Sin texto detectado."
     
     # --- Unión final ---
-    full_context = f"{visual_summary}\n📄 **Texto OCR:**\n{ocr_text}"
+    full_context = f"{visual_summary}\n**Texto OCR:**\n{ocr_text}"
 
     return full_context
 

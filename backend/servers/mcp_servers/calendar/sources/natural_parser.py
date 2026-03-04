@@ -1,25 +1,25 @@
 import re
-from datetime import datetime, timedelta
-from typing import Optional
 import pytz
 import dateparser
+from typing import Optional
+from datetime import datetime, timedelta
 from dateparser.search import search_dates
 from mcp_servers.utils.models import Event
+from mcp_servers.utils.time_helper import get_now
 
 def parse_natural_language_to_event(input_text: str) -> Optional[Event]:
     """
     Parsea un string en lenguaje natural y construye un objeto Event.
     Ej.: "Reunión con marketing el viernes a las 3pm durante 1 hora"
     """
-    # 1) Base para relativos: hoy en Lima
-    lima_tz = pytz.timezone("America/Lima")
-    base_dt = datetime.now(lima_tz)
+    # 1) Base para relativos: hoy en Ecuador
+    base_dt = get_now() # Helper para que dateparser entienda "hoy", "mañana", etc. en la zona horaria correcta]
 
     settings = {
         "PREFER_DATES_FROM": "future",
         "RETURN_AS_TIMEZONE_AWARE": True,
         "RELATIVE_BASE": base_dt,
-        "TO_TIMEZONE": "America/Lima"
+        "TO_TIMEZONE": "America/guayaquil"
     }
 
     # 2) Intento parse directo
@@ -32,7 +32,7 @@ def parse_natural_language_to_event(input_text: str) -> Optional[Event]:
             # results: list of (matched_text, datetime)
             dt = results[0][1]
         else:
-            print("⚠️ No se pudo interpretar la fecha y hora.")
+            print("No se pudo interpretar la fecha y hora.")
             return None
 
     # 4) Detectar duración (por defecto 1h)

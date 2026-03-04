@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request
 from extensions import db
 from http import HTTPStatus
 from datetime import datetime, timezone # Cambiado de utcnow (deprecated)
+from src.config.time_helper import get_now
 from src.config.logging_config import get_logger
 from src.database.config.azure.azure_config import test_connection_health, get_pool_stats 
   
@@ -15,7 +16,7 @@ def ping():
     client_ip = request.remote_addr
     user_agent = request.headers.get("User-Agent", "unknown")
     # Usar timezone-aware datetime para evitar problemas de servidor
-    now = datetime.now(timezone.utc).isoformat()
+    now = get_now().isoformat()
     logging.info(f"[PONG] Backend recibió solicitud /v2/ping a las {now}")
     return jsonify({
         "status": "pong",

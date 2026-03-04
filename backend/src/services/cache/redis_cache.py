@@ -8,6 +8,7 @@ from sqlalchemy import select
 from src.services.cache.redis_client import redis_client
 from src.config.logging_config import get_logger
 from src.database.models.models import Message
+from src.config.time_helper import get_now
 from extensions import db
 
 logger = get_logger('chat_cache')
@@ -130,7 +131,7 @@ class ChatCache:
             return  # No hay caché previo, skip
         
         # Obtenemos la fecha actual en ISO format para consistencia con la DB
-        now_iso = datetime.now().isoformat()
+        now_iso = get_now().isoformat()
         
         cached.append({
             "id": message.get("id"),

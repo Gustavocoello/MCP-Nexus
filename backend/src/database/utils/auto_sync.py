@@ -113,6 +113,7 @@ import sys
 import json
 from pathlib import Path
 from datetime import datetime
+from src.config.time_helper import get_now
 
 # Agregar el directorio raíz al path
 root_dir = Path(__file__).parent.parent.parent.parent
@@ -150,7 +151,7 @@ class AutoSync:
     
     def run_sync(self, source='windows', targets=None):
         """Ejecuta sincronización y registra resultado"""
-        start_time = datetime.now()
+        start_time = get_now()
         
         logger.info("="*70)
         logger.info(f"Inicio de sincronización automática: {start_time}")
@@ -186,7 +187,7 @@ class AutoSync:
             size = self.sync_manager.get_database_size(db)
             logger.info(f"  {db}: {size} MB")
         
-        end_time = datetime.now()
+        end_time = get_now()
         duration = (end_time - start_time).total_seconds()
         
         # Registrar en historial

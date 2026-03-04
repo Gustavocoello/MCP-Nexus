@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from src.database.models.models import UserToken
 from src.database.config.connection import SessionLocal
 from src.config.logging_config import get_logger
+from src.config.time_helper import get_now
 from dotenv import load_dotenv
 
 # Este servicio se encarga de toda la lógica relacionada con la integración de OneDrive,
@@ -85,7 +86,7 @@ def get_user_onedrive_token(user_id):
             raise Exception("El usuario no ha vinculado su cuenta de OneDrive")
 
         # Usamos timezone.utc para evitar problemas de desfase horario
-        now = datetime.now(timezone.utc)
+        now = get_now()
         
         # Si expiró o está a punto de expirar (margen de 1 minuto)
         if user_token.expires_at and user_token.expires_at.replace(tzinfo=timezone.utc) < now + timedelta(minutes=1):

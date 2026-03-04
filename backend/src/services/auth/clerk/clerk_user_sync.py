@@ -4,10 +4,11 @@ import os
 import requests
 from extensions import db
 from sqlalchemy import select
-from src.database.models import User, AuthProvider
 from datetime import datetime, timezone
-from dotenv import load_dotenv
+from src.config.time_helper import get_now
+from src.database.models import User, AuthProvider
 from src.database.config.connection import SessionLocal
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -26,7 +27,7 @@ def sync_clerk_user(clerk_user_id: str) -> User:
         user = db_session.query(User).filter(User.clerk_id == safe_clerk_id).first()
 
         if user:
-            user.last_login = datetime.now(timezone.utc)
+            user.last_login = get_now()
             db_session.commit()
             db_session.refresh(user)
             return user
@@ -69,7 +70,7 @@ def sync_clerk_user(clerk_user_id: str) -> User:
                 # Si el ID ES la primary key, lo borramos y recreamos o simplemente lo tratamos aquí:
                 
                 user_by_email.clerk_id = clerk_user_id 
-                user_by_email.last_login = datetime.now(timezone.utc)
+                user_by_email.last_login = get_now()
                 user_by_email.picture = clerk_data.get('image_url')
                 db_session.commit()
                 db_session.refresh(user_by_email)
@@ -89,8 +90,8 @@ def sync_clerk_user(clerk_user_id: str) -> User:
             email_verified=True,
             is_active=True,
             auth_provider=AuthProvider.CLERK,
-            created_at=datetime.now(timezone.utc),
-            last_login=datetime.now(timezone.utc)
+            created_at=get_now(),
+            last_login=get_now()
         )
             
             db_session.add(new_user)

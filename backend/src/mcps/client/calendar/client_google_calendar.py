@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-MCP_URL = os.getenv("MCP")  
+MCP_URL = os.getenv("MCP_CALENDAR")  
 USUARIO_TEST = os.getenv("USUARIO_TEST")  
 
 

@@ -1,5 +1,6 @@
 import datetime
 import webbrowser
+from voice_service.utils.time_helper import get_now
 
 def process_command(command: str) -> str:
     cmd = command.lower()
@@ -7,7 +8,7 @@ def process_command(command: str) -> str:
     if "Hello" in cmd:
         return "Hello, I am TARS. How can I assist you?"
     elif "time" in cmd:
-        return f"The current time is {datetime.datetime.now().strftime('%H:%M')}"
+        return f"The current time is {get_now().strftime('%H:%M')}"
     elif "open google" in cmd:
         webbrowser.open("https://www.google.com")
         return "Opening Google."

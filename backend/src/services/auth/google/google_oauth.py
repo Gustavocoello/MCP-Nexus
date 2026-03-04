@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from google_auth_oauthlib.flow import Flow
 from extensions import db
 from src.database.models import UserToken
+from src.config.time_helper import get_now
 from src.services.auth.utils.token_crypto import encrypt_token
 from src.database.config.connection import SessionLocal
 from dotenv import load_dotenv
@@ -133,7 +134,7 @@ def handle_google_callback(authorization_response_url: str):
         refresh_token = encrypt_token(credentials.refresh_token) if credentials.refresh_token else None
 
         expires_at = (
-            datetime.now(timezone.utc) + timedelta(seconds=credentials.expiry.timestamp())
+            get_now() + timedelta(seconds=credentials.expiry.timestamp())
             if credentials.expiry
             else None
         )
@@ -148,7 +149,7 @@ def handle_google_callback(authorization_response_url: str):
             token.access_token = access_token
             token.refresh_token = refresh_token
             token.expires_at = expires_at
-            token.updated_at = datetime.now(timezone.utc)
+            token.updated_at = get_now()
         else:
             new_token = UserToken(
                 user_id=user_id,

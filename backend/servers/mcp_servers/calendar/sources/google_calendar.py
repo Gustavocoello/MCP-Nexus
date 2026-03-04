@@ -1,12 +1,21 @@
 # src/mcps/sources/calendar/google_calendar.py
 import os
-import sys
 import pytz
-from pathlib import Path
+import warnings
 from dotenv import load_dotenv
+from mcp_servers.utils.time_helper import get_now
 from dateutil.parser import parse as parse_dt
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Union, List, Tuple, Dict
+
+# Warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", module="httplib2")
+warnings.filterwarnings("ignore", module="anyio")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="websockets")
+warnings.filterwarnings("ignore", message=".*WebSocketServerProtocol.*")
+# Esto bloquea específicamente los warnings que vienen de la carpeta de site-packages
+warnings.filterwarnings("ignore", message=".*deprecated.*", module="httplib2")
 
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
@@ -19,7 +28,6 @@ try: # Para el app.py
 except ImportError: # Para el MCP inspector
     from mcp_servers.utils.models import Event
     
-
 load_dotenv()
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
@@ -402,7 +410,7 @@ class GoogleCalendarConnector:
         try:
             # Usar directamente la zona horaria de Ecuador
             tz_ecu = pytz.timezone("America/Guayaquil")
-            now = datetime.now(tz_ecu)
+            now = get_now()
             
             if range_type == "daily":
                 start = tz_ecu.localize(datetime(now.year, now.month, now.day))
@@ -513,7 +521,7 @@ class GoogleCalendarConnector:
 
         # Fecha y límites en EC
         tz_ecuador = EC_TZ
-        now_ecuador = datetime.now(tz_ecuador)
+        now_ecuador = get_now().astimezone(tz_ecuador)
         today_ecuador = now_ecuador.date()
 
         if date < today_ecuador:
@@ -584,7 +592,7 @@ class GoogleCalendarConnector:
         if start_date:
             start = start_date
         else:
-            start = datetime.now(tz_ecu).date()
+            start = get_now().date()
 
         week = []
         for d_offset in range(7):

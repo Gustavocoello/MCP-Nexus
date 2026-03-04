@@ -11,10 +11,10 @@ import pytz
 import os
 import threading
 from dotenv import load_dotenv
+from src.config.time_helper import get_now
 
 load_dotenv()
 
-TIMEZONE = "America/Guayaquil"
 RENDER_SERVER = os.getenv("RENDER_SERVER").lower() == "true"
 
 LOCAL_URL = os.getenv("LOCAL_TARGET1")
@@ -30,7 +30,7 @@ async def ping_target():
     print("🟢 Iniciando keep-alive Jarvis...")
 
     while True:
-        now = datetime.datetime.now(pytz.timezone(TIMEZONE))
+        now = get_now()
         delay = random.randint(420, 600)  # Próximo ping (7–10 minutos)
         timestamp = now.strftime('%H:%M:%S')
 

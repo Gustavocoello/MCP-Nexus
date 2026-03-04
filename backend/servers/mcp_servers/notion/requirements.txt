@@ -1,0 +1,17 @@
+# ============================================
+# NOTION MCP SERVER - DEPENDENCIAS ESPECÍFICAS
+# ============================================
+
+# Incluir dependencias comunes (Asegúrate de que la ruta sea correcta según tu carpeta)
+-r ../requirements-common.txt
+
+# Cliente HTTP Asíncrono (Fundamental para NotionConnector)
+# Usamos httpx en lugar de requests porque es nativamente asíncrono
+httpx==0.28.1
+
+# MCP Framework
+# Asegúrate de usar la misma versión que en Calendar para consistencia
+fastmcp==2.14.5
+
+# Tipado y utilidades extra
+typing-extensions==4.15.0

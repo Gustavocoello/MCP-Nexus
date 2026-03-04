@@ -7,8 +7,9 @@ from sqlalchemy import select
 from extensions import db
 from dotenv import load_dotenv
 from urllib.parse import urlencode
+from src.config.time_helper import get_now
 from datetime import datetime, timedelta, timezone
-from src.database.models.models import UserToken
+from src.database.models.models import UserToken, User
 from src.database.config.connection import SessionLocal
 from src.services.auth.clerk.clerk_middleware import clerk_required
 from src.config.logging_config import get_logger
@@ -26,7 +27,7 @@ TENANT_ID = "common"  # para cuentas personales
 SCOPE = os.getenv("ONEDRIVE_SCOPES")
 
 @onedrive_bp.route("/login")
-@clerk_required
+
 def onedrive_login():
     user_id = request.args.get("user_id")
     if not user_id:
@@ -46,16 +47,24 @@ def onedrive_login():
 
 
 @onedrive_bp.route("/callback")
-@clerk_required
+
 def callback():
     db_session = SessionLocal() # 1. Abrimos sesión
     try:
         code = request.args.get("code")
         # El 'state' se usa para validar, pero como tienes @clerk_required, 
         # confiamos en g.user_id que viene del JWT de Clerk.
+        clerk_id_from_state = request.args.get("state") # Luego borrar solo para hacerlo desde aqui, siempre usar el g.user_id
         
         if not code:
             return "No code returned", 400
+        
+        stmt_user = select(User).filter_by(clerk_id=clerk_id_from_state)
+        internal_user = db_session.execute(stmt_user).scalar_one_or_none()
+
+        if not internal_user:
+            return f"Error: El usuario {clerk_id_from_state} no existe en la DB local.", 404
+        
 
         token_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
         data = {
@@ -74,11 +83,11 @@ def callback():
         token_data = resp.json()
 
         # 2. Buscamos el token usando g.user_id (que ya es tu UUID interno)
-        stmt = select(UserToken).filter_by(user_id=g.user_id, provider="onedrive")
-        user_token = db_session.execute(stmt).scalar_one_or_none()
+        stmt_token = select(UserToken).filter_by(user_id=internal_user.id, provider="onedrive")
+        user_token = db_session.execute(stmt_token).scalar_one_or_none()
         
         # Manejo de expiración coherente
-        now = datetime.now(timezone.utc)
+        now = get_now()
         expires_at = now + timedelta(seconds=token_data.get("expires_in", 3600))
 
         if user_token:
@@ -90,7 +99,7 @@ def callback():
         else:
             # Crear nuevo
             user_token = UserToken(
-                user_id=g.user_id, # El UUID inyectado por el middleware
+                user_id=internal_user.id, # El UUID inyectado por el middleware
                 provider="onedrive",
                 access_token=token_data["access_token"],
                 refresh_token=token_data.get("refresh_token"),

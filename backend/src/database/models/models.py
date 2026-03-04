@@ -1,16 +1,15 @@
 import pytz
 import uuid
 from enum import Enum
-from datetime import datetime, timezone
-from sqlalchemy import text, Column, String, Integer, Boolean, DateTime, Text, ForeignKey, BigInteger, UniqueConstraint, Float
 from sqlalchemy import Enum as PgEnum
+from pgvector.sqlalchemy import Vector 
+from datetime import datetime, timezone
+from src.config.time_helper import get_now
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship, declarative_base
 from werkzeug.security import generate_password_hash, check_password_hash
-from pgvector.sqlalchemy import Vector 
+from sqlalchemy import text, Column, String, Integer, Boolean, DateTime, Text, ForeignKey, BigInteger, UniqueConstraint, Float
 
-# Configuración de Timezone
-TIMEZONE = pytz.timezone('America/Guayaquil')
 Base = declarative_base()
 
 # --- ENUMS NATIVOS ---
@@ -36,7 +35,7 @@ class User(Base):
     password_hash = Column(String(255))
     is_admin = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(TIMEZONE))
+    created_at = Column(DateTime(timezone=True), default=get_now)
     last_login = Column(DateTime(timezone=True))
     auth_provider = Column(PgEnum(AuthProvider), nullable=False) # Guardamos como string para evitar conflictos de tipos
     email_verified = Column(Boolean, default=False)
@@ -57,10 +56,10 @@ class Chat(Base):
     __tablename__ = 'chat'
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'))
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(TIMEZONE))
+    created_at = Column(DateTime(timezone=True), default=get_now)
     summary = Column(Text)
     title = Column(String(255))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(TIMEZONE), onupdate=lambda: datetime.now(TIMEZONE))
+    updated_at = Column(DateTime(timezone=True), default=get_now, onupdate=get_now)
     
     messages = relationship('Message', backref='chat', cascade="all, delete-orphan")
 
@@ -70,7 +69,7 @@ class Message(Base):
     chat_id = Column(UUID(as_uuid=True), ForeignKey('chat.id'), nullable=False)
     role = Column(String(16), nullable=False) # 'user', 'assistant', 'system'
     content = Column(Text, nullable=False)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(TIMEZONE))
+    created_at = Column(DateTime(timezone=True), default=get_now)
 
 # --- MODELO DE MEMORIA VECTORIAL (RAG) ---
 class Document(Base):
@@ -103,9 +102,9 @@ class UserToken(Base):
     provider = Column(String(50), nullable=False)  # ej: 'google', 'notion'
     access_token = Column(Text, nullable=False)
     refresh_token = Column(Text)
-    expires_at = Column(DateTime)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(TIMEZONE))
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(TIMEZONE), onupdate=lambda: datetime.now(TIMEZONE))
+    expires_at = Column(DateTime(timezone=True))
+    created_at = Column(DateTime(timezone=True), default=get_now)
+    updated_at = Column(DateTime(timezone=True), default=get_now, onupdate=get_now)
     
     __table_args__ = (
         UniqueConstraint('user_id', 'provider', name='uq_user_provider'),
@@ -124,7 +123,7 @@ class LLMLog(Base):
     
     response_time_sec = Column(Float) # Tiempo que tardó el LLM en responder
     status = Column(String(20)) # "success", "error"
-    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(TIMEZONE), index=True)
+    timestamp = Column(DateTime(timezone=True), default=get_now, index=True)
 
 # --- MONITOREO DE HARDWARE (Salud del Servidor) ---
 class SystemStats(Base):
@@ -142,7 +141,7 @@ class SystemStats(Base):
     # Aquí puedes guardar el link de la API Key o el ID del servidor si usas un servicio externo
     api_reference = Column(Text, nullable=True) 
     
-    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(TIMEZONE), index=True)
+    timestamp = Column(DateTime(timezone=True), default=get_now, index=True)
 # --- LOGS DE PING (Monitoreo de Latencia) ---    
 class PingLog(Base):
     __tablename__ = "ping_logs"
@@ -154,4 +153,4 @@ class PingLog(Base):
     response_ms = Column(Integer)
     status_code = Column(Integer)
     client_ip = Column(String(45))
-    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(TIMEZONE), index=True)
+    timestamp = Column(DateTime(timezone=True), default=get_now, index=True)

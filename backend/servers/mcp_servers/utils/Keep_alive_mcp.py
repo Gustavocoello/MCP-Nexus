@@ -11,10 +11,10 @@ import pytz
 import os
 import threading
 from dotenv import load_dotenv
+from .time_helper import get_now
 
 load_dotenv()
 
-TIMEZONE = "America/Guayaquil"
 RENDER_SERVER = os.getenv("RENDER_SERVER").lower() == "true"
 
 LOCAL_URL = os.getenv("LOCAL_TARGET3") # Backend de jarvis local
@@ -33,7 +33,7 @@ PING_LOG_URL = DEPLOY_PING_LOG_URL if RENDER_SERVER else LOCAL_PING_LOG_URL
 async def ping_target():
     """Envía pings periódicos de MCP → Jarvis y, si es 200, notifica a localhost:8001/ping."""
     while True:
-        now = datetime.datetime.now(pytz.timezone(TIMEZONE))
+        now = get_now()
         delay = random.randint(420, 600)  # 7–10 minutos
 
         try:
