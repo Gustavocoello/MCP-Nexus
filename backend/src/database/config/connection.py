@@ -80,7 +80,8 @@ def get_database_url():
         
 try:
     DATABASE_URL = get_database_url()
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=create_engine(DATABASE_URL))
+    engine = create_engine(DATABASE_URL)
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     logger.info("SessionLocal creada exitosamente")
 except Exception as e:
     logger.critical(f"No se pudo crear SessionLocal: {str(e)}")

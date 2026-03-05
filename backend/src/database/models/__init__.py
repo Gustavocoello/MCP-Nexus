@@ -7,5 +7,8 @@ __all__ = [
     "Message",
     "UserToken",
     "AuthProvider",
-    "Document"
+    "Document",
+    "PingLog",
+    "SystemStat",
+    "LLMLog"
 ]

@@ -3,7 +3,6 @@ import os
 import json
 import asyncio
 import threading
-from extensions import db
 from queue import Queue, Empty
 from sqlalchemy import select, delete
 from werkzeug.utils import secure_filename

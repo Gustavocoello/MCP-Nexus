@@ -25,7 +25,7 @@ sys.path.insert(0, str(backend_dir))
 from mcp_servers.utils.time_helper import get_now
 from sources.google_calendar import GoogleCalendarConnector
 from sources.natural_parser import parse_natural_language_to_event
-from mcp_servers.utils.Keep_alive_mcp import keep_alive_mcp
+from utils.Keep_alive_mcp import keep_alive_mcp
 from mcp_servers.utils.models import Event
 from dotenv import load_dotenv
 
