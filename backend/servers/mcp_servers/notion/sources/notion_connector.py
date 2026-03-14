@@ -5,6 +5,7 @@ class NotionConnector:
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.base_url = "https://api.notion.com/v1"
+        self.timeout = httpx.Timeout(30.0, connect=10.0)
         self.headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
@@ -13,7 +14,7 @@ class NotionConnector:
 
     async def _request(self, method: str, endpoint: str, json_data: Optional[Dict] = None):
         """Manejador central de peticiones asíncronas"""
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
             url = f"{self.base_url}/{endpoint}"
             response = await client.request(method, url, headers=self.headers, json=json_data)
             response.raise_for_status()

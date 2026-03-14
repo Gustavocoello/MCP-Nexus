@@ -20,14 +20,14 @@ from src.services.llm.memory.service import MAX_RAW, summarize_and_trim
 from src.services.auth.clerk.clerk_middleware import clerk_required
 from src.services.auth.mcp.mcp_jwt import generate_mcp_jwt
 from flask import Blueprint, jsonify, Response, request, stream_with_context, session, copy_current_request_context, g
-from src.mcps.client.client_manager import mcp_manager
+from src.mcps.client.client_manager import MCPClientManager
 
 # -- Logger --
 logger = get_logger('routes')
 # -- Event Queue --
 event_queue = Queue()
 # -- MCP Client --
-mcp_client = mcp_manager
+mcp_client = MCPClientManager(user_id=None)  # user_id se asignará dinámicamente en cada llamada
 
 ## -------------- Mensajes de la IA con memoria -----------
 chat_bp = Blueprint('chat', __name__, url_prefix='/api/chat')

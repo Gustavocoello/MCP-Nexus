@@ -153,4 +153,5 @@ class PingLog(Base):
     response_ms = Column(Integer)
     status_code = Column(Integer)
     client_ip = Column(String(45))
+    next_ping_sc = Column(Integer, nullable=True) # Segundos
     timestamp = Column(DateTime(timezone=True), default=get_now, index=True)

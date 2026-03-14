@@ -70,12 +70,12 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
             payload = jwt.decode(token, self.auth_secret, algorithms=["HS256"])
             
             print(f" - [Middleware] JWT decodificado correctamente")
-            print(f" - user_id: {payload.get('user_id') or payload.get('sub')}")
+            print(f" - user_id: {payload.get('sub')}")
             print(f" - provider: {payload.get('provider')}")
             
             # Guardar en variable global
             mcp_context = {
-                "user_id": payload.get("user_id") or payload.get("sub"),
+                "user_id": payload.get("sub"), # sub (Subject): Es el identificador único del usuario (el "sujeto" del token). - User_id 
                 "provider": payload.get("provider"),
                 "notion_api_key": payload.get("notion_api_key"), # Extraído del JWT del backend
             }

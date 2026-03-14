@@ -1,4 +1,5 @@
 # src/services/llm/lamar/sentinel.py
+from http import client
 import os
 import gc
 import time
@@ -77,8 +78,21 @@ class LamarSentinel:
 
     def check_capabilities(self, config):
         try:
+            base_url = config['base_url']
+            
+            # Cloudflare: base_url is an account ID env var name
+            if not base_url.startswith("http"):
+                account_id = os.getenv(base_url)
+                if not account_id:
+                    return {
+                        "alive": False, "latency_ms": 0,
+                        "supports_tools": False, "error_code": 500,
+                        "details": f"env var {base_url} not set"
+                    }
+                base_url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1"
+
             llm = ChatOpenAI(
-                base_url=config['base_url'],
+                base_url=base_url,
                 api_key=os.getenv(config['key']),
                 model=config['model'],
                 max_retries=0,
@@ -107,14 +121,22 @@ class LamarSentinel:
             }
 
     def save_status_to_db(self, name, status_data):
+        code =int(status_data['error_code'])
+        latency = int(status_data['latency_ms'])
+        # short message: code|details (max 60 chars total)
+        details_short = status_data['details'][:48]
+        message = f"{code}|{details_short}"
+        
         session = SessionLocal()
         try:
             new_ping = PingLog(
-                service=name,
-                event_type="LAMAR_SENTINEL_CHECK",
-                message=status_data['details'],
-                response_ms=int(status_data['latency_ms']),
-                status_code=int(status_data['error_code']),
+                service=name[:20],
+                event_type="lamar_sentinel_check",
+                message=message,
+                response_ms=latency,
+                status_code=code,
+                client_ip="lamar_sentinel",
+                next_ping_sc=None,
                 timestamp=get_now()
             )
             session.add(new_ping)

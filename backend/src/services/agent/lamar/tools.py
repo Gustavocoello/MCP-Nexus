@@ -1,4 +1,5 @@
 # src/services/llm/lamar/tools.py
+import os
 import json
 from langchain.tools import tool
 from .sentinel import LamarSentinel
@@ -15,25 +16,27 @@ def report_provider_status(tool_input: str) -> str:
     Input must be a JSON string with fields: provider_name, status, details.
     Example: {{"provider_name": "Groq", "status": "OK", "details": "Working fine"}}
     """
-    import json
     try:
         parsed = json.loads(tool_input)
-        provider_name = parsed.get("provider_name", "Unknown")
-        status = parsed.get("status", "Unknown")
-        details = parsed.get("details", "No details")
+        provider_name = parsed.get("provider_name", "unknown")
+        status = parsed.get("status", "unknown")
+        details = parsed.get("details", "no details")
     except (json.JSONDecodeError, AttributeError):
-        # Fallback: treat the whole string as provider_name
-        provider_name = tool_input
-        status = "Unknown"
-        details = "Could not parse input"
+        provider_name = tool_input[:18]
+        status = "unknown"
+        details = "parse error"
+
+    status_code = 200 if status.lower() == "ok" else 429
+    # short message: code|status
+    message = f"{status_code}|{details[:50]}"
 
     session = SessionLocal()
     try:
         new_ping = PingLog(
-            service=provider_name,
-            event_type="LAMAR_CHECK",
-            message=details,
-            status_code=200 if status == "OK" else 429,
+            service=provider_name[:18],
+            event_type="lamar_check",
+            message=message,
+            status_code=status_code,
             timestamp=get_now()
         )
         session.add(new_ping)
@@ -310,3 +313,168 @@ def diagnose_all_failed_providers() -> str:
 
     finally:
         session.close()
+        
+@tool
+def ping_services() -> str:
+    """
+    Performs a real HTTP ping to all monitored services and saves results to DB.
+    Use when Boss asks if services are up, running, or reachable.
+    """
+    import requests as req
+
+    render = os.getenv("RENDER_SERVER", "false").lower() == "true"
+
+    SERVICE_MAP = {
+        'localhost:5000': 'jarvis-backend',
+        'localhost:8000': 'contabilidad',
+        'localhost:8001': 'mcp-calendar',
+        'localhost:8002': 'mcp-notion',
+        'coello-system-1.onrender.com': 'vite-dashboard',
+        'mcp-nexus-spwu.onrender.com': 'mcp-calendar',
+        'mcp-nexus.onrender.com': 'jarvis-backend',
+    }
+
+    def get_service_name(url: str) -> str:
+        import re
+        clean = re.sub(r'^https?://', '', url.strip().lower()).split('/')[0]
+        return SERVICE_MAP.get(clean, clean)
+
+    targets = [
+        os.getenv("TARGET_DEPLOYED1") if render else os.getenv("LOCAL_TARGET1"),
+        os.getenv("TARGET_DEPLOYED2") if render else os.getenv("LOCAL_TARGET2"),
+        os.getenv("TARGET_DEPLOYED3") if render else os.getenv("LOCAL_TARGET3"),
+    ]
+
+    results = []
+
+    for url in targets:
+        if not url:
+            continue
+
+        service_name = get_service_name(url)
+        now = get_now()
+        status_code = 0
+        log_message = ""
+
+        # same block as keep_alive_jarvis.py, just synchronous
+        try:
+            resp = req.get(url, timeout=10)
+            status_code = resp.status_code
+            log_message = f"{status_code}|ping ok"
+        except Exception:
+            status_code = 500
+            log_message = "500|host down"
+
+        db = SessionLocal()
+        try:
+            new_log = PingLog(
+                service=service_name,
+                event_type="lamar_ping",       # <-- lamar identifies itself
+                message=log_message,
+                status_code=status_code,
+                client_ip="lamar",
+                next_ping_sc=None,
+                timestamp=now
+            )
+            db.add(new_log)
+            db.commit()
+        except Exception as db_e:
+            db.rollback()
+            print(f"db error ping ({service_name}): {db_e}")
+        finally:
+            db.close()
+
+        alive = status_code in [200, 201]
+        results.append(
+            f"{service_name}: {'ok' if alive else 'down'} | {status_code} | {url}"
+        )
+
+    return "ping results:\n" + "\n".join(results) if results else "no targets configured"
+
+
+@tool
+def ping_single_service(tool_input: str) -> str:
+    """
+    Pings a single monitored service by name and saves result to DB.
+    Input must be a JSON string with field: service_name.
+    Example: {{"service_name": "mcp-notion"}}
+    Accepted names: jarvis-backend, contabilidad, mcp-calendar, mcp-notion
+    """
+    import json
+    import re
+    import requests as req
+
+    try:
+        parsed = json.loads(tool_input)
+        service_name = parsed.get("service_name", "").lower().strip()
+    except (json.JSONDecodeError, AttributeError):
+        service_name = tool_input.lower().strip()
+
+    render = os.getenv("RENDER_SERVER", "false").lower() == "true"
+
+    # Map aliases to canonical name + url
+    SERVICE_URL_MAP = {
+        "contabilidad":  os.getenv("TARGET_DEPLOYED1") if render else os.getenv("LOCAL_TARGET1"),
+        "mcp-calendar":  os.getenv("TARGET_DEPLOYED2") if render else os.getenv("LOCAL_TARGET2"),
+        "mcp-notion":    os.getenv("TARGET_DEPLOYED3") if render else os.getenv("LOCAL_TARGET3"),
+    }
+
+    # Normalize aliases to canonical name
+    ALIAS_MAP = {
+        "notion":           "mcp-notion",
+        "mcp-notion":       "mcp-notion",
+        "calendar":         "mcp-calendar",
+        "mcp-calendar":     "mcp-calendar",
+        "google calendar":  "mcp-calendar",
+        "contabilidad":     "contabilidad",
+        "vite":             "contabilidad",
+        "dashboard":        "contabilidad",
+        "sistema":          "contabilidad",
+    }
+
+    canonical = ALIAS_MAP.get(service_name)
+    if not canonical:
+        available = ", ".join(ALIAS_MAP.keys())
+        return f"unknown service '{service_name}'. available: {available}"
+
+    url = SERVICE_URL_MAP.get(canonical)
+    if not url:
+        return f"url not configured for '{canonical}'. check your .env file."
+
+    now = get_now()
+    status_code = 0
+
+    try:
+        resp = req.get(url, timeout=10)
+        status_code = resp.status_code
+        log_message = f"{status_code}|ping ok"
+    except Exception:
+        status_code = 500
+        log_message = "500|host down"
+
+    db = SessionLocal()
+    try:
+        new_log = PingLog(
+            service=canonical,
+            event_type="lamar_ping",
+            message=log_message,
+            status_code=status_code,
+            client_ip="lamar",
+            next_ping_sc=None,
+            timestamp=now
+        )
+        db.add(new_log)
+        db.commit()
+    except Exception as db_e:
+        db.rollback()
+        print(f"db error ping ({canonical}): {db_e}")
+    finally:
+        db.close()
+
+    alive = status_code in [200, 201]
+    return (
+        f"service: {canonical}\n"
+        f"status: {'ok' if alive else 'down'}\n"
+        f"code: {status_code}\n"
+        f"url: {url}"
+    )

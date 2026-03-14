@@ -1,26 +1,27 @@
 from openai import OpenAI
 from dotenv import load_dotenv
-import os 
+import os
 
 load_dotenv()
 
-# Cargar la clave de API de DeepSeek desde las variables de entorno
-DEEP_API_KEY = os.getenv("DEEP_API_KEY")
+API_KEY = os.getenv("OPEN_ROUTER_0")
 
 client = OpenAI(
-  base_url="https://openrouter.ai/api/v1",
-  api_key=DEEP_API_KEY,
+    base_url="https://openrouter.ai/api/v1",
+    api_key=API_KEY
 )
 
-completion = client.chat.completions.create(
-  model="deepseek/deepseek-chat-v3-0324:free",
-  n=5,
-  messages=[
-    {
-      "role": "user",
-      "content": "What team of soccer won the last champions league?"
-    }
-  ]
-)
+try:
+    completion = client.chat.completions.create(
+        model="qwen/qwen3-next-80b-a3b-instruct:free",
+        messages=[{"role": "user", "content": "Hello"}]
+    )
 
-print(completion.choices[0].message.content)
+    print(completion.choices[0].message.content)
+
+except Exception as e:
+    print("ERROR:")
+    print(e)
+    
+    
+# nvidia/llama-nemotron-embed-vl-1b-v2:free EMBEDDINGS models 

@@ -73,12 +73,12 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
             payload = jwt.decode(token, self.auth_secret, algorithms=["HS256"])
             
             print(f" - [Middleware] JWT decodificado correctamente")
-            print(f"   - user_id: {payload.get('user_id')}")
+            print(f"   - user_id: {payload.get('sub')}")
             print(f"   - provider: {payload.get('provider')}")
             
             # Guardar en variable global
             mcp_context = {
-                "user_id": payload.get("user_id"),
+                "user_id": payload.get("sub"), # sub (Subject): Es el identificador único del usuario (el "sujeto" del token). - User_id 
                 "provider": payload.get("provider"),
                 "google_access_token": payload.get("google_access_token"),
                 "google_refresh_token": payload.get("google_refresh_token"),

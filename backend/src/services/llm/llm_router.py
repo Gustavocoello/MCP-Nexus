@@ -23,16 +23,16 @@ GROQ_API_KEY3 = os.getenv("GROQ_API_KEY3")
 
 # ========== CLOUDFLARE ==========
 # Instance 0
-CF_ID_0 = os.getenv("CLOUDFLARE_KEY0")
-CF_TOKEN_0 = os.getenv("TOKEN_CLOUDFLARE0")
+CF_ID_0 = os.getenv("CLOUDFLARE_ID0")
+CF_TOKEN_0 = os.getenv("CLOUDFLARE_TOKEN0")
 
 # Instance 1
-CF_ID_1 = os.getenv("CLOUDFLARE_KEY1")
-CF_TOKEN_1 = os.getenv("TOKEN_CLOUDFLARE1")
+CF_ID_1 = os.getenv("CLOUDFLARE_ID1")
+CF_TOKEN_1 = os.getenv("CLOUDFLARE_TOKEN1")
 
 # Instance 2
-CF_ID_2 = os.getenv("CLOUDFLARE_KEY2")
-CF_TOKEN_2 = os.getenv("TOKEN_CLOUDFLARE2")
+CF_ID_2 = os.getenv("CLOUDFLARE_ID2")
+CF_TOKEN_2 = os.getenv("CLOUDFLARE_TOKEN2")
 
 # Función auxiliar para construir la URL de Cloudflare
 def get_cf_url(account_id):
@@ -56,7 +56,7 @@ API_PROVIDERS = [
         "name": "TNG: R1T Chimera - DeepSeek R1T2 Chimera",
         "client": OpenAI(base_url="https://openrouter.ai/api/v1",
                          api_key=OPENROUTER0),
-        "model": "tngtech/deepseek-r1t2-chimera:free"
+        "model": "nvidia/nemotron-3-super-120b-a12b:free"
     },
     {
         "name": "Nemotron Nano 12B",
@@ -68,31 +68,31 @@ API_PROVIDERS = [
         "name": "Amazon: Nova 2 Lite (free",
         "client": OpenAI(base_url="https://openrouter.ai/api/v1",
                          api_key=OPENROUTER2),
-        "model": "amazon/nova-2-lite-v1:free"
+        "model": "stepfun/step-3.5-flash:free"
     },
     {
         "name": "TNG: DeepSeek R1T2 Chimera",
         "client": OpenAI(base_url="https://openrouter.ai/api/v1",
                          api_key=OPENROUTER3),
-        "model": "tngtech/deepseek-r1t2-chimera:free"
+        "model": "liquid/lfm-2.5-1.2b-instruct:free"
     },
     {
         "name": "Kwaipilot: KAT-Coder-Pro V1",
         "client": OpenAI(base_url="https://openrouter.ai/api/v1",
                          api_key=OPENROUTER4),
-        "model": "kwaipilot/kat-coder-pro:free"
+        "model": "nvidia/nemotron-3-super-120b-a12b:free"
     },
     {
         "name": "Qwen: Qwen3 Coder 480B A35B",
         "client": OpenAI(base_url="https://openrouter.ai/api/v1",
                          api_key=OPENROUTER5),
-        "model": "qwen/qwen3-coder:free"
+        "model": "nvidia/nemotron-3-super-120b-a12b:free"
     },
     {
         "name": "Arcee AI: Trinity Large Preview (free)",
         "client": OpenAI(base_url="https://openrouter.ai/api/v1",
                          api_key=OPENROUTER6),
-        "model": "arcee-ai/trinity-large-preview:free"
+        "model": "nvidia/nemotron-3-super-120b-a12b:free"
     },
     # ---- BLOQUE GROQ
     {
@@ -144,19 +144,19 @@ API_PROVIDERS = [
         "name": "Cohere: Command-R-Plus (Trial-0)",
         "client": OpenAI(base_url=COHERE_BASE_URL, 
                          api_key=COHORE_API_KEY0),
-        "model": "command-r-plus"
+        "model": "command-r-08-2024"
     },
     {
-        "name": "Cohere: Command-R (Trial-1)",
+        "name": "Cohere: Command-R-plus (Trial-1)",
         "client": OpenAI(base_url=COHERE_BASE_URL, 
                          api_key=COHORE_API_KEY1),
-        "model": "command-r"
+        "model": "command-r-plus-08-2024"
     },
     {
-        "name": "Cohere: Command-R7B (Trial-2)",
+        "name": "Cohere: Command-R-plus (Trial-2)",
         "client": OpenAI(base_url=COHERE_BASE_URL, 
                          api_key=COHORE_API_KEY2),
-        "model": "command-r7b"
+        "model": "command-r-plus-08-2024"
     },
     # ---- BLOQUE MISTRAL
     {
@@ -255,40 +255,40 @@ API_PROVIDERS_TO_AGENT = [
     # ---- BLOQUE CLOUDFLARE
     {
         "name": "Cloudflare: Nodo-Alfa (Llama 3.1)",
-        "base_url": "CF_ID_0",  # se resuelve dinámicamente con get_cf_url
-        "key": "CF_TOKEN_0",
+        "base_url": "CLOUDFLARE_ID0",  # se resuelve dinámicamente con get_cf_url
+        "key": "CLOUDFLARE_TOKEN0",
         "model": "@cf/meta/llama-3.1-8b-instruct"
     },
     {
         "name": "Cloudflare: Nodo-Beta (LLama 4.0 Scout)",
-        "base_url": "CF_ID_1",
-        "key": "CF_TOKEN_1",
+        "base_url": "CLOUDFLARE_ID1",
+        "key": "CLOUDFLARE_TOKEN1",
         "model": "@cf/meta/llama-4-scout-17b-16e-instruct"
     },
     {
         "name": "Cloudflare: Nodo-Gamma (Qwen 3)",
-        "base_url": "CF_ID_2",
-        "key": "CF_TOKEN_2",
+        "base_url": "CLOUDFLARE_ID2",
+        "key": "CLOUDFLARE_TOKEN2",
         "model": "@cf/qwen/qwen3-30b-a3b-fp8"
     },
     # ---- BLOQUE COHERE
     {
         "name": "Cohere: Command-R-Plus (Trial-0)",
-        "base_url": "COHERE_BASE_URL",  # se resuelve dinámicamente
+        "base_url": "https://api.cohere.ai/compatibility/v1",  # se resuelve dinámicamente
         "key": "COHORE_API_KEY0",
-        "model": "command-r-plus"
+        "model": "command-r-08-2024"
     },
     {
-        "name": "Cohere: Command-R (Trial-1)",
-        "base_url": "COHERE_BASE_URL",
+        "name": "Cohere: Command-R-Plus (Trial-1)",
+        "base_url": "https://api.cohere.ai/compatibility/v1",
         "key": "COHORE_API_KEY1",
-        "model": "command-r"
+        "model": "command-r-plus-08-2024"
     },
     {
-        "name": "Cohere: Command-R7B (Trial-2)",
-        "base_url": "COHERE_BASE_URL",
+        "name": "Cohere: Command-R-Plus (Trial-2)",
+        "base_url": "https://api.cohere.ai/compatibility/v1",
         "key": "COHORE_API_KEY2",
-        "model": "command-r7b"
+        "model": "command-r-plus-08-2024"
     },
     # ---- BLOQUE MISTRAL
     {

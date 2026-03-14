@@ -1,10 +1,12 @@
+from urllib import response
+
 from flask import Blueprint, jsonify, request
-from http import HTTPStatus
+from http import HTTPStatus, client
 from src.config.time_helper import get_now
 from src.config.logging_config import get_logger
 from src.database.models.models import PingLog
 from src.database.config.connection import SessionLocal, engine
-from src.config.ping.log_parser import parse_ping_log
+from src.config.ping.log_parser import parse_ping_log_v1, clean_log_message
 from src.database.config.azure.azure_config import test_connection_health, get_pool_stats 
   
 logging = get_logger(__name__)
@@ -13,13 +15,14 @@ ping_logs_bp = Blueprint('ping_logs', __name__)
 ping_bp = Blueprint("ping_bp", __name__)
 health_bp = Blueprint('health', __name__)
 
-@ping_logs_bp.route('/pings-logs', methods=['POST'])
+@ping_logs_bp.route('/ping_log', methods=['POST'])
 def receive_ping_log():
     """
     Endpoint centralizado para recibir pings. 
     Usa el mismo patrón de cierre de sesión que los mensajes de chat.
     """
     db_session = SessionLocal() # Instanciamos la sesión localmente
+    client_host = request.remote_addr
     
     try:
         # 1. Obtener y validar datos
@@ -32,21 +35,46 @@ def receive_ping_log():
         if not raw_message:
             return jsonify({"error": "No log provided"}), 400
 
-        # 2. Parsear el log
-        parsed = parse_ping_log(raw_message)
+        # Limpiar caracteres extraños y parsear el mensaje
+        cleaned_message = clean_log_message(raw_message)
+        # Parsear el log ya limpio
+        parsed = parse_ping_log_v1(cleaned_message)
+        # Tiempo de respuesta
+        response_ms = (get_now() - get_now()).total_seconds() * 1000  
+        # Extraer el nombre del servicio 
+        service_name = parsed.get("service")
         
-        # Si no es un ping (es un log de otro tipo), respondemos ok pero no guardamos
+        # Si el parser NO lo reconoce, creamos un objeto 'parsed' genérico
         if not parsed:
-            return jsonify({"status": "ignored", "reason": "non-ping log"}), 200
+            parsed = {
+                "service": "General-Log",
+                "event_type": "info",
+                "status_code": 200,
+                "message": cleaned_message,
+                "next_ping_sc": None
+            }
+        else:
+            service=service_name,
+            event_type=parsed.get('event_type'),
+            message=parsed.get('message'),
+            response_ms=response_ms,
+            status_code=parsed.get('status_code'),
+            client_ip=client_host,
+            next_ping_sc=parsed.get('next_ping_sc'),
+            timestamp=get_now()
+            
+        
 
         # 3. Crear y guardar el registro
         new_log = PingLog(
-            service=parsed['service'],
-            event_type=parsed['event_type'],
-            message=parsed['message'],
-            status_code=parsed.get('status_code', 200),
-            next_ping_seconds=parsed.get('next_ping_seconds'),
-            created_at=get_now()
+            service=service,
+            event_type=event_type,
+            message=message,
+            response_ms=response_ms,
+            status_code=status_code,
+            client_ip=client_ip,
+            next_ping_sc=next_ping_sc,
+            timestamp=timestamp
         )
         
         db_session.add(new_log)
@@ -72,7 +100,7 @@ def ping():
     user_agent = request.headers.get("User-Agent", "unknown")
     # Usar timezone-aware datetime para evitar problemas de servidor
     now = get_now().isoformat()
-    logging.info(f"[PONG] Backend recibió solicitud /v2/ping a las {now}")
+    #logging.info(f"[PONG]")
     return jsonify({
         "status": "pong",
         "message": "Render server is alive! - Backend ",

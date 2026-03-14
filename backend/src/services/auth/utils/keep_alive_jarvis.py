@@ -3,22 +3,22 @@ Archivo - keep_alive_jarvis.py
 """
 
 import asyncio
+from http import client
 import aiohttp
 import random
-import datetime
-from pandas import Timestamp
-import pytz
 import os
 import threading
 from dotenv import load_dotenv
 from src.config.time_helper import get_now
+from src.database.config.connection import SessionLocal
+from src.database.models.models import PingLog
 
 load_dotenv()
 
 RENDER_SERVER = os.getenv("RENDER_SERVER").lower() == "true"
 
-LOCAL_URL = os.getenv("LOCAL_TARGET1")
-DEPLOY_URL = os.getenv("TARGET_DEPLOYED1")
+LOCAL_URL = os.getenv("LOCAL_PING")
+DEPLOY_URL = os.getenv("PRODU_PING")
 
 if RENDER_SERVER:
     TARGET_URL = DEPLOY_URL  # Vite en Render
@@ -26,50 +26,57 @@ else:
     TARGET_URL = LOCAL_URL  # Local
 
 async def ping_target():
-    """Envía pings periódicos de Jarvis → Vite y también manda el log completo."""
-    print("🟢 Iniciando keep-alive Jarvis...")
-
+    """Hace GET al target y guarda el resultado (200, 404, 500, etc.) en la DB local."""
+    print(f"🟢 Monitor iniciado: Apuntando a {TARGET_URL}")
+    
     while True:
         now = get_now()
-        delay = random.randint(420, 600)  # Próximo ping (7–10 minutos)
-        timestamp = now.strftime('%H:%M:%S')
+        delay = random.randint(420, 600)
+        status_code = 0
+        log_message = ""
+        client_host = "localhost"  
 
-        # 🧩 Mensaje unificado
-        log_message = (
-            f"[Jarvis → Vite] 200 Ping a {TARGET_URL} "
-            f"({now.strftime('%H:%M:%S')}) | next_ping={delay}s"
-        )
-
+        # 1. Intentar la petición GET
         try:
-            # 🔹 Luego enviar el log al backend de Vite
             async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    TARGET_URL,
-                    json={"log": log_message},
-                    timeout=10,
-                    headers={
-                        "Content-Type": "application/json; charset=utf-8"  # Encoding explícito
-                    }
-                ) as resp:
-                    if resp.status == 200:
-                        print(f" Ping enviado con exito {resp.status}/ {timestamp} - [Jarvis -> Vite]")
-                    elif resp.status == 429:
-                        extra_delay = random.randint(300, 600)
-                        print(f"[Jarvis → Vite] 429 Rate limited ({timestamp}) | esperando {extra_delay}s extra")
-                        await asyncio.sleep(extra_delay)
-                    else:
-                        print(f"[Jarvis → Vite] Error {resp.status} ({timestamp}) | next_ping={delay}s")
+                async with session.get(TARGET_URL, timeout=15) as resp:
+                    status_code = resp.status
+                    log_message = f"{status_code} Ping OK: {TARGET_URL}"
         except Exception as e:
-            print(f"[Jarvis → Vite] Error: {e} ({now.strftime('%H:%M:%S')}) | next_ping={delay}s")
+            status_code = 500  # Error de conexión
+            log_message = f"500 Error: Host Down ({TARGET_URL})"
+        # 2. GUARDAR DIRECTO EN BASE DE DATOS
+        # Abrimos sesión justo antes de usarla
+        db = SessionLocal()
+        try:
+            new_log = PingLog(
+                service="vite-contabilidad",
+                event_type="self_monitor",
+                message=log_message,
+                status_code=status_code,
+                client_ip=client_host,
+                next_ping_sc=delay,
+                timestamp=now  # Usando el nombre correcto 'timestamp' que vimos antes
+            )
+            db.add(new_log)
+            db.commit()
+            print(f"Ping Log guardado en DB: {status_code} | {now.strftime('%H:%M:%S')}")
+        except Exception as db_e:
+            db.rollback()
+            print(f"Error al escribir en DB: {db_e}")
+        finally:
+            db.close()
 
+        # 3. Esperar al siguiente ciclo
         await asyncio.sleep(delay)
 
-
 def keep_alive():
-    """Inicia el loop del keep-alive de Jarvis en segundo plano."""
+    """Inicia el monitor en segundo plano."""
     def start_loop():
-        asyncio.run(ping_target())
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(ping_target())
 
     thread = threading.Thread(target=start_loop, daemon=True)
     thread.start()
-    print("🚀 Keep-alive Jarvis iniciado en segundo plano (envía logs a Vite por POST)")
+    print("🚀 Keep-alive local (DB Direct) ejecutándose.")

@@ -45,8 +45,9 @@ CORS(app, supports_credentials=True, origins=[
     "https://gustavocoello.space","https://www.gustavocoello.space",
     "https://mcp-nexus.vercel.app",
     "https://mcp-nexus.onrender.com",
-    "http://localhost:8000/mcp",
+    "https://localhost:8000",
     "https://localhost:8001",
+    "https://localhost:8002",
     "http://localhost:5173",
     "https://coello-system-1.onrender.com"
 ])

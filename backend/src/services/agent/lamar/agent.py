@@ -1,55 +1,31 @@
-# src/services/llm/lamar/agent.py
+# src/services/agent/lamar/agent.py
 import os
-import gc
 import sys
 from pathlib import Path
-import logging
 from dotenv import load_dotenv
-# Esta es la forma más segura de importar AgentExecutor hoy en día
-from langchain.agents import AgentExecutor, create_react_agent
 from langchain_openai import ChatOpenAI
-from langchain.prompts import PromptTemplate
-from langchain.agents import create_react_agent
 
 current_dir = Path(__file__).resolve().parent.parent.parent
 backend_dir = current_dir.parent.parent
 sys.path.insert(0, str(backend_dir))
 
-from src.services.agent.lamar.tools import get_current_datetime_and_knowledge_info, report_provider_status, get_llm_usage_report, trigger_full_system_check, test_single_provider, diagnose_provider_failure, diagnose_all_failed_providers
+from src.services.agent.common.base_agent import BaseAgent
+from src.services.agent.lamar.tools import (
+    get_current_datetime_and_knowledge_info,
+    report_provider_status,
+    get_llm_usage_report,
+    trigger_full_system_check,
+    test_single_provider,
+    diagnose_provider_failure,
+    diagnose_all_failed_providers,
+    ping_single_service,
+    ping_services
+)
 from src.services.llm.llm_router import API_PROVIDERS_TO_AGENT
 
 load_dotenv()
 
-logging.getLogger("openai").setLevel(logging.WARNING)
-logging.getLogger("httpx").setLevel(logging.WARNING)
-
-GROQ_KEY = os.getenv("GROQ_API_KEY0")
-
-class LamarAgent:
-    def __init__(self):
-        # We use Groq (Llama 3.1 70B) for high-speed reasoning
-        self.llm = ChatOpenAI(
-            base_url="https://api.groq.com/openai/v1",
-            api_key=GROQ_KEY, 
-            model="llama-3.3-70b-versatile",
-            temperature=0
-        )
-        
-        self.tools = [
-            test_single_provider,
-            report_provider_status, 
-            get_llm_usage_report,
-            trigger_full_system_check,
-            get_current_datetime_and_knowledge_info,
-            diagnose_provider_failure,
-            diagnose_all_failed_providers
-            ]
-        
-        # Conversational history stored un memory
-        self.chat_history = [] 
-        
-        # --- ENGLISH REACT PROMPT (For better reasoning) ---
-        template = """You are Lamar, an AI infrastructure orchestration agent.
+LAMAR_TEMPLATE = """You are Lamar, an AI infrastructure orchestration agent.
         Your job is to manage 20+ LLM API providers and ensure system stability.
 
         LANGUAGE RULE (HIGHEST PRIORITY): You MUST think and reason in English at all times.
@@ -67,14 +43,24 @@ class LamarAgent:
         - If the Boss says "yes", "sure", "please", "go ahead" or similar confirmations, check the conversation history to understand what was previously proposed and execute it.
         - test_single_provider: Use this when the Boss asks to TEST, CHECK, or VERIFY a specific provider by name or number. This does a REAL ping and returns if the provider is alive or not.
         - trigger_full_system_check: Use this when the Boss asks to check ALL providers at once.
+        - ping_single_service: use when Boss asks to ping ONE specific service by name. Input: {{"service_name": "mcp-notion"}}
+        - ping_services: use when Boss asks to ping ALL services at once. Triggers: "all", "todos", "everything", "all services", "los 3", "todos los servicios"
         - report_provider_status: ONLY use this to manually LOG a status you already know. NEVER use this to test if a provider works.
         - get_llm_usage_report: Use this when the Boss asks about token usage or consumption.
 
+        SERVICE ALIASES (use these to resolve what service the Boss means):
+        - "notion", "mcp-notion", "notion server"        -> ping_single_service {{"service_name": "mcp-notion"}}
+        - "calendar", "mcp-calendar", "google calendar"  -> ping_single_service {{"service_name": "mcp-calendar"}}
+        - "contabilidad", "vite", "dashboard", "sistema" -> ping_single_service {{"service_name": "contabilidad"}}
+        - "all", "todos los servicios de ping", "everything" -> ping_services ONLY when context is about infrastructure services.
+        WARNING: "los 3 de cloudflare", "los 3 de cohere" refers to LLM PROVIDERS, not services.
+        Use trigger_full_system_check or test_single_provider in that case.
+
         EXAMPLES:
-        - "test provider 4" -> use test_single_provider
-        - "is provider 4 working?" -> use test_single_provider  
-        - "check all providers" -> use trigger_full_system_check
-        - "log provider X as OK" -> use report_provider_status
+        - "test provider 4"       -> use test_single_provider
+        - "is provider 4 working" -> use test_single_provider
+        - "check all providers"   -> use trigger_full_system_check
+        - "log provider X as OK"  -> use report_provider_status
 
         Use the following format STRICTLY:
 
@@ -101,81 +87,71 @@ class LamarAgent:
         6. Use conversation history to resolve ambiguous messages like "yes", "do it", "please".
         7. If test_single_provider returns Alive: False, ALWAYS follow up with diagnose_provider_failure automatically before giving the Final Answer.
         8. NEVER call any tool more than once per provider in a single session. If multiple providers need diagnosis, use diagnose_all_failed_providers, not diagnose_provider_failure in a loop.
-        9. NEVER invent, fabricate, or guess information. If you do not have the data from a tool result or from the conversation history, say exactly this: "I do not have that information. Use a tool or check the source directly." NEVER generate fake API key names, provider names, error codes, or any technical data that was not returned by a tool.
-        10. API keys are CONFIDENTIAL. NEVER reveal, guess, or reference any API key name, value, or variable name. If the Boss asks about keys, respond: "API key details are confidential. Check your .env file directly."
+        9. NEVER invent, fabricate, or guess information. If you do not have the data from a tool result or from the conversation history, say exactly this: "I do not have that information. Use a tool or check the source directly."
+        10. API keys are CONFIDENTIAL. NEVER reveal, guess, or reference any API key name, value, or variable name.
+        11. NEVER execute a tool just because the Boss is describing or explaining what a tool does.
+        12. If the Boss is describing, explaining, or asking about your capabilities, respond conversationally. Ask for confirmation before executing any action if the intent is ambiguous.
+        13. Once a tool returns a result, NEVER call the same tool again in the same turn. Go directly to Final Answer with the data you already have.
+        14. When the Boss mentions a group like "los 3 de Cloudflare" or "los de Cohere", this refers to LLM PROVIDERS, not infrastructure services. Use trigger_full_system_check and filter the Final Answer to show only the relevant group.
 
         Boss input: {input}
 
         {agent_scratchpad}"""
-        self.prompt = PromptTemplate.from_template(template)
 
-    def run_task(self, instruction):
+
+class LamarAgent(BaseAgent):
+    name = "Lamar"
+
+    def __init__(self):
+        llm = ChatOpenAI(
+            base_url="https://api.groq.com/openai/v1",
+            api_key=os.getenv("GROQ_API_KEY5"),
+            model="llama-3.3-70b-versatile",
+            temperature=0
+        )
+        tools = [
+            ping_single_service,
+            ping_services,
+            test_single_provider,
+            report_provider_status,
+            get_llm_usage_report,
+            trigger_full_system_check,
+            get_current_datetime_and_knowledge_info,
+            diagnose_provider_failure,
+            diagnose_all_failed_providers,
+        ]
+        super().__init__(llm, tools, LAMAR_TEMPLATE)
+
+    def run_task(self, instruction: str) -> dict:
+        # Lamar injects provider list as system context before calling base
         api_names = [f"[{i+1}] {p['name']}" for i, p in enumerate(API_PROVIDERS_TO_AGENT)]
         system_context = (
             f"\n\n[SYSTEM CONTEXT]: You have {len(api_names)} active providers. "
             f"Numbered list: {', '.join(api_names)}. "
             "If the Boss refers to a number (e.g. the fifth one), identify it in this list."
         )
+        return super().run_task(instruction + system_context)
 
-        # Format chat history
-        if self.chat_history:
-            history_str = "\n".join(
-                [f"{role}: {msg}" for role, msg in self.chat_history]
-            )
-        else:
-            history_str = "No previous conversation."
 
-        # Inject chat_history as partial variable BEFORE the executor runs
-        prompt_with_history = self.prompt.partial(chat_history=history_str)  # <-- FIX
-
-        # Rebuild agent with the updated prompt each turn
-        agent = create_react_agent(self.llm, self.tools, prompt_with_history)
-        executor = AgentExecutor(
-            agent=agent,
-            tools=self.tools,
-            verbose=True,
-            handle_parsing_errors=True,
-            max_iterations=5
-        )
-
-        try:
-            response = executor.invoke({"input": instruction + system_context})
-
-            self.chat_history.append(("Boss", instruction))
-            self.chat_history.append(("Lamar", response["output"]))
-
-            if len(self.chat_history) > 20:
-                self.chat_history = self.chat_history[-20:]
-
-            return response
-        finally:
-            gc.collect()
-            
 if __name__ == "__main__":
-    print("\n" + "="*50)
-    print("🤖 LAMAR: ONLINE RESILIENCE ORCHESTRATOR")
+    print("\n" + "=" * 50)
+    print("LAMAR: ONLINE RESILIENCE ORCHESTRATOR")
     print("Type 'q' to end the session.")
-    print("="*50)
-    
+    print("=" * 50)
+
     lamar = LamarAgent()
-    
+
     while True:
         try:
             user_input = input("\n User: ")
-            
             if user_input.lower() in ["salir", "exit", "quit", "q"]:
                 print("Locking systems... Until next time, socio.")
                 break
-            
             if not user_input.strip():
                 continue
-
             print("\n Lamar thinking...")
-            
             resultado = lamar.run_task(user_input)
-            
             print(f"\n Lamar: {resultado['output']}")
-            
         except KeyboardInterrupt:
             print("\n\nInterrupt detected. Exiting...")
             break

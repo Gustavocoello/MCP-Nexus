@@ -52,7 +52,7 @@ def generate_mcp_jwt(user_id: str, provider: str) -> Optional[str]:
         
         elif provider == "notion":
             # Para Notion, el access_token es tu "Internal Integration Secret"
-            payload["notion_token"] = main_token
+            payload["notion_api_key"] = main_token
         
         # 4. Firmar
         return jwt.encode(payload, MCP_SECRET_KEY, algorithm=JWT_ALGORITHM)

@@ -1,3 +1,4 @@
+# src/mcps/test/test_client.py
 import os 
 import sys
 import asyncio
@@ -11,24 +12,25 @@ if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
 # --- Imports del proyecto ---
-from src.mcps.client.calendar.client_google_calendar import MCPToolsClient  # ajusta la ruta si es necesario
+from src.mcps.client.client_manager import MCPClientManager  # ajusta la ruta si es necesario
 
 load_dotenv()
 
 USUARIO_TEST = os.getenv("USUARIO_TEST")
 MCP_URL = os.getenv("MCP")
 
-async def test_disponibilidades():
-    client = MCPToolsClient(MCP_URL, user_id=USUARIO_TEST)
+async def test_integracion():
+    manager = MCPClientManager(user_id=USUARIO_TEST)
+    
+    # Probamos Calendar
+    calendar = manager.get_client("google_calendar")
+    await calendar.google_listar_calendarios()
+    
+    # Probamos Notion
+    notion = manager.get_client("notion")
+    await notion.notion_search(query="Tareas")
 
-    print("== Test: Disponibilidad Diaria (sin parámetros) ==")
-    result_diaria = await client.google_disponibilidad_diaria()  # sin mandar date ni duracion
-    print("Contenido diaria:", result_diaria)
-
-    print("== Test: Disponibilidad Semanal ==")
-    result_semanal = await client.google_disponibilidad_semanal()  # sin parámetros
-    print("Contenido semanal:", result_semanal)
-
+    print("✅ Todo fluye por el Manager")
 
 if __name__ == "__main__":
-    asyncio.run(test_disponibilidades())
+    asyncio.run(test_integracion())
