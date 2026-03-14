@@ -16,7 +16,6 @@ import ClerkLayout from '@/components/layout/Clerk/ClerkLayout';
 import {inject} from '@vercel/analytics';
 import { SignIn, SignUp, useUser } from "@clerk/clerk-react";
 import { useSyncUser } from '@/features/auth/hook/useSyncUser';
-import { setAuthToken as setApiAuthToken } from '@/service/api';
 import { useAuthContext } from '@/features/auth/components/context/AuthContext';
 import { setAuthToken as setApiServiceAuthToken } from '@/service/api_service'; 
 import { authLogger } from '@/components/controller/log/logger.jsx';
@@ -38,7 +37,7 @@ function App() {
   useEffect(() => {
   // Solo configuramos el token si el usuario ya pasó todos los factores (2FA incluido)
   if (isSignedIn && getToken) {
-    setApiAuthToken(getToken);
+    //setApiAuthToken(getToken);
     setApiServiceAuthToken(getToken);
     authLogger.info('✅ Token configurado globalmente');
     }

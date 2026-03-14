@@ -11,6 +11,8 @@ import { TbMessagePlus } from "react-icons/tb";
 import { getAllChats, createChat} from '../../service/chatService';
 import { sendMessage, sendAnonymousMessage} from '../../service/api_service';
 import { hookLogger, streamLogger } from '@/components/controller/log/logger.jsx';
+import { chatEvents } from '../chat/utils/chatEvents';
+import { storageAdapter } from '../chat/utils/storageAdapter';
 
 // Cambiando de Markdown a HTML
 const md = new MarkdownIt({
@@ -69,14 +71,10 @@ const ChatPage = () => {
     try {
       const newChat = await createChat({}); // Backend genera el ID
       setActiveChatId(newChat.id);
-      localStorage.setItem('activeChatId', newChat.id);
+      storageAdapter.setItem(newChat.id);
       setHasSentMessage(false);
 
-      // Ya no seteamos setMessages([]) porque el hook cargará vacío
-
-      window.dispatchEvent(new CustomEvent('chats-updated', {
-        detail: { newChatId: newChat.id }
-      }));
+      chatEvents.emit('chats-updated', { chatId: newId });
 
     } catch (error) {
       streamLogger.error('Error creando chat:', error);
@@ -178,7 +176,7 @@ const ChatPage = () => {
         return;
       }
 
-      // ✅ Solo se hace la solicitud si no ha alcanzado el límite
+      // Solo se hace la solicitud si no ha alcanzado el límite
       res = await sendAnonymousMessage(fullPrompt);
 
       // Incrementar contador después de la respuesta
@@ -312,7 +310,7 @@ const ChatPage = () => {
       const allChats = await loadAllChats();
       if (allChats.length === 0) return;
 
-      const savedChatId = localStorage.getItem('activeChatId');
+      const savedChatId = storageAdapter.getItem();
       let chatToLoad = allChats.find(chat => chat.id === savedChatId);
 
       if (!chatToLoad) {
@@ -321,38 +319,38 @@ const ChatPage = () => {
 
       // Eliminamos la carga manual de mensajes y el setMessages
       setActiveChatId(chatToLoad.id);
-      localStorage.setItem('activeChatId', chatToLoad.id);
+      storageAdapter.setItem(chatToLoad.id);
     };
 
     initChat();
   }, []);
 
   // Efecto para escuchar eventos de carga chat, solo setActiveChatId
-  // 1. Un solo lugar para reaccionar al cambio de chat
+  // Un solo lugar para reaccionar al cambio de chat
   useEffect(() => {
     if (activeChatId) {
-      localStorage.setItem('activeChatId', activeChatId);
+      storageAdapter.setItem(activeChatId);
       // Al cambiar el activeChatId, el hook useChatMessages 
       // automáticamente detectará el cambio y traerá los mensajes nuevos.
     }
   }, [activeChatId]);
   
-  // 2. Escuchar al sidebar de forma limpia
+  // Escuchar al sidebar de forma limpia
   useEffect(() => {
-    const handleChatLoaded = (event) => {
-      const { chatId } = event.detail;
-      if (chatId !== activeChatId) {
-        setActiveChatId(chatId);
+    const handleChatLoaded = (data) => {
+      if (data?.chatId && data.chatId !== activeChatId) {
+        setActiveChatId(data.chatId);
       }
     };
-    window.addEventListener('chat-loaded', handleChatLoaded);
-    return () => window.removeEventListener('chat-loaded', handleChatLoaded);
+    // chatEvents.on devuelve la función de desuscripción directamente
+    const unsubscribe = chatEvents.on('chat-loaded', handleChatLoaded);
+    return () => unsubscribe();
   }, [activeChatId]);
 
   // Cada vez que cambia el chat activo, actualiza localStorage
   useEffect(() => {
     if (activeChatId) {
-      localStorage.setItem('activeChatId', activeChatId);
+      storageAdapter.setItem(activeChatId);
     }
   }, [activeChatId]);
 

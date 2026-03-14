@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { FaChartBar, FaCog } from 'react-icons/fa';
-import { TbLayoutSidebar } from "react-icons/tb";
 import dayjs from 'dayjs';
 import MarkdownIt from 'markdown-it';
 import { CgMoreAlt } from "react-icons/cg";
-import AnimatedJarvis from '@/components/ui/Animated/AnimatedJarvis';
-import ChatMenu from '@/features/chat/components/ChatMenu/ChatMenu';
-import { useAuthContext } from '@/features/auth/components/context/AuthContext';
 import { useAuth } from '@clerk/clerk-react';
+import { TbLayoutSidebar } from "react-icons/tb";
+import { FaChartBar, FaCog } from 'react-icons/fa';
+import { Link, useLocation } from 'react-router-dom';
+import { chatEvents } from '@/features/chat/utils/chatEvents';
 import { hookLogger } from '@/components/controller/log/logger';
+import ChatMenu from '@/features/chat/components/ChatMenu/ChatMenu';
+import AnimatedJarvis from '@/components/ui/Animated/AnimatedJarvis';
+import { useAuthContext } from '@/features/auth/components/context/AuthContext';
 import '../Sidebar/Sidebar.css';
 
 // Servicios
@@ -43,7 +44,7 @@ const Sidebar = () => {
   };
 
   useEffect(() => {
-    window.dispatchEvent(new CustomEvent('sidebar-toggled', { detail: { isOpen } }));
+    chatEvents.emit('sidebar-toggled', { isOpen });
   }, [isOpen]);
 
   useEffect(() => {
@@ -55,28 +56,23 @@ const Sidebar = () => {
   useEffect(() => {
     fetchAndSetChats();
   }, []);
-
+  // Escuchar eventos de actualización de chats
   useEffect(() => {
-    const handleChatsUpdated = () => {
+    const unsubscribe = chatEvents.on('chats-updated', () => {
       hookLogger.info(' [Sidebar] Chats actualizados, recargando lista...');
       fetchAndSetChats();
-    };
+    });
 
-    window.addEventListener('chats-updated', handleChatsUpdated);
-    return () => window.removeEventListener('chats-updated', handleChatsUpdated);
+    return () => unsubscribe(); // Limpieza limpia
   }, []);
 
   // Escuchar cambios externos en el chat activo
   useEffect(() => {
-    const handleChatLoaded = (e) => {
-      const { chatId } = e.detail;
-      setCurrentChatId(chatId);
-    };
+    const unsubscribe = chatEvents.on('chat-loaded', (data) => {
+      setCurrentChatId(data.chatId);
+    });
 
-    window.addEventListener('chat-loaded', handleChatLoaded);
-    return () => {
-      window.removeEventListener('chat-loaded', handleChatLoaded);
-    };
+    return () => unsubscribe();
   }, []);
 
   function getChatGroup(chatDateStr) {
@@ -116,8 +112,7 @@ const Sidebar = () => {
 
       if (currentChatId === chatId) {
         setCurrentChatId(null);
-        localStorage.removeItem('activeChatId');
-        window.dispatchEvent(new CustomEvent('chat-loaded', { detail: { chatId } }));
+        chatEvents.emit('chat-loaded', { chatId: null });
       }
     } catch (error) {
       hookLogger.error(' [Sidebar] Error eliminando chat:', error);
@@ -145,10 +140,7 @@ const Sidebar = () => {
   // Cargar mensajes del chat seleccionado - Simplificamos el handleLoadChat
   const handleLoadChat = (chatId) => {
     setCurrentChatId(chatId);
-    // Solo avisamos que el ID cambió, NO mandamos mensajes por aquí
-    window.dispatchEvent(new CustomEvent('chat-loaded', {
-      detail: { chatId } 
-    }));
+    chatEvents.emit('chat-loaded', { chatId });
   };
 
   return (
