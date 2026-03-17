@@ -10,7 +10,7 @@ import { BsFillMenuButtonWideFill } from "react-icons/bs";
 import { GiBreakingChain } from "react-icons/gi";
 import { IoMdChatbubbles } from "react-icons/io";
 import { BsTerminalSplit } from "react-icons/bs";
-
+import { storageAdapter, USER_ID_KEY } from "@/features/chat/utils/storageAdapter";
 import "./LandingPage.css";
 
 const LandingPage = () => {
@@ -54,10 +54,16 @@ const LandingPage = () => {
 
   // Navegación
   const goToChat = () => {
-    if (user?.id) {
-      navigate(`/c/${user.id}`);
-    } else {
+    const dbUserId = storageAdapter.getItem(USER_ID_KEY);
+    if (user && dbUserId) {
+      // Si está logueado y tenemos su UUID de DB, vamos a su chat privado
+      navigate(`/chat/${dbUserId}`);
+    } else if (user && !dbUserId) {
+      // Si esta logeado pero no tiene UUID va al useSyncUser el se encarga
       navigate("/chat");
+    } else{
+      // si es un invitado
+      navigate("/chat")
     }
   };
 

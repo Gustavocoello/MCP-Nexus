@@ -1,5 +1,6 @@
-// src/services/storageAdapter.js
+// src/features/chat/utils/storageAdapter.jsx
 
+export const USER_ID_KEY = 'db_user_id';
 const STORAGE_KEY = 'activeChatId';
 
 export const storageAdapter = {
@@ -11,7 +12,12 @@ export const storageAdapter = {
   },
   setItem: (value, key = STORAGE_KEY) => {
     if (typeof window !== 'undefined' && window.localStorage) {
-      localStorage.setItem(key, value);
+      // 🛡️ Evitamos guardar undefined o nulls accidentales como string "null"
+      if (value === null || value === undefined) {
+        localStorage.removeItem(key);
+      } else {
+        localStorage.setItem(key, value);
+      }
     }
   },
   removeItem: (key = STORAGE_KEY) => {

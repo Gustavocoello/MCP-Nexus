@@ -3,14 +3,17 @@ import { useEffect, useState } from 'react';
 import { useAuthContext } from '@/features/auth/components/context/AuthContext'; // Ajustada ruta de importación
 import { authLogger } from '@/components/controller/log/logger.jsx';
 import { useUser } from '@clerk/clerk-react';
+import { storageAdapter, USER_ID_KEY } from '@/features/chat/utils/storageAdapter';
 
 // variable de entorno
 const API_BASE_URL = import.meta.env.VITE_URL
+const TOKEN_KEY = 'jarvis_token';
 
 export const useSyncUser = () => {
     // Usamos useUser de Clerk para asegurar que el objeto user esté completamente cargado.
     const { isLoaded, isSignedIn } = useUser();
     const { getToken } = useAuthContext();
+    const [dbUserId, setDbUserId] = useState(null);
     
     // Estado para controlar si el usuario ya fue sincronizado en esta sesión
     const [isSynced, setIsSynced] = useState(false);
@@ -32,7 +35,7 @@ export const useSyncUser = () => {
 
                     if (token) {
                         // GUARDAR EN LOCALSTORAGE: Para que esté disponible al recargar
-                        localStorage.setItem('jarvis_token', token);
+                        storageAdapter.setItem(token, TOKEN_KEY);
                         authLogger.info("✅ Token guardado en LocalStorage.");
                     }
 
@@ -45,14 +48,19 @@ export const useSyncUser = () => {
                         },
                     });
 
-                    if (!response.ok) {
-                        // Intentamos leer el error del cuerpo si es un JSON
+                    if (response.ok) {
+                        const data = await response.json();
+                        // Guardamos el UUID usando el adpatador
+                        setDbUserId(data.user_id);
+                        storageAdapter.setItem(data.user_id, USER_ID_KEY);
+                        setIsSynced(true);
+                        authLogger.info("Perfil sincronizado exitosamente. User ID en DB:", data.user_id);
+                    } else {
                         const errorData = await response.json();
-                        throw new Error(errorData.error || `Sincronización fallida: ${response.status}`);
+                        throw new Error(`Error ${response.status}: ${errorData.message || 'Error desconocido'}`);
                     }
 
                     authLogger.info("Perfil sincronizado exitosamente.");
-                    setIsSynced(true);
 
                 } catch (error) {
                     authLogger.error("Error de Sincronización:", error);
@@ -68,11 +76,14 @@ export const useSyncUser = () => {
         // Si el usuario se desloguea, reseteamos el estado de sincronización.
         if (isLoaded && !isSignedIn) {
             setIsSynced(false);
-            localStorage.removeItem('jarvis_token'); // 🧹 Limpiar rastro al salir
-            authLogger.info("Sesión cerrada: Token eliminado.");
+            setDbUserId(null);
+            storageAdapter.removeItem(TOKEN_KEY);
+            storageAdapter.removeItem(USER_ID_KEY);
+            storageAdapter.removeItem(); // Limpia activeChatId por defecto
+            authLogger.info("Sesión cerrada: Datos eliminados del storage.");
         }
 
     }, [isLoaded, isSignedIn, getToken, isSynced]);
 
-    return { isSynced, syncError, isLoadingSync };
+    return { isSynced, dbUserId, syncError, isLoadingSync };
 };

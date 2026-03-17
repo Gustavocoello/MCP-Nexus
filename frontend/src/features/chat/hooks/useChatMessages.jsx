@@ -91,10 +91,12 @@ export default function useChatMessages(chatId, options = {}) {
     prevChatRef.current = chatId;
   }, [chatId, queryClient]);
 
-  const patchMessageInCache = useCallback((messageId, updater) => {
-    log.info(`[PATCH] Actualizando mensaje: ${messageId}`);
+  const patchMessageInCache = useCallback((messageId, updater, overrideId = null) => {
+    const targetId = overrideId || chatId;
+    if (!targetId) return;
+    log.info(`[PATCH] Actualizando mensaje: ${messageId} en chat: ${targetId}`);
     
-    queryClient.setQueryData(['chatMessages', chatId], old => {
+    queryClient.setQueryData(['chatMessages', targetId], old => {
       if (!old) {
         log.warn('[PATCH] No hay datos en cache para actualizar');
         return old;
@@ -119,10 +121,15 @@ export default function useChatMessages(chatId, options = {}) {
     });
   }, [queryClient, chatId]);
 
-  const appendMessages = useCallback((msgs) => {
-    log.info(`[APPEND] Añadiendo ${msgs.length} mensajes nuevos`);
-    appendMessageToCache(queryClient, chatId, msgs);
-    trimChatCache(queryClient, chatId, keep);
+  const appendMessages = useCallback((msgs, overrideId = null) => {
+    const targetId = overrideId || chatId;
+    if (!targetId) {
+        log.error("No hay chatId para hacer APPEND");
+        return;
+    }
+    log.info(`[APPEND] Añadiendo mensajes al chat: ${targetId}`);
+    appendMessageToCache(queryClient, targetId, msgs);
+    trimChatCache(queryClient, targetId, keep);
   }, [queryClient, chatId, keep]);
 
   return {

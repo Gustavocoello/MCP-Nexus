@@ -49,3 +49,13 @@ export const deleteChat = async (chatId) => {
     throw new Error(error.response?.data?.error || 'Error al borrar el chat');
   }
 };
+
+// 6. Editar título del chat (opcional)
+export const updateChatTitle = async (chatId, newTitle) => {
+  try {
+    const res = await apiClient.put(`/api/chat/${chatId}/title`, { title: newTitle });
+    return res.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.error || 'Error al actualizar el título del chat');
+  }
+};

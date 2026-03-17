@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from '@/components/layout/Sidebar/Sidebar';
 import ChatPage from '@/features/chat/ChatPage';
 import ConfigPage from '@/features/config/ConfigPage';
@@ -17,7 +17,7 @@ import {inject} from '@vercel/analytics';
 import { SignIn, SignUp, useUser } from "@clerk/clerk-react";
 import { useSyncUser } from '@/features/auth/hook/useSyncUser';
 import { useAuthContext } from '@/features/auth/components/context/AuthContext';
-import { setAuthToken as setApiServiceAuthToken } from '@/service/api_service'; 
+import { setAuthToken as setApiServiceAuthToken } from '@/service/api'; 
 import { authLogger } from '@/components/controller/log/logger.jsx';
 import Logger from '@/components/controller/log/logger.jsx';
 import '@/styles/App.css';
@@ -31,8 +31,9 @@ function App() {
   const [theme, setTheme] = useState(document.documentElement.getAttribute('data-theme'));
   const location = useLocation();
   const { isSignedIn } = useUser();
-  const { isSynced, syncError, isLoadingSync } = useSyncUser();
+  const { dbUserId, isSynced, syncError } = useSyncUser();
   const { getToken } = useAuthContext();
+  const navigate = useNavigate();
 
   useEffect(() => {
   // Solo configuramos el token si el usuario ya pasó todos los factores (2FA incluido)
@@ -62,13 +63,17 @@ function App() {
 
   // Determinar si mostrar sidebar basado en la ruta actual
   const showSidebar = () => {
-  const { pathname } = location; // Extraemos pathname directamente de location
-  return (
-    pathname === '/dashboard' || 
-    pathname === '/chat' || 
-    pathname.startsWith('/c/')
-  );
-};
+    const { pathname } = location; // Extraemos pathname directamente de location
+    return (
+      pathname === '/dashboard' || 
+      pathname.startsWith('/chat/')
+    );
+  };
+
+  const handleAuthRequired = () => {
+    authLogger.warn('Acción de chat requiere autenticación, redirigiendo...');
+    navigate('/login');
+  };
 
   return (
     <div className="app-container">
@@ -88,12 +93,21 @@ function App() {
             <div className="main-content">
               <Routes>
                 {/* Chat invitados */}
-                <Route path="/chat" element={<ChatPage guest />} />
+                <Route path="/chat" element={
+                  isSignedIn && isSynced
+                    ? <Navigate to={`/chat/${dbUserId}`} replace /> 
+                    : <ChatPage guest onUnauthorized={handleAuthRequired}/> 
+                } />
 
                 {/* Chat usuarios */}
                 <Route 
-                  path="/c/:userId" 
-                  element={isSignedIn ? <ChatPage /> : <SignIn redirectUrl={location.pathname} />} 
+                  path="/chat/:userId" 
+                  element={
+                    isSignedIn && isSynced
+                    ? <ChatPage onUnauthorized={handleAuthRequired}/>
+                    : isSignedIn
+                      ? <div className="loading-screen">Sincronizando con Jarvis...</div>
+                      : <SignIn redirectUrl={location.pathname} />} 
                 >
                   <Route 
                     path="settings" 
@@ -104,7 +118,12 @@ function App() {
                 {/* Dashboard */}
                 <Route
                   path="/dashboard"
-                  element={isSignedIn ? <DashboardPage /> : <SignIn redirectUrl="/dashboard" />}
+                  element={
+                    isSignedIn && isSynced
+                    ? <DashboardPage /> 
+                    : isSignedIn
+                      ? <div className="loading-screen">Sincronizando con Jarvis...</div>
+                      : <SignIn redirectUrl="/dashboard" />}
                 />
                 
                 {/* Auth routes - simplificadas */}

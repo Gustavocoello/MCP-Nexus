@@ -1,18 +1,16 @@
 // src/features/config/ConfigPage.jsx
-import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import ConfigDrawer from './components/ConfigDrawer';
+//import { useJarvis } from '../../context/JarvisProvider';
 import './components/ConfigDrawer.css';
 
-const ConfigPage = () => {
-  const navigate = useNavigate();
-  const { userId } = useParams();
-
+const ConfigPage = ({ onCustomClose }) => {
+  // Ahora la lógica de "cerrar" se la pasamos desde afuera
+  // o usamos una por defecto.
   const handleClose = () => {
-    // 1. Verificamos si tenemos el userId
-    if (userId) {
-      navigate(`/c/${userId}`, { replace: true });
+    if (onCustomClose) {
+      onCustomClose();
     } else {
-      navigate('/', { replace: true });
+      console.log("Config cerrado");
     }
   };
 

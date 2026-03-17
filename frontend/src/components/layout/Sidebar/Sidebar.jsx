@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
-import MarkdownIt from 'markdown-it';
 import { CgMoreAlt } from "react-icons/cg";
-import { useAuth } from '@clerk/clerk-react';
 import { TbLayoutSidebar } from "react-icons/tb";
 import { FaChartBar, FaCog } from 'react-icons/fa';
 import { Link, useLocation } from 'react-router-dom';
@@ -10,13 +8,12 @@ import { chatEvents } from '@/features/chat/utils/chatEvents';
 import { hookLogger } from '@/components/controller/log/logger';
 import ChatMenu from '@/features/chat/components/ChatMenu/ChatMenu';
 import AnimatedJarvis from '@/components/ui/Animated/AnimatedJarvis';
+import { storageAdapter, USER_ID_KEY } from '@/features/chat/utils/storageAdapter';
 import { useAuthContext } from '@/features/auth/components/context/AuthContext';
 import '../Sidebar/Sidebar.css';
 
 // Servicios
 import { getAllChats, getChatMessages, deleteChat } from '@/service/chatService';
-
-const md = new MarkdownIt();
 
 const Sidebar = () => {
   const location = useLocation();
@@ -24,10 +21,13 @@ const Sidebar = () => {
   const [chats, setChats] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
-  const { user } = useAuthContext();
-  const { isLoaded } = useAuth();
-  const loading = !isLoaded;
+  const dbUserId = storageAdapter.getItem(USER_ID_KEY);
+  const { isAuthenticated } = useAuthContext();
 
+  // --- Lógica de navegación dinámica ---
+  // Función para generar la ruta base del usuario (ahora /chat/uuid)
+  const getUserChatPath = () => dbUserId ? `/chat/${dbUserId}` : '/chat';
+  
   // Cargar los chats desde localStorage
   const fetchAndSetChats = async () => {
     try {
@@ -38,6 +38,11 @@ const Sidebar = () => {
         date: chat.updated_at || chat.created_at
       }));
       setChats(chatsConTitulo);
+      const savedId = storageAdapter.getItem('activeChatId');
+        if (savedId) {
+          // Opcional: emitir evento para sincronizar ChatPage
+          chatEvents.emit('chat-loaded', { chatId: savedId });
+        }
     } catch (error) {
       hookLogger.error(' [Sidebar] Error cargando chats:', error);
     }
@@ -47,24 +52,31 @@ const Sidebar = () => {
     chatEvents.emit('sidebar-toggled', { isOpen });
   }, [isOpen]);
 
+  // Efecto Único de Carga Inicial y Cambio de Auth
+  // Simplifica el useEffect de carga inicial
   useEffect(() => {
-    if (user && !loading) {
-      fetchAndSetChats();
+    const token = storageAdapter.getItem('jarvis_token'); // Usa la key real de tu sync
+    
+    // Si tenemos auth de Clerk Y el token ya está en el storage, DISPARAMOS.
+    if (isAuthenticated && token) {
+      hookLogger.info(' [Sistema] Token detectado. Cargando datos...');
+      fetchAndSetChats(); 
+    } else {
+      hookLogger.warn(' [Sistema] Esperando token en Storage para disparar API...');
     }
-  }, [user, loading]);
+  }, [isAuthenticated]); // Quita isApiReady de aquí si está dando problemas
 
-  useEffect(() => {
-    fetchAndSetChats();
-  }, []);
   // Escuchar eventos de actualización de chats
   useEffect(() => {
     const unsubscribe = chatEvents.on('chats-updated', () => {
-      hookLogger.info(' [Sidebar] Chats actualizados, recargando lista...');
-      fetchAndSetChats();
+      if (isAuthenticated) { 
+        hookLogger.info(' [Sidebar] Chats actualizados, recargando lista...');
+        fetchAndSetChats();
+      }
     });
 
-    return () => unsubscribe(); // Limpieza limpia
-  }, []);
+    return () => unsubscribe();
+  }, [isAuthenticated]);
 
   // Escuchar cambios externos en el chat activo
   useEffect(() => {
@@ -106,8 +118,8 @@ const Sidebar = () => {
       const updatedChats = chats.filter(chat => chat.id !== chatId);
       setChats(updatedChats);
 
-      if (localStorage.getItem('activeChatId') === chatId) {
-        localStorage.removeItem('activeChatId');
+      if (storageAdapter.getItem() === chatId) { //get.Item() para usar el adaptador antes estaba asi getItem('activeChatId')
+        storageAdapter.removeItem();
       }
 
       if (currentChatId === chatId) {
@@ -156,7 +168,7 @@ const Sidebar = () => {
       {/* Settings flotante - SOLO VISIBLE CUANDO SIDEBAR ESTÁ CERRADO */}
       {!isOpen && (
         <Link 
-          to={`/c/${user?.id}/settings`}
+          to={`${getUserChatPath()}/settings`}
           state={{ returnTo: location.pathname }}
           className={`sidebar-settings-floating ${location.pathname.endsWith('/settings') ? 'active' : ''}`}
         >
@@ -254,7 +266,7 @@ const Sidebar = () => {
         {/* Settings - SOLO VISIBLE CUANDO EL SIDEBAR ESTÁ ABIERTO - FIJO AL FINAL */}
         {isOpen && (
           <Link 
-            to={`/c/${user?.id}/settings`}
+            to={`${getUserChatPath()}/settings`}
             state={{ returnTo: location.pathname }}
             className={`sidebar-item sidebar-settings ${location.pathname.endsWith('/settings') ? 'active' : ''}`}
           >

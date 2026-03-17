@@ -1,506 +1,239 @@
+// src/features/chat/ChatPage.jsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Outlet, useLocation, useParams, Navigate, Link } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import MarkdownIt from 'markdown-it';
+import { TbMessagePlus } from "react-icons/tb";
+
+// Componentes y Hooks
 import SearchBar from '@/components/ui/SearchBar/SearchBar';
-import useChatMessages from '../chat/hooks/useChatMessages';
 import MessageList from './components/MessageList/MessageList';
 import LoginButton from '@/components/layout/LoginButton/LoginButton';
-import { useAuth } from '@clerk/clerk-react';
 import { useAuthContext } from '@/features/auth/components/context/AuthContext';
-import { TbMessagePlus } from "react-icons/tb";
-import { getAllChats, createChat} from '../../service/chatService';
-import { sendMessage, sendAnonymousMessage} from '../../service/api_service';
-import { hookLogger, streamLogger } from '@/components/controller/log/logger.jsx';
+import useChatMessages from '../chat/hooks/useChatMessages';
+import { useChatActions } from '../chat/hooks/useChatActions';
+import { useChatUI } from '../chat/hooks/useChatUI';
+import { getAllChats, createChat, updateChatTitle } from '../../service/chatService';
 import { chatEvents } from '../chat/utils/chatEvents';
 import { storageAdapter } from '../chat/utils/storageAdapter';
+import { streamLogger } from '@/components/controller/log/logger.jsx';
+import { useChatState } from '../chat/hooks/useChatState';
+import { isApiReady } from '@/service/api';
 
-// Cambiando de Markdown a HTML
-const md = new MarkdownIt({
-  html: false, // Antes True ahora False para no escaparse
-  linkify: true,
-});
+const md = new MarkdownIt({ html: false, linkify: true });
 
-//  Contiene todos componentes efectos de la interfaz de Jarvis
-const ChatPage = () => {
-  
-  // Estados
+const ChatPage = ({ 
+  guest = false, 
+  onUnauthorized = () => console.warn("Login required"),
+  renderLogo = null 
+}) => {
   const { user, isAuthenticated } = useAuthContext();
-  const { isLoaded } = useAuth();
-  const loading = !isLoaded;
-  const { userId } = useParams(); // Para futuras mejoras multiusuario
-  const location = useLocation();
-  const [localMessages, setLocalMessages] = useState([]);
-  const [isJarvisTyping, setIsJarvisTyping] = useState(false);
-  const [hasSentMessage, setHasSentMessage] = useState(false);
-  const [activeChatId, setActiveChatId] = useState(null);
-  const [abortController, setAbortController] = useState(null);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const chatBottomRef = useRef(null);
-  const [notification, setNotification] = useState(null);
-  const [pendingContext, setPendingContext] = useState([]);
-  const isChatRoute = location.pathname.startsWith('/c/');
-  const isConfigOpen = location.pathname.endsWith('/settings');
-  const scrollInitialized = useRef(false);
 
-  // ---------------- HOOKS PERSONALIZADOS ----------------  
-  // Hook personalizado para manejar mensajes del chat
+  // --- HOOKS PERSONALIZADOS ---
   const {
-    messages: cachedMessages,
-    appendMessageToCache,
-    updateMessageInCache,
-    lastUserMessageId, // <-- Nuevo: para el scroll
-    isSuccess,         // <-- Nuevo: para saber cuándo terminó de cargar la RAM
-  } = useChatMessages(activeChatId, {
-    enabled: isChatRoute && !!activeChatId,
-    keep: 10, // Mantener máximo 10 mensajes en la memoria de 3.3GB
-  });
-  // -------------------- CALLBACKS ---------------------
-  // Función para cargar todos los chats del usuario
-  const loadAllChats = async () => {
-  try {
-    const chats = await getAllChats(); // Llama al backend
-    return chats;
-  } catch (error) {
-    streamLogger.error('Error cargando chats:', error);
-    return [];
-  } 
-  };
+    activeChatId,
+    setActiveChatId,
+    localMessages,
+    setLocalMessages,
+    hasSentMessage,
+    setHasSentMessage
+  } = useChatState();
 
-  // Función para crear nuevo chat
-  const createNewChat = async () => {
-    try {
-      const newChat = await createChat({}); // Backend genera el ID
-      setActiveChatId(newChat.id);
-      storageAdapter.setItem(newChat.id);
-      setHasSentMessage(false);
+  const { 
+    messages: cachedMessages, 
+    appendMessageToCache, 
+    updateMessageInCache, 
+    lastUserMessageId, 
+    isSuccess 
+  } = useChatMessages(activeChatId, { keep: 10 });
 
-      chatEvents.emit('chats-updated', { chatId: newId });
+  const { 
+    handleNewMessage, 
+    isJarvisTyping, 
+    isStreaming, 
+    stopGeneration 
+  } = useChatActions(activeChatId, isAuthenticated, { appendMessageToCache, updateMessageInCache, md });
 
-    } catch (error) {
-      streamLogger.error('Error creando chat:', error);
-    }
-  };
+  const {
+    notification,
+    pendingContext,
+    setPendingContext,
+    chatBottomRef,
+    scrollToBottom
+  } = useChatUI(isSuccess, lastUserMessageId, activeChatId);
 
-  // Para manejar el stop generation
-  const handleStopGeneration = () => {
-    if (abortController) {
-      abortController.abort();
-
-      setIsStreaming(false);
-      setIsJarvisTyping(false);
-    }
-  };
-
-  // ==========  Función para manejar nuevos mensajes ===========
-  const handleNewMessage = useCallback(async (message, contextFromFile = '', image = null, tool = '') => {
-  if (message.role !== 'user') return;
-   
-  const controller = new AbortController();
-  setAbortController(controller);
-  setIsStreaming(true);
-  const userContent = message.content ?? message.text ?? '';
-  const jarvisTempId = `jarvis-${Date.now()}`;
+  // --- EFECTOS DE ORQUESTACIÓN ---
   
-  const combinedContext = Array.isArray(contextFromFile)
-  ? contextFromFile.map(c => `🗂️ ${c.name}:\n${c.text}`).join('\n\n')
-  : contextFromFile;
-
-  streamLogger.info("🔧 Tool seleccionada:", tool); // hay que eliminar
-
-  const fullPrompt = combinedContext
-  ? `Archivo recibido:\n${combinedContext}\n\nPregunta del usuario:\n${userContent}`
-  : userContent;
-
-
-  // Cambio clave aquí: Para el usuario, usamos texto plano sin markdown
-  const escapeHtml = (text) =>
-  text
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\n/g, '<br>');
-
-  const userHtml = `<p>${escapeHtml(userContent)}</p>`;
-  const timestamp = Date.now();
-  const htmlParts = [];
-
-  const currentImage = image
-
-  if (currentImage) {
-    htmlParts.push(`<img src="${currentImage}" class="chat-image-upload" />`);
-  }
-
- if (userContent) {
-   htmlParts.push(`<p>${escapeHtml(userContent)}</p>`);
- }
-
- const combinedHtml = htmlParts.join('<br><br>');
-
- const newMessages = [];
-
- if (htmlParts.length > 0) {
-   newMessages.push({
-     id: `user-${timestamp}`,
-     role: 'user',
-     type: 'html',
-     content: userContent,
-     html: combinedHtml,
-   });
- }
-
- newMessages.push({
-   id: jarvisTempId,
-   role: 'assistant',
-   content: '',
-   html: '',
-   stable: false, // Indica que está en proceso
- });
-
-  appendMessageToCache(newMessages);
-  setHasSentMessage(true);
-  setIsJarvisTyping(true);
-
-  try {
-    let fullReply = '';
-
-    let res;
-    // Mensajes para usuarios no logeados
-    if (isAuthenticated === false) {
-      const anonCount = parseInt(localStorage.getItem('anonMessageCount') || '0', 10);
-
-      if (anonCount >= 5) {
-        fullReply = "Has alcanzado el límite de 5 mensajes gratuitos. Por favor inicia sesión para continuar.";
-        updateMessageInCache(jarvisTempId, { content: fullReply, stable: true });
-        showNotification("Has alcanzado el límite de mensajes gratuitos. Inicia sesión para continuar.");
-        setIsJarvisTyping(false);
-        setIsStreaming(false);
-        return;
-      }
-
-      // Solo se hace la solicitud si no ha alcanzado el límite
-      res = await sendAnonymousMessage(fullPrompt);
-
-      // Incrementar contador después de la respuesta
-      localStorage.setItem('anonMessageCount', String(anonCount + 1));
-      streamLogger.info('Mensajes de usuarios no registrados:', anonCount );
-
-      if (res.result) {
-        fullReply = res.result;
-      } else if (res.error) {
-        fullReply = res.error;
-      }
-
-      updateMessageInCache(jarvisTempId, { content: fullReply, stable: true });
-    // Mensajes para usuarios logeados
-    } else {
-      res = await sendMessage({
-        chatId: activeChatId,
-        text: userContent,
-        hidden_context: combinedContext,
-        tool: tool
-      }, (partial) => {
-        // streaming parcial para usuarios logueados
-        streamLogger.info('partial recibido:', partial);
-        
-
-        let cleanPartial = partial;
-
-        if (partial.includes('[NOTIFICATION]')) {
-          const parts = partial.split('[NOTIFICATION]');
-          cleanPartial = parts[0].trim();
-          const notificationText = parts[1]?.trim();
-          if (notificationText) {
-            showNotification(notificationText);
-          }
-        }
-
-        updateMessageInCache(jarvisTempId, {
-          id: jarvisTempId,
-          role: 'assistant',
-          content: cleanPartial,
-          html: md.render(cleanPartial),
-          stable: false // Sigue en proceso
-        });
-        
-      }, controller.signal);
-      updateMessageInCache(jarvisTempId, { stable: true });
+  // 0. Proteccion desacoplada 
+  useEffect(() => {
+    // En lugar de usar Navigate, usamos un callback
+    if (!isAuthenticated && !guest) {
+      onUnauthorized();
     }
-  } catch (err) {
-    if (err.name !== 'AbortError') {
-      streamLogger.error(err);
-      updateMessageInCache(jarvisTempId, { 
-      stable: true, 
-      html: '<p style="color: red;">Error al procesar la solicitud.</p>' 
-    });
-    }
-
-  } finally {
-    setIsJarvisTyping(false);
-    setIsStreaming(false);
-    setAbortController(null);
-    setPendingContext([]);
-    updateMessageInCache(jarvisTempId, (prev) => ({ ...prev, stable: true })); 
-  }
-}, [activeChatId, isAuthenticated]);
-
-
-  // Funcion para scrollear directamente al final
-  const scrollToBottom = () => {
-    if (chatBottomRef.current) {
-      chatBottomRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-
-  //Funcion para mostrar la notificacion del backend - Memoria-
-  const showNotification = (msg) => {
-    setNotification(msg);
-    setTimeout(() => setNotification(null), 4000); // <-- La notificación dura 4 segundos y desaparece
-    };
-
-  // Funcion para limpiar el contexto pendiente
-  const clearPendingContext = () => {
-    setPendingContext([]);
-  };
-
-  // Funcion para eliminar un contexto pendiente por nombre
-  const removeContextByName = (name) => {
-    setPendingContext(prev => prev.filter(ctx => ctx.name !== name));
-  };
+  }, [isAuthenticated, guest, onUnauthorized]);
   
-  // ------------------- EFECTOS --------------------------
-
-  // Efecto para saltar a la última pregunta (Anclaje)
-  useEffect(() => {
-    if (isSuccess && lastUserMessageId && !scrollInitialized.current) {
-      const timer = setTimeout(() => {
-        const element = document.getElementById(`msg-${lastUserMessageId}`);
-        if (element) {
-          streamLogger.info(`[Anclaje] Saltando a la última pregunta: ${lastUserMessageId}`);
-          element.scrollIntoView({ behavior: 'auto', block: 'start' });
-          scrollInitialized.current = true;
-        }
-      }, 150); // Pequeño margen para que el HTML se renderice
-      return () => clearTimeout(timer);
-    }
-  }, [isSuccess, lastUserMessageId, activeChatId]);
-
-  // Resetear el ancla si cambias de chat
-  useEffect(() => {
-    scrollInitialized.current = false;
-  }, [activeChatId]);
-
-  // Efecto: Sincronizar mensajes cacheados con mensajes locales
-  useEffect(() => {
-    const formatted = cachedMessages.map(m => {
-      if (m.role === 'assistant') {
-        return { ...m, html: md.render(m.content || '') };
-      } else {
-        const userHtml = (m.content || '')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;');
-        return { ...m, html: `<p>${userHtml}</p>` };
-      }
-    });
-    setLocalMessages(formatted);
-  }, [cachedMessages]);
-
-
-  // Efecto: Inicializar chat activo, solo seteamos activeChatId, NO mensajes
+  // 1. Inicialización de Chat (Punto 4)
   useEffect(() => {
     const initChat = async () => {
-      const allChats = await loadAllChats();
-      if (allChats.length === 0) return;
+      if (!isAuthenticated) return; // Solo inicializamos si el usuario está autenticado
+      try {
+        const allChats = await getAllChats();
+        if (!allChats || allChats.length === 0) return;
 
-      const savedChatId = storageAdapter.getItem();
-      let chatToLoad = allChats.find(chat => chat.id === savedChatId);
-
-      if (!chatToLoad) {
-        chatToLoad = allChats[0]; // fallback: primer chat si no se encontró el guardado
-      }
-
-      // Eliminamos la carga manual de mensajes y el setMessages
-      setActiveChatId(chatToLoad.id);
-      storageAdapter.setItem(chatToLoad.id);
+        const savedChatId = storageAdapter.getItem();
+        const chatToLoad = allChats.find(c => c.id === savedChatId) || allChats[0];
+        if (chatToLoad) {
+          setActiveChatId(chatToLoad.id);
+          }        
+      } catch (e) { 
+        streamLogger.error("Error al cargar chats iniciales:", e.message); }
     };
 
-    initChat();
-  }, []);
-
-  // Efecto para escuchar eventos de carga chat, solo setActiveChatId
-  // Un solo lugar para reaccionar al cambio de chat
-  useEffect(() => {
-    if (activeChatId) {
-      storageAdapter.setItem(activeChatId);
-      // Al cambiar el activeChatId, el hook useChatMessages 
-      // automáticamente detectará el cambio y traerá los mensajes nuevos.
+    const token = storageAdapter.getItem('jarvis_token');
+    if (isAuthenticated && token) {
+      initChat();
+    } else {
+      streamLogger.info(" [ChatPage] Esperando autenticación y token...");
     }
-  }, [activeChatId]);
-  
-  // Escuchar al sidebar de forma limpia
-  useEffect(() => {
-    const handleChatLoaded = (data) => {
-      if (data?.chatId && data.chatId !== activeChatId) {
-        setActiveChatId(data.chatId);
-      }
-    };
-    // chatEvents.on devuelve la función de desuscripción directamente
-    const unsubscribe = chatEvents.on('chat-loaded', handleChatLoaded);
-    return () => unsubscribe();
-  }, [activeChatId]);
+  }, [isAuthenticated, setActiveChatId]);
 
-  // Cada vez que cambia el chat activo, actualiza localStorage
-  useEffect(() => {
-    if (activeChatId) {
-      storageAdapter.setItem(activeChatId);
-    }
-  }, [activeChatId]);
-
-  // Efecto: Limpiar contador de mensajes anónimos al autenticarse
-  useEffect(() => {
-    if (isAuthenticated === true) {
-      localStorage.removeItem('anonMessageCount');
-    }
-  }, [isAuthenticated]);
-  
-  if (loading) {
-    streamLogger.info('Usuario actual:', user);
-    return <div className="loading-screen">Cargando usuario...</div>;
-  
-  }
-  // Efecto: Vigilar cambios en la RAM y actualizar mensajes locales
-  // ChatPage.jsx - Efecto de Sincronización Corregido
+  // 2. Sincronizar Caché RAM -> UI Local (Punto 3 y 9)
   useEffect(() => {
     if (!cachedMessages || cachedMessages.length === 0) return;
-  
+    
     const formatted = cachedMessages.map(m => {
-      const isAssistant = m.role === 'assistant';
-      
-      // Si es asistente y NO tiene contenido aún (está empezando)
-      if (isAssistant && !m.content && !m.html) {
-        return { ...m, html: '<span class="typing-dots">...</span>', stable: false };
+      if (m.role === 'assistant') {
+        return { ...m, html: m.content ? md.render(m.content) : '<span class="typing-dots">...</span>' };
       }
-  
-      // GENERAR HTML SIEMPRE QUE NO EXISTA
-      // Esto asegura que si viene null del backend (como en tu JSON), se genere ahora
-      let generatedHtml = m.html;
-  
-      if (!generatedHtml) {
-        if (isAssistant) {
-          generatedHtml = md.render(m.content || '');
-        } else {
-          // Escapado de seguridad para mensajes del usuario
-          const safeContent = (m.content || '')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/\n/g, '<br>');
-          generatedHtml = `<p>${safeContent}</p>`;
-        }
-      }
-  
-      return {
-        ...m,
-        html: generatedHtml,
-        stable: m.stable !== undefined ? m.stable : true
-      };
+      const safe = (m.content || '').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+      return { ...m, html: `<p>${safe}</p>` };
     });
-  
-    streamLogger.info("Sincronizando mensajes locales con HTML generado");
+
     setLocalMessages(formatted);
-  
-    // Control del indicador de escritura
-    const lastMsg = formatted[formatted.length - 1];
-    if (lastMsg && lastMsg.role === 'assistant' && lastMsg.stable === false) {
-      setIsJarvisTyping(true);
-      setIsStreaming(true);
-    } else if (!isStreaming) {
-      setIsJarvisTyping(false);
+
+    // LÓGICA DE TÍTULO: Si es el primer mensaje del usuario, avisamos al Sidebar
+    if (!hasSentMessage && formatted.length > 0) {
+      setHasSentMessage(true);
+      // Emitimos evento para que el Sidebar recargue y vea el nuevo chat/título
+      chatEvents.emit('chats-updated');
     }
-  }, [cachedMessages, isStreaming]);
-  
-  // Efecto: Loguear estado del chat en cada cambio de mensajes
+  }, [cachedMessages, hasSentMessage]);
+
+  // 3. Escuchar Sidebar (Punto 6)
   useEffect(() => {
-    if (localMessages.length > 0) {
-      streamLogger.group('📊 ESTADO DEL CHAT', () => {
-        streamLogger.info('Chat ID:', activeChatId);
-        streamLogger.info('Total en pantalla:', localMessages.length);
-        streamLogger.info('Total en caché:', cachedMessages?.length || 0);
-        
-        // Ver últimos 3 mensajes
-        const last3 = localMessages.slice(-3).map(m => ({
-          id: m.id,
-          role: m.role,
-          preview: (m.content || '').substring(0, 30) + '...'
-        }));
-        streamLogger.table(last3);
-      });
+    const unsubscribe = chatEvents.on('chat-loaded', (data) => {
+      if (data?.chatId) setActiveChatId(data.chatId);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 4. Limpieza de anónimos (Punto 8)
+  useEffect(() => {
+    if (isAuthenticated) localStorage.removeItem('anonMessageCount');
+  }, [isAuthenticated]);
+
+  // 5. Persistencia ID (Punto 5)
+  useEffect(() => {
+    if (activeChatId) storageAdapter.setItem(activeChatId);
+  }, [activeChatId]);
+
+  // 6. Si el ID cambia a null (nuevo chat), limpiamos la pantalla
+  useEffect(() => {
+    if (!activeChatId) {
+      setLocalMessages([]);
     }
-  }, [activeChatId, localMessages.length]);
+  }, [activeChatId]);
 
+  const createNewChat = async () => {
+    try {
+      const newChat = await createChat({ title: "Nuevo Chat" });
+
+      setActiveChatId(newChat.id);
+      setLocalMessages([]);
+      setHasSentMessage(false);
+      storageAdapter.setItem(newChat.id);
+      chatEvents.emit('chats-updated', { chatId: newChat.id });
+      streamLogger.info("Nuevo chat creado y pantalla limpia.");
+    } catch (error) {
+      streamLogger.error("Error creando nuevo chat:", error);
+    }
+  };
   
-  // Protección de ruta: si no está autenticado y está en /c/:userId → redirigir a login
-    if (!loading && !isAuthenticated && location.pathname.startsWith('/c/')) {
-     return <Navigate to="/login" replace />;
-   }
-
-
   return (
-  <div className="page">
-    {/* Aquí va el botón para iniciar sesion si No esta autenticado*/}
-    {!isAuthenticated && <LoginButton />} 
+    <div className="page">
+      {!isAuthenticated && <LoginButton />}
+      {isAuthenticated && (
+        <button className="new-chat-button" onClick={createNewChat}>
+          <TbMessagePlus size={23} />
+        </button>
+      )}
 
-    {/* Botón de nuevo chat */}
-    {isAuthenticated && (
-    <button className="new-chat-button" onClick={createNewChat}>
-      <TbMessagePlus size={23} />
-    </button>
-    )}
+      <div className="content-area">
+        <div className="jarvis-header">
+          <img src="/icons/jarvis00.png" alt="Jarvis" className="jarvis-logo1" />
+          <h1 className="jarvis-title">Hi, I'm Jarvis.</h1>
+        </div>
+        <h4>How can I help you today?</h4>
 
-    {/* Área de contenido */}
-    <div className="content-area">
-      {/* Encabezado */}
-      <div className="jarvis-header">
-        <img src="/icons/jarvis00.png" alt="Jarvis Icon" className="jarvis-logo1" />
-        <h1 className="jarvis-title">Hi, I'm Jarvis.</h1>
+        <MessageList messages={localMessages} />
+        <div ref={chatBottomRef} />
+
+        {isJarvisTyping && <div className="typing-indicator">Jarvis está escribiendo...</div>}
       </div>
 
-      {/* Mensaje de bienvenida */}
-      <h4>How can I help you today?</h4>
+      <SearchBar 
+        onSearch={async (query, context, img, tool) => {
+          let currentChatId = activeChatId;
 
-      {/* Lista de mensajes */}
-      <MessageList messages={localMessages || []} />
-      <div ref={chatBottomRef}/>  {/*DIV vacío para controlar el scroll */ }
+          // 1. SI NO HAY CHAT ACTIVO, LO CREAMOS PRIMERO
+          if (!currentChatId || currentChatId === 'null') {
+            // CASO A: USUARIO AUTENTICADO (ID REAL - LLAMA A createChat del Backend)
+            if (isAuthenticated) {
+              try {
+                streamLogger.info("Creando chat en DB para usuario autenticado...");
+                const newChat = await createChat({ title: query.trim().substring(0, 30) });
+                currentChatId = newChat.id;
+                chatEvents.emit('chats-updated', { chatId: currentChatId });
+              } catch (error) {
+                streamLogger.error("Error al crear chat en DB", error);
+                return;
+              }
+            } 
+            // CASO B: INVITADO (ID Temporal - NO llama a createChat de Clerk)
+            else {
+              streamLogger.info("Generando ID temporal para invitado...");
+              currentChatId = `guest_${Date.now()}`; // Generamos un ID local
+              // No emitimos chats-updated porque no hay backend que refrescar
+            }
+            setActiveChatId(currentChatId);
+            storageAdapter.setItem(currentChatId);
+          }
+          // El chat existe (se creó con el botón +) pero no tiene nombre real
+          else if (isAuthenticated && !hasSentMessage) {
+            try {
+              await updateChatTitle(currentChatId, query.substring(0, 30));
+              chatEvents.emit('chats-updated', { chatId: currentChatId });
+              setHasSentMessage(true); // Para que no vuelva a intentar renombrar
+            } catch (err) {
+              console.error("No se pudo actualizar el título", err);
+            }
+          }
+          // 3. Enviamos el mensaje normalmente
+          handleNewMessage({ role: 'user', text: query }, context, img, tool, currentChatId);
+        }}
+        onContextExtracted={(entry) => setPendingContext(prev => [...prev, entry])}
+        onClearContext={() => setPendingContext([])}
+        onRemoveContext={(name) => setPendingContext(prev => prev.filter(c => c.name !== name))}
+        pendingContext={pendingContext}
+        showIcon={hasSentMessage}
+        isStreaming={isStreaming}
+        onStop={stopGeneration}
+        onScrollToBottom={scrollToBottom}
+      />
 
-      {/* Indicador de escritura */}
-      {isJarvisTyping && (
-        <div className="typing-indicator">Jarvis está escribiendo...</div>
-      )}
+      {notification && <div className="notification-memory">{notification}</div>}
+      <Outlet />
     </div>
-
-    {/* Barra de búsqueda / entrada */}
-    <SearchBar 
-      onSearch={(userQuery, context, image, tool) => handleNewMessage({ role: 'user', text: userQuery }, context, image, tool)}
-      onContextExtracted={(entry) => setPendingContext(prev => [...prev, entry])}
-      onClearContext={clearPendingContext}
-      onRemoveContext={removeContextByName}
-      pendingContext={pendingContext}
-      showIcon={hasSentMessage}
-      isStreaming={isStreaming}
-      onStop={handleStopGeneration}
-      onScrollToBottom={scrollToBottom}
-    />
-
-    {notification && (
-    <div className="notification-memory">
-      {notification}
-    </div>
-  )}
-    {/* Modal de config si está en /config */}
-      {user?.id && (
-        <Link to={`/c/${user.id}/config`} className="config-modal"></Link>
-      )}
-    <Outlet />
-  </div>
-);
-
-}
+  );
+};
 
 export default ChatPage;
