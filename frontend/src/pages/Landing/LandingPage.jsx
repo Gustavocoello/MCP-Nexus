@@ -1,16 +1,17 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import useCurrentUser from "@/features/auth/components/context/useCurrentUser";
-import Navbar from "@/components/layout/Navbar/Navbar";
-import AudioWaves from "@/components/ui/Animated/AudioWaves";
-import Footer from "@/components/layout/Footer/Footer.jsx";
+import useCurrentUser from "../../core/auth/useCurrentUser";
+import Navbar from "@/shared/ui/layout/Navbar/Navbar";
+import AudioWaves from "@/projects/voice-sphere/animation/AudioWaves";
+import Footer from "@/shared/ui/layout/Footer/Footer.jsx";
+import { storageAdapter, USER_ID_KEY } from "@/shared/utils/storageAdapter";
+// ICONS
 import { FaReact, FaPython, FaNodeJs, FaDatabase, FaDocker, FaGitAlt, FaCodepen, FaUserShield, FaLinkedin, FaGithub } from "react-icons/fa";
 import { SiMongodb, SiOpenai, SiJavascript, SiGnubash} from "react-icons/si";
 import { BsFillMenuButtonWideFill } from "react-icons/bs";
 import { GiBreakingChain } from "react-icons/gi";
 import { IoMdChatbubbles } from "react-icons/io";
 import { BsTerminalSplit } from "react-icons/bs";
-import { storageAdapter, USER_ID_KEY } from "@/features/chat/utils/storageAdapter";
 import "./LandingPage.css";
 
 const LandingPage = () => {
@@ -55,16 +56,21 @@ const LandingPage = () => {
   // Navegación
   const goToChat = () => {
     const dbUserId = storageAdapter.getItem(USER_ID_KEY);
-    if (user && dbUserId) {
-      // Si está logueado y tenemos su UUID de DB, vamos a su chat privado
-      navigate(`/chat/${dbUserId}`);
-    } else if (user && !dbUserId) {
-      // Si esta logeado pero no tiene UUID va al useSyncUser el se encarga
-      navigate("/chat");
-    } else{
-      // si es un invitado
-      navigate("/chat")
+    // 1. Si Clerk dice que hay usuario
+    if (user) {
+      if (dbUserId) {
+        // Tenemos el ID, vamos al chat privado
+        navigate(`/chat/${dbUserId}`);
+      } else {
+        // Está logueado pero falta el ID en storage, 
+        // vamos a /chat para que useSyncUser lo capture y redirija
+        navigate("/chat");
+      }
+      return;
     }
+
+    // 2. Si no hay usuario en Clerk, es invitado
+    navigate("/chat");
   };
 
   const goToJarvis = () => {

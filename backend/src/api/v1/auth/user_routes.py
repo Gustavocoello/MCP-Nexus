@@ -27,6 +27,25 @@ def sync_user_profile():
         "email": user.email
     }), 200
     
+@user_bp.route("/profile", methods=["GET"])
+@clerk_required
+def get_user_profile():
+    """
+    Retorna los datos completos del usuario desde la DB local 
+    para alimentar el componente Config/GeneralTab del SDK.
+    """
+    user = g.user_obj  # g.user_obj ya viene lleno gracias al middleware
+    
+    return jsonify({
+        "id": str(user.id),
+        "clerk_id": user.clerk_id,
+        "email": user.email,
+        "fullName": user.name,
+        "imageUrl": user.picture,
+        "auth_provider": user.auth_provider.value if hasattr(user.auth_provider, 'value') else str(user.auth_provider),
+        "last_login": user.last_login.isoformat() if user.last_login else None
+    }), 200
+    
     
 @integrations_bp.route("/status", methods=["GET"])
 @clerk_required

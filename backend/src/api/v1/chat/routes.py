@@ -194,15 +194,18 @@ def create_chat():
     try:
         if not g.user_id:
             return jsonify({"error": "Usuario no autenticado"}), 401
+        
+        data = request.get_json(silent=True) or {}
+        input_title = data.get('title', 'Sin título')
 
         # CREACIÓN DEL CHAT
         # Simplemente creamos el objeto y lo añadimos a la sesión
-        new_chat = Chat(user_id=g.user_id, title="Sin título")
+        new_chat = Chat(user_id=g.user_id, title=input_title)
         
         db_session.add(new_chat)
         db_session.commit() # Guarda en la DB (Windows o Linux)
         
-        print(f"[DEBUG] Nuevo chat creado para: {g.user_id}")
+        print(f"[DEBUG] Nuevo chat creado para: {g.user_id}; ID del chat: {new_chat.id}; Título: {new_chat.title}")
         
         # === AVISAR A REDIS ===
         SidebarCache.invalidate_user(g.user_id)
@@ -285,7 +288,7 @@ def send_message(chat_id):
                 user_id=g.user_id,
                 db_session=db_session,
                 chat_id=chat.id,
-                mcp_manager=mcp_manager
+                mcp_manager=mcp_client
             )
             if mcp_context is None:
                 return jsonify({"error": f"Tool '{tool_name}' requires Google Calendar connection."}), 400

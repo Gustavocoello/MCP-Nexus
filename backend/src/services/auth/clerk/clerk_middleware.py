@@ -105,6 +105,7 @@ def clerk_required(f):
                 return jsonify({"error": "JWT missing 'sub' claim"}), 401
             # Sincronizamos (Busca en DB o crea uno nuevo)
             user_obj = sync_clerk_user(clerk_id)
+            #print(f"AUTH SUCCESS: Clerk:{clerk_id} -> DB_UUID:{user_obj.id}")
                         
             g.user_id = user_obj.id # Este es el ID de nuestra DB, no el de Clerk
             g.user_obj = user_obj   # Guardamos el objeto completo para evitar consultas repetidas
