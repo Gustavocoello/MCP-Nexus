@@ -1,7 +1,7 @@
 // src/pages/ChatPage/ChatPage.jsx
 import React from 'react';
 import { Routes, Route, useLocation, useParams } from 'react-router-dom';
-import { JarvisProvider, Sidebar, ChatContainer, ConfigPage } from 'jarvis-sdk-core';
+import { JarvisProvider, Sidebar, ChatContainer, ConfigPage } from 'jarvis-sdk-ui';
 import { useAuthContext } from '@/core/auth/AuthContext';
 
 const ChatPage = () => {
