@@ -6,30 +6,21 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@pro': path.resolve(__dirname, './src/projects'),
+      "@": path.resolve(__dirname, "./src"),
+      // APUNTA DIRECTAMENTE AL SRC DEL SDK, NO AL DIST
+      "jarvis-sdk-ui": path.resolve(__dirname, "../../jarvis-sdk/jarvis-ui/src/index.jsx"),
     },
+    dedupe: ["react", "react-dom", "@tanstack/react-query"],
+    preserveSymlinks: false,
   },
   server: {
-    open: true
-  },
-  // Optimización de dependencias
-  optimizeDeps: {
-    include: [
-      "@modelcontextprotocol/sdk/client",
-      "@modelcontextprotocol/sdk/client/streamableHttp"
-    ]
-  },
-  // Configuración de build (solo una vez)
-  build: {
-    outDir: "dist",
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'clerk': ['@clerk/clerk-react'],
-          'vendor': ['react', 'react-dom', 'react-router-dom'],
-        }
-      }
+    fs: {
+      // Permitimos que Vite lea archivos fuera de la carpeta 'frontend'
+      allow: ['..', '../../jarvis-sdk']
     }
+  },
+  optimizeDeps: {
+    // IMPORTANTE: Excluimos el SDK para que no intente pre-empaquetarlo
+    exclude: ["jarvis-sdk-ui"],
   }
-})
+});

@@ -17,7 +17,7 @@ from src.services.llm.providers.utils import generate_prompt, extract_text_from_
 from src.services.llm.llm_router import completion,completion_stream
 from src.services.llm.chat.chat_service import build_payload, execute_mcp_tool
 from src.services.llm.memory.service import MAX_RAW, summarize_and_trim
-from src.services.auth.clerk.clerk_middleware import clerk_required
+from src.services.auth.auth.auth_middleware import auth_required
 from src.services.auth.mcp.mcp_jwt import generate_mcp_jwt
 from flask import Blueprint, jsonify, Response, request, stream_with_context, session, copy_current_request_context, g
 from src.mcps.client.client_manager import MCPClientManager
@@ -98,12 +98,16 @@ def events():
     return Response(stream(), mimetype="text/event-stream")
 # ----------------- GET ---------------------
 @chat_bp.route('', methods=['GET'], strict_slashes=False)
-@clerk_required
+@auth_required
 def get_all_chats():
     db_session = SessionLocal()
     try:
         # get_chats intenta Redis, si falla va a DB, guarda en Redis y te lo da.
-        chats = SidebarCache.get_chats(g.user_id, db_session=db_session)
+        chats = SidebarCache.get_chats(
+            user_id=g.user_id, 
+            app_id=g.app_id, 
+            db_session=db_session
+        )
         return jsonify(chats)
     except Exception as e:
         logger.exception("Error al obtener chats")
@@ -112,12 +116,15 @@ def get_all_chats():
         db_session.close()
         
 @chat_bp.route('/<chat_id>/messages/recent', methods=['GET'])
-@clerk_required
+@auth_required
 def get_recent_messages(chat_id):
     db_session = SessionLocal()
     try:
         # Redis (ChatCache ya tiene lógica de fallback)
-        messages = ChatCache.get_messages(chat_id, db_session=db_session)
+        messages = ChatCache.get_messages(
+            chat_id, 
+            db_session=db_session
+        )
         
         return jsonify(messages)
     except Exception as e:
@@ -127,11 +134,16 @@ def get_recent_messages(chat_id):
         db_session.close()
 
 @chat_bp.route('/<chat_id>/messages', methods=['GET'])
-@clerk_required
+@auth_required
 def get_chat_messages(chat_id):
     db_session = SessionLocal()
     try:
-        chat = db_session.query(Chat).filter(Chat.id == chat_id, Chat.user_id == g.user_id).first()
+        chat = db_session.query(Chat).filter(
+            Chat.id == chat_id, 
+            Chat.user_id == g.user_id,
+            Chat.app_id == g.app_id
+        ).first()
+        
         if not chat:
             logger.warning(f"Chat no encontrado o acceso denegado al chat {chat_id}")
             return jsonify({'error': 'Chat no encontrado o acceso denegado'}), 404
@@ -155,12 +167,16 @@ def get_chat_messages(chat_id):
 # ----------------- DELETE -------------------
     
 @chat_bp.route('/<chat_id>', methods=['DELETE'])
-@clerk_required
+@auth_required
 def delete_chat(chat_id):
     db_session = SessionLocal() # Inicia sesión
     try: 
         # 1. BUSCAMOS EL CHAT (Solo una línea, usando la sesión)
-        chat = db_session.query(Chat).filter(Chat.id == chat_id, Chat.user_id == g.user_id).first()
+        chat = db_session.query(Chat).filter(
+            Chat.id == chat_id, 
+            Chat.user_id == g.user_id,
+            Chat.app_id == g.app_id
+        ).first()
         
         # 2. VALIDACIÓN
         if not chat:
@@ -171,7 +187,7 @@ def delete_chat(chat_id):
         db_session.commit() # Guarda los cambios en la DB (Windows/Linux)
         
         # === AVISAR A REDIS ===
-        SidebarCache.invalidate_user(g.user_id)
+        SidebarCache.invalidate_user(g.user_id, g.app_id)
         print(f"[Redis] Sidebar invalidado por eliminación de chat: {chat_id}")
         
         return jsonify({"message": "Chat eliminado correctamente"}), 200
@@ -188,7 +204,7 @@ def delete_chat(chat_id):
   
 # ------------ POST (crear chat) -------------    
 @chat_bp.route('', methods=['POST'], strict_slashes=False)
-@clerk_required
+@auth_required
 def create_chat():
     db_session = SessionLocal() # Inicia la sesión manual
     try:
@@ -200,7 +216,10 @@ def create_chat():
 
         # CREACIÓN DEL CHAT
         # Simplemente creamos el objeto y lo añadimos a la sesión
-        new_chat = Chat(user_id=g.user_id, title=input_title)
+        new_chat = Chat(
+            user_id=g.user_id, 
+            app_id=g.app_id,
+            title=input_title)
         
         db_session.add(new_chat)
         db_session.commit() # Guarda en la DB (Windows o Linux)
@@ -208,8 +227,8 @@ def create_chat():
         print(f"[DEBUG] Nuevo chat creado para: {g.user_id}; ID del chat: {new_chat.id}; Título: {new_chat.title}")
         
         # === AVISAR A REDIS ===
-        SidebarCache.invalidate_user(g.user_id)
-        print(f"[Redis] Sidebar invalidado por creación de chat: {new_chat.id}")
+        SidebarCache.invalidate_user(g.user_id, g.app_id)
+        print(f"CREATE: Chat {new_chat.id} vinculado a App: {g.app_id}")
         
         return jsonify({
             "id": new_chat.id,
@@ -227,18 +246,19 @@ def create_chat():
 
 # --------------- POST (enviar mensaje) ---------------
 @chat_bp.route('/<chat_id>/message', methods=['POST'], strict_slashes=False)
-@clerk_required
+@auth_required
 def send_message(chat_id):
     db_session = SessionLocal()
     try:
         # 1. Find or create chat
         chat = db_session.query(Chat).filter(
             Chat.id == chat_id,
-            Chat.user_id == g.user_id
+            Chat.user_id == g.user_id,
+            Chat.app_id == g.app_id
         ).first()
 
         if not chat:
-            chat = Chat(id=chat_id, user_id=g.user_id, title="Sin titulo")
+            chat = Chat(id=chat_id, user_id=g.user_id, app_id=g.app_id, title="Sin titulo")
             db_session.add(chat)
             db_session.flush()
         elif chat.user_id != g.user_id:
@@ -353,7 +373,7 @@ def send_message(chat_id):
         
 # --------------- POST (extraer texto de archivos) ---------------
 @chat_bp.route('/extract_file', methods=['POST'])
-@clerk_required
+@auth_required
 def extract_file():
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
@@ -390,12 +410,21 @@ def extract_file():
         def background_task(file_bytes, filename_bd, content_type, user_id, text_to_store, filename_ui):
             bg_session = SessionLocal()
             try:
-                event_queue.put({"type": "upload_started", "filename": filename_ui, "user_id": user_id})
+                event_queue.put({
+                    "type": "upload_started", 
+                    "filename": filename_ui, 
+                    "user_id": str(user_id)
+                    })
                 logger.info(f"Background upload started: {filename_ui}")
 
                 access_token = get_user_onedrive_token(user_id)
                 if not access_token:
-                    event_queue.put({"type": "upload_error", "filename": filename_ui, "error": "No OneDrive token"})
+                    event_queue.put({
+                        "type": "upload_error", 
+                        "filename": filename_ui, 
+                        "error": "No OneDrive token",
+                        "user_id": str(user_id)
+                        })
                     return
 
                 download_url = upload_to_onedrive(access_token, filename_bd, file_bytes)
@@ -418,13 +447,18 @@ def extract_file():
                     "type": "upload_completed",
                     "filename": filename_ui,
                     "url": download_url,
-                    "user_id": user_id
+                    "user_id": str(user_id)
                 })
 
             except Exception as e:
                 bg_session.rollback()
                 logger.exception("Background task error")
-                event_queue.put({"type": "upload_error", "filename": filename_ui, "error": str(e)})
+                event_queue.put({
+                    "type": "upload_error", 
+                    "filename": filename_ui, 
+                    "error": str(e),
+                    "user_id": str(user_id)
+                    })
             finally:
                 bg_session.close()
                 
@@ -436,7 +470,10 @@ def extract_file():
             daemon=True
         ).start()
 
-        return jsonify({"text": resp_text})
+        return jsonify({"text": resp_text,
+                        "filename": original_filename,
+                        "status": "processing_bg"
+                    })
 
     except Exception as e:
         logger.exception("Error processing file")
@@ -444,7 +481,7 @@ def extract_file():
 
 # --------------- PUT ---------------
 @chat_bp.route('/<chat_id>/title', methods=['PUT'])
-@clerk_required
+@auth_required
 def update_chat_title(chat_id):
     db_session = SessionLocal()
     try:

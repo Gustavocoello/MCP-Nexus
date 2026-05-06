@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import LMStudioCard from "./LMStudioCard";
 import { useState } from "react";
-import './JarvisCard.css';
 
 export default function JarvisCard() {
   const [hovered, setHovered] = useState(false);

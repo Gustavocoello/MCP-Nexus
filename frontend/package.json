@@ -27,6 +27,7 @@
     "jarvis-sdk-ui": "link:C:/work/mcp-nexus/jarvis-sdk/jarvis-ui",
     "lucide-react": "^0.562.0",
     "markdown-it": "^13.0.1",
+    "punycode": "^2.3.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-icons": "^4.10.1",

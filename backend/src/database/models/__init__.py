@@ -1,5 +1,5 @@
 # src/database/models/__init__.py
-from .models import User, Chat, Message, UserToken, AuthProvider, Document
+from .models import User, Chat, Message, UserToken, AuthProvider, Document, UserIdentity
 
 __all__ = [
     "User",
@@ -10,5 +10,6 @@ __all__ = [
     "Document",
     "PingLog",
     "SystemStat",
-    "LLMLog"
+    "LLMLog",
+    "UserIdentity"
 ]

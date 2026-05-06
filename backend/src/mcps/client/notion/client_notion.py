@@ -70,5 +70,3 @@ class NotionMCPClient(BaseMCPClient):
         result = await self._call_server("notion_delete_block", 
                                             {"block_id": block_id})
         return {"data": result.content or [], "success": not result.is_error}
-
-# -------------- TEST RÁPIDO --------------

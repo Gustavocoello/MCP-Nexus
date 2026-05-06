@@ -91,9 +91,18 @@ class LamarSentinel:
                     }
                 base_url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1"
 
+            if "key_func" in config:
+                # Si el config tiene una función para obtener la clave, la llamamos
+                api_key_value = config['key_func']()
+            else:
+                api_key_value = os.getenv(config.get('key'))
+                # Intentamos también con 'key' dentro
+                if not api_key_value:
+                    api_key_value = config.get('key')
+            
             llm = ChatOpenAI(
                 base_url=base_url,
-                api_key=os.getenv(config['key']),
+                api_key=api_key_value,
                 model=config['model'],
                 max_retries=0,
                 timeout=20

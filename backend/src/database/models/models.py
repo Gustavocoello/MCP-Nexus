@@ -18,6 +18,8 @@ class AuthProvider(str, Enum):
     GOOGLE = "google"
     GITHUB = "github"
     CLERK = "clerk"
+    AWS = "aws"
+    MANUAL = "manual"
 
 class MemoryType(str, Enum):
     SESSION = "session"
@@ -29,33 +31,36 @@ class User(Base):
     __tablename__ = 'users'
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    clerk_id = Column(String(255), unique=True, nullable=False) # Guardamos el ID de Clerk para referencia, pero no lo usamos como PK
     email = Column(String(255), unique=True, index=True)
     name = Column(String(255))
-    password_hash = Column(String(255))
     is_admin = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=get_now)
     last_login = Column(DateTime(timezone=True))
-    auth_provider = Column(PgEnum(AuthProvider), nullable=False) # Guardamos como string para evitar conflictos de tipos
-    email_verified = Column(Boolean, default=False)
     picture = Column(String(255))
     
     chats = relationship('Chat', backref='user', cascade="all, delete-orphan")
-    
+    identities = relationship('UserIdentity', backref='user', cascade="all, delete-orphan")
     tokens = relationship('UserToken', backref='user', cascade="all, delete-orphan")
     
-    # Métodos de seguridad que ya tenías
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+# --- MODELO DE IDENTIDADES (LA LLAVE) ---
+class UserIdentity(Base):
+    __tablename__ = 'user_identities'
 
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
-
+    id = Column(Integer, primary_key=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
+    app_id = Column(String(50), nullable=False, index=True, server_default='jarvis-default')
+    provider = Column(PgEnum(AuthProvider), nullable=False)
+    provider_user_id = Column(String(255), nullable=False) # Aquí va el 'sub' de Clerk o AWS
+    
+    # Un usuario no puede tener dos identidades del mismo proveedor
+    __table_args__ = (UniqueConstraint('provider', 'provider_user_id', name='_provider_user_uc'),)
+    
 class Chat(Base):
     __tablename__ = 'chat'
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey('users.id'))
+    app_id = Column(String(50), nullable=False, index=True, server_default='jarvis-default')
     created_at = Column(DateTime(timezone=True), default=get_now)
     summary = Column(Text)
     title = Column(String(255))

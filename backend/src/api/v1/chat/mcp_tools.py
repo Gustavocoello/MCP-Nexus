@@ -1,6 +1,6 @@
 # src/routes/mcp_tools.py
 from flask import Blueprint, jsonify
-from src.services.auth.clerk.clerk_middleware import clerk_required
+from src.services.auth.auth.auth_middleware import auth_required
 
 mcp_tools_bp = Blueprint('mcp_tools', __name__)
 

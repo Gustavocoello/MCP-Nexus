@@ -11,7 +11,7 @@ from src.config.time_helper import get_now
 from datetime import datetime, timedelta, timezone
 from src.database.models.models import UserToken, User
 from src.database.config.connection import SessionLocal
-from src.services.auth.clerk.clerk_middleware import clerk_required
+from src.services.auth.auth.auth_middleware import auth_required
 from src.config.logging_config import get_logger
 
 logger = get_logger(__name__)

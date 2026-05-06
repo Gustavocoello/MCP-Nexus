@@ -59,6 +59,9 @@ importers:
       markdown-it:
         specifier: ^13.0.1
         version: 13.0.2
+      punycode:
+        specifier: ^2.3.1
+        version: 2.3.1
       react:
         specifier: ^19.1.1
         version: 19.1.1

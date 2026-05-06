@@ -7,6 +7,7 @@ import { storageAdapter, USER_ID_KEY } from '@/shared/utils/storageAdapter';
 
 // variable de entorno
 const API_BASE_URL = import.meta.env.VITE_URL
+const APP_ID = import.meta.env.VITE_APP_ID
 const TOKEN_KEY = 'jarvis_token';
 
 export const useSyncUser = () => {
@@ -34,9 +35,7 @@ export const useSyncUser = () => {
                     const token = await getToken({ template: 'backend-api-jarvis' }); 
 
                     if (token) {
-                        // GUARDAR EN LOCALSTORAGE: Para que esté disponible al recargar
-                        storageAdapter.setItem(token, TOKEN_KEY);
-                        authLogger.info("✅ Token guardado en LocalStorage.");
+                        authLogger.info("✅ Token obtenido con exito.");
                     }
 
                     // 2. Realizar la llamada a la ruta protegida de sincronización
@@ -45,6 +44,7 @@ export const useSyncUser = () => {
                         headers: {
                             'Authorization': `Bearer ${token}`,
                             'Content-Type': 'application/json',
+                            'X-Project-Origin': APP_ID, 
                         },
                     });
 
@@ -77,9 +77,7 @@ export const useSyncUser = () => {
         if (isLoaded && !isSignedIn) {
             setIsSynced(false);
             setDbUserId(null);
-            storageAdapter.removeItem(TOKEN_KEY);
-            storageAdapter.removeItem(USER_ID_KEY);
-            storageAdapter.removeItem(); // Limpia activeChatId por defecto
+            storageAdapter.clearAuthData();
             authLogger.info("Sesión cerrada: Datos eliminados del storage.");
         }
 

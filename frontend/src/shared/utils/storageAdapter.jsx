@@ -1,18 +1,20 @@
-// src/sdk/utils/storageAdapter.jsx
+// src/shared/utils/storageAdapter.js (o la ruta donde lo tengas)
 
-export const USER_ID_KEY = 'db_user_id';
-const STORAGE_KEY = 'activeChatId';
+export const USER_ID_KEY = 'jarvis_db_user_id';
+export const ACTIVE_CHAT_KEY = 'jarvis_active_chat_id';
 
 export const storageAdapter = {
-  getItem: (key = STORAGE_KEY) => {
+  // Obtener valor (por defecto busca el chat activo si no pasas llave)
+  getItem: (key = ACTIVE_CHAT_KEY) => {
     if (typeof window !== 'undefined' && window.localStorage) {
       return localStorage.getItem(key);
     }
     return null;
   },
-  setItem: (value, key = STORAGE_KEY) => {
+
+  // Guardar valor
+  setItem: (value, key = ACTIVE_CHAT_KEY) => {
     if (typeof window !== 'undefined' && window.localStorage) {
-      // 🛡️ Evitamos guardar undefined o nulls accidentales como string "null"
       if (value === null || value === undefined) {
         localStorage.removeItem(key);
       } else {
@@ -20,9 +22,20 @@ export const storageAdapter = {
       }
     }
   },
-  removeItem: (key = STORAGE_KEY) => {
+
+  // Eliminar una llave específica
+  removeItem: (key = ACTIVE_CHAT_KEY) => {
     if (typeof window !== 'undefined' && window.localStorage) {
       localStorage.removeItem(key);
+    }
+  },
+
+  // Limpieza total (Útil para el Logout)
+  clearAuthData: () => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem(USER_ID_KEY);
+      localStorage.removeItem(ACTIVE_CHAT_KEY);
+      // NO borres el token de aquí, Clerk se encarga de su propia sesión
     }
   }
 };

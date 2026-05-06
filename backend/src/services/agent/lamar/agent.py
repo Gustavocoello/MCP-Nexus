@@ -21,7 +21,7 @@ from src.services.agent.lamar.tools import (
     ping_single_service,
     ping_services
 )
-from src.services.llm.llm_router import API_PROVIDERS_TO_AGENT
+from src.services.llm.llm_router import API_PROVIDERS_TO_AGENT, get_langchain_llm
 
 load_dotenv()
 
@@ -103,12 +103,7 @@ class LamarAgent(BaseAgent):
     name = "Lamar"
 
     def __init__(self):
-        llm = ChatOpenAI(
-            base_url="https://api.groq.com/openai/v1",
-            api_key=os.getenv("GROQ_API_KEY5"),
-            model="llama-3.3-70b-versatile",
-            temperature=0
-        )
+        llm = get_langchain_llm()
         tools = [
             ping_single_service,
             ping_services,

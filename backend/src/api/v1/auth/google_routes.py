@@ -2,8 +2,8 @@
 
 from flask import Blueprint, redirect, request, jsonify, g
 from src.services.auth.google.google_oauth import start_google_oauth, handle_google_callback
-from src.services.auth.clerk.clerk_middleware import clerk_required
-from src.services.auth.clerk.clerk_user_sync import sync_clerk_user
+from src.services.auth.auth.auth_middleware import auth_required
+from src.services.auth.auth.user_sync import sync_user_universal
 from src.config.logging_config import get_logger
 from dotenv import load_dotenv
 import os 
@@ -20,7 +20,7 @@ logger = get_logger(__name__)
 
 # 1) Login: Ruta protegida por Clerk JWT
 @google_auth_bp.route("/login")
-@clerk_required 
+@auth_required 
 def login():
     clerk_id = g.get("clerk_id")
     
@@ -29,7 +29,7 @@ def login():
 
     # 1. Sincronizar/Crear el perfil de usuario en la DB local
     try:
-        local_user = sync_clerk_user(clerk_user_id=clerk_id)
+        local_user = sync_user_universal(clerk_user_id=clerk_id)
     except Exception as e:
         return jsonify({"error": f"User synchronization failed: {str(e)}"}), 500
 

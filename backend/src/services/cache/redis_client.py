@@ -74,7 +74,10 @@ class RedisClient:
             
             # Si Upstash devuelve un string, lo convertimos a dict
             if isinstance(value, str):
-                return json.loads(value)
+                try:
+                    return json.loads(value)
+                except json.JSONDecodeError:
+                    return value # Es un string plano
             return value
         except Exception as e:
             logger.error(f"Error GET {key}: {e}")

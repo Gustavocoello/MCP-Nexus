@@ -1,4 +1,16 @@
 // frontend/src/main.jsx
+
+if (typeof global === 'undefined') {
+  window.global = window;
+}
+if (typeof window.require === 'undefined') {
+  window.require = (path) => {
+    if (path === 'react') return React;
+    if (path === 'react-dom') return ReactDOM;
+    throw new Error(`Could not resolve require("${path}")`);
+  };
+}
+
 import App from './App';
 import React from 'react';
 import ReactDOM from 'react-dom/client';

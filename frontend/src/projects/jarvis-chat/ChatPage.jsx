@@ -1,27 +1,32 @@
 // src/pages/ChatPage/ChatPage.jsx
 import React from 'react';
-import { Routes, Route, useLocation, useParams } from 'react-router-dom';
+import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { JarvisProvider, Sidebar, ChatContainer, ConfigPage } from 'jarvis-sdk-ui';
 import { useAuthContext } from '@/core/auth/AuthContext';
 
 const ChatPage = () => {
   const { getToken } = useAuthContext();
   const location = useLocation();
+  const navigate = useNavigate();
   const { userId } = useParams();
   const showSettings = location.pathname.endsWith('/settings');
+  const APP_ID = import.meta.env.VITE_APP_ID;
+  
+  if (!getToken) return <div>Cargando seguridad...</div>;
 
   return (
     <JarvisProvider 
+      key={APP_ID}
       config={{ 
         getToken, 
         baseURL: import.meta.env.VITE_URL,
-        appId: 'sdk-jarvis-portafolio', // <--- Identificador para tu DB
+        appId: APP_ID, // Fuerza el ID aquí
         theme: 'dark'
       }}
     >
       <div className="sdk-layout-wrapper" style={{ display: 'flex', height: '100vh', width: '100vw' }}>
         {/* El Sidebar vive AQUÍ, por eso solo aparece en el chat */}
-        <Sidebar /> 
+        <Sidebar onNavigate={(path) => navigate(path.startsWith('/') ? path : `/${path}`)}/>
           {/* EL CHAT SIEMPRE ESTÁ AQUÍ - NUNCA SE DESMONTA */}
           <div className="chat-layer" style={{ 
             flex: 1, 
