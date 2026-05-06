@@ -23,6 +23,8 @@ data/
 .env.development.local
 .env.test.local
 .env.production.local
+.env
+*.env
 
 npm-debug.log*
 yarn-debug.log*
@@ -63,7 +65,6 @@ __pycache__/
 /Extras
 Extras/
 %USERPROFILE%/
-
 # Eliminamos los archivos de logs
 logs/
 functions/logs/
