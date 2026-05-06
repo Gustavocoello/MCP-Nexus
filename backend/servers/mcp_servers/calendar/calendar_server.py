@@ -4,6 +4,7 @@ import sys
 import jwt
 import pytz
 import uvicorn
+import json as _json
 from pathlib import Path
 from contextvars import ContextVar
 from fastmcp import FastMCP, Context
@@ -22,11 +23,11 @@ current_dir = Path(__file__).resolve().parent
 backend_dir = current_dir.parent.parent
 sys.path.insert(0, str(backend_dir))
 
-from mcp_servers.utils.time_helper import get_now
+from utils.models import Event
+from utils.time_helper import get_now
 from sources.google_calendar import GoogleCalendarConnector
 from sources.natural_parser import parse_natural_language_to_event
 from utils.Keep_alive_mcp import keep_alive_mcp
-from mcp_servers.utils.models import Event
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -185,7 +186,7 @@ def extract_context_from_fastmcp(context: Context) -> dict:
     """Extrae el contexto MCP desde la variable global inyectada por el middleware"""
     mcp_context = _current_request_context.get()
     
-    print(f"🔍 [extract_context] Contexto: user_id={mcp_context.get('user_id')}, "
+    print(f"[extract_context] Contexto: user_id={mcp_context.get('user_id')}, "
           f"has_token={bool(mcp_context.get('google_access_token'))}")
     
     if mcp_context:
@@ -200,18 +201,23 @@ def extract_context_from_fastmcp(context: Context) -> dict:
         "google_refresh_token": getattr(req_ctx, "google_refresh_token", None),
     }
     
-    print(f"🔍 [extract_context] Fallback - user_id={mcp_context.get('user_id')}, "
+    print(f"[extract_context] Fallback - user_id={mcp_context.get('user_id')}, "
           f"has_token={bool(mcp_context.get('google_access_token'))}")
     
     return mcp_context
-    
-# Zona horaria de Ecuador (GMT-5)
-EC_TZ = pytz.timezone("America/Guayaquil")
 
-def ensure_aware(dt: datetime) -> datetime:
-    if dt.tzinfo is None:
-        return EC_TZ.localize(dt)
-    return dt.astimezone(EC_TZ)
+def _extract_id(value: str) -> str:
+    """Sanitiza IDs — el LLM a veces manda el JSON completo como valor."""
+    if not value:
+        return value
+    value = str(value).strip()
+    if value.startswith("{"):
+        try:
+            parsed = _json.loads(value)
+            return str(next(iter(parsed.values())))
+        except Exception:
+            pass
+    return value
 
 # =================================================================
 #                         TOOLS DE GOOGLE CALENDAR
@@ -224,6 +230,7 @@ async def crear_evento(context: Context, summary: str, description: str, start_t
     """
     crear_evento
     """
+    calendar_id = _extract_id(calendar_id)
     mcp_context = extract_context_from_fastmcp(context)  
     gcal = get_connector(mcp_context)
     
@@ -243,6 +250,7 @@ async def google_resumen_diario(context: Context, calendar_id: Optional[str] = N
     """
     google_resumen_diario
     """
+    calendar_id = _extract_id(calendar_id) if calendar_id else None
     mcp_context = extract_context_from_fastmcp(context)  
     gcal = get_connector(mcp_context)
     return gcal.get_summary(calendar_id or None, range_type="daily")
@@ -252,6 +260,7 @@ async def google_resumen_semanal(context: Context, calendar_id: Optional[str] = 
     """
     google_resumen_semanal
     """
+    calendar_id = _extract_id(calendar_id) if calendar_id else None
     mcp_context = extract_context_from_fastmcp(context)  
     gcal = get_connector(mcp_context)
     return gcal.get_summary(calendar_id or None, range_type="weekly")
@@ -261,11 +270,7 @@ async def google_resumen_semanal(context: Context, calendar_id: Optional[str] = 
     name="google_disponibilidad_diaria",
     description="Disponibilidad diaria: espacios libres entre eventos para una fecha dada en horario de Ecuador (GMT-5).",
 )
-async def google_disponibilidad_diaria(
-    context: Context,
-    date: Optional[str] = None,
-    duration_minutes: int = 60
-):
+async def google_disponibilidad_diaria(context: Context, date: Optional[str] = None, duration_minutes: int = 60):
     # Validaciones
     if duration_minutes <= 0:
         return ToolResult(
@@ -329,7 +334,6 @@ async def google_disponibilidad_diaria(
     name="google_disponibilidad_semanal",
     description="Disponibilidad semanal: espacios libres para los próximos 7 días en horario de Ecuador (GMT-5).",
 )
-
 async def google_disponibilidad_semanal(context: Context, duration_minutes: int = 60):
     if duration_minutes <= 0:
         return ToolResult(
@@ -381,6 +385,8 @@ async def eventos_por_titulo(context: Context, calendar_id: str, keyword: str) -
     """
     Devuelve eventos que contienen la palabra clave en el título.
     """
+    calendar_id = _extract_id(calendar_id)
+    keyword = _extract_id(keyword)
     mcp_context = extract_context_from_fastmcp(context)  
     gcal = get_connector(mcp_context)
     
@@ -393,6 +399,7 @@ async def crear_evento_desde_texto(context: Context, texto_usuario: str, calenda
     """
     Convierte texto en evento y lo crea en el calendario.
     """
+    calendar_id = _extract_id(calendar_id)
     mcp_context = extract_context_from_fastmcp(context)  
     gcal = get_connector(mcp_context)
 
@@ -401,7 +408,7 @@ async def crear_evento_desde_texto(context: Context, texto_usuario: str, calenda
     if not event:
         return {"error": "No se pudo parsear el evento"}
 
-    calendar_id = calendar_id or context.get("calendar_id", "primary")
+    calendar_id = calendar_id or "primary"
     creado = gcal.create_event(calendar_id, event)
     return {
         "mensaje": "Evento creado con éxito",
@@ -413,6 +420,7 @@ async def eventos_por_rango(context: Context, calendar_id: str, start_date: str,
     """
     Recupera eventos de un calendario específico dentro de un rango de fechas.
     """
+    calendar_id = _extract_id(calendar_id)
     mcp_context = extract_context_from_fastmcp(context)  
     gcal = get_connector(mcp_context)
 
@@ -434,6 +442,26 @@ async def eventos_todos_calendarios_rango(context: Context, start_date: str, end
     end = datetime.fromisoformat(end_date)
     events = gcal.fetch_events_by_range(start, end)
     return [event.dict() for event in events]
+
+# ---------------- ACTUALIZAR Y ELIMINAR EVENTOS ----------------
+
+@mcp.tool(name="actualizar_evento")
+async def actualizar_evento(context: Context, calendar_id: str, event_id: str, summary: Optional[str] = None, description: Optional[str] = None, start_time: Optional[str] = None, end_time: Optional[str] = None) -> dict:
+    """Actualiza un evento existente. Solo modifica los campos que se pasen."""
+    calendar_id = _extract_id(calendar_id)
+    mcp_context = extract_context_from_fastmcp(context)
+    gcal = get_connector(mcp_context)
+    return gcal.update_event(calendar_id, event_id, 
+                             summary=summary, description=description,
+                             start_time=start_time, end_time=end_time)
+
+@mcp.tool(name="eliminar_evento")
+async def eliminar_evento(context: Context, calendar_id: str, event_id: str) -> dict:
+    """Elimina un evento del calendario por su ID."""
+    calendar_id = _extract_id(calendar_id)
+    mcp_context = extract_context_from_fastmcp(context)
+    gcal = get_connector(mcp_context)
+    return gcal.delete_event(calendar_id, event_id)
 
 
 #""" # Para utilizarlo en local

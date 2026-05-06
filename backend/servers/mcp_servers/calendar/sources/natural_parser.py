@@ -4,8 +4,8 @@ import dateparser
 from typing import Optional
 from datetime import datetime, timedelta
 from dateparser.search import search_dates
-from mcp_servers.utils.models import Event
-from mcp_servers.utils.time_helper import get_now
+from utils.models import Event
+from utils.time_helper import get_now
 
 def parse_natural_language_to_event(input_text: str) -> Optional[Event]:
     """

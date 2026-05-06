@@ -3,12 +3,21 @@
 # ============================================
 
 # Incluir dependencias comunes (Asegúrate de que la ruta sea correcta según tu carpeta)
--r ../requirements-common.txt
+#-r ../requirements-common.txt sirve al principio en produccion no tanto, pero en dessarrollo si
+# --- COMMON (Copiado de la raíz) ---
+python-dotenv==1.1.0
+pytz==2025.2
+anyio>=4.8.0
+aiohttp==3.13.1
+sse-starlette==2.3.6
+uvicorn==0.35.0
+PyJWT==2.10.1
+isodate==0.7.2
+
 
 # Cliente HTTP Asíncrono (Fundamental para NotionConnector)
 # Usamos httpx en lugar de requests porque es nativamente asíncrono
 httpx==0.28.1
-
 # MCP Framework
 # Asegúrate de usar la misma versión que en Calendar para consistencia
 fastmcp==2.14.5

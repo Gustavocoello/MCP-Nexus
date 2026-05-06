@@ -4,6 +4,7 @@ import sys
 import jwt
 import pytz
 import uvicorn
+import json as _json
 from pathlib import Path
 from fastmcp import FastMCP, Context
 from starlette.applications import Starlette
@@ -23,7 +24,7 @@ current_dir = Path(__file__).resolve().parent
 backend_dir = current_dir.parent.parent
 sys.path.insert(0, str(backend_dir))
 
-from mcp_servers.utils.time_helper import get_now
+from utils.time_helper import get_now
 from utils.Keep_alive_mcp import keep_alive_mcp
 
 load_dotenv()
@@ -174,6 +175,25 @@ def get_notion_connector(context_dict: dict):
     # Aquí creamos el conector que definimos en NotionConnector
     return NotionConnector(api_key=api_key)
 
+def _extract_id(value: str) -> str:
+    """
+    Sanitiza el ID recibido — el LLM a veces manda el JSON completo como valor.
+    Ejemplos de entrada inválida:
+      '{"database_id": "ae30aed7-..."}' → "ae30aed7-..."
+      '{"query": ""}' → ""
+    """
+    if not value:
+        return value
+    value = value.strip()
+    if value.startswith("{"):
+        try:
+            parsed = _json.loads(value)
+            # Devuelve el primer valor que encuentre
+            return str(next(iter(parsed.values())))
+        except Exception:
+            pass
+    return value
+
 
 # =================================================================
 #                         TOOLS DE NOTION
@@ -181,54 +201,63 @@ def get_notion_connector(context_dict: dict):
 
 @mcp.tool()
 async def notion_search(context: Context, query: str):
+    query = _extract_id(query)
     mcp_context = extract_context_from_fastmcp(context)
     connector = get_notion_connector(mcp_context)
     return await connector.search(query)
 
 @mcp.tool()
 async def notion_get_page(context: Context, page_id: str):
+    page_id = _extract_id(page_id)
     mcp_context = extract_context_from_fastmcp(context)
     connector = get_notion_connector(mcp_context)
     return await connector.get_page(page_id)
 
 @mcp.tool()
 async def notion_get_block_children(context: Context, block_id: str):
+    block_id = _extract_id(block_id)
     mcp_context = extract_context_from_fastmcp(context)
     connector = get_notion_connector(mcp_context)
     return await connector.get_block_children(block_id)
 
 @mcp.tool()
 async def notion_create_page(context: Context, parent_id: str, properties: Dict, is_db_parent: bool = True):
+    parent_id = _extract_id(parent_id)
     mcp_context = extract_context_from_fastmcp(context)
     connector = get_notion_connector(mcp_context)
     return await connector.create_page(parent_id, properties, is_db_parent)
 
 @mcp.tool()
 async def notion_update_page_properties(context: Context, page_id: str, properties: Dict):
+    page_id = _extract_id(page_id)
     mcp_context = extract_context_from_fastmcp(context)
     connector = get_notion_connector(mcp_context)
     return await connector.update_page_properties(page_id, properties)
 
 @mcp.tool()
 async def notion_append_block_children(context: Context, block_id: str, blocks: List[Dict]):
+    block_id = _extract_id(block_id)
     mcp_context = extract_context_from_fastmcp(context)
     connector = get_notion_connector(mcp_context)
     return await connector.append_block_children(block_id, blocks)
 
 @mcp.tool()
 async def notion_query_database(context: Context, database_id: str, filter_params: Optional[Dict] = None):
+    database_id = _extract_id(database_id)
     mcp_context = extract_context_from_fastmcp(context)
     connector = get_notion_connector(mcp_context)
     return await connector.query_database(database_id, filter_params)
 
 @mcp.tool()
 async def notion_get_database_structure(context: Context,database_id: str):
+    database_id = _extract_id(database_id)
     mcp_context = extract_context_from_fastmcp(context)
     connector = get_notion_connector(mcp_context)
     return await connector.get_database_structure(database_id)
 
 @mcp.tool()
 async def notion_delete_block(context: Context, block_id: str):
+    block_id = _extract_id(block_id)
     mcp_context = extract_context_from_fastmcp(context)
     connector = get_notion_connector(mcp_context)
     return await connector.delete_block(block_id)

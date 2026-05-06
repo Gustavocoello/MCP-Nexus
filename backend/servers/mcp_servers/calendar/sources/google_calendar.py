@@ -3,7 +3,8 @@ import os
 import pytz
 import warnings
 from dotenv import load_dotenv
-from mcp_servers.utils.time_helper import get_now
+from utils.models import Event
+from utils.time_helper import get_now
 from dateutil.parser import parse as parse_dt
 from datetime import datetime, timezone, timedelta
 from typing import Optional, Union, List, Tuple, Dict
@@ -22,11 +23,6 @@ from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.exceptions import RefreshError
 from googleapiclient.discovery import build
-
-try: # Para el app.py
-    from mcp_servers.utils.models import Event
-except ImportError: # Para el MCP inspector
-    from mcp_servers.utils.models import Event
     
 load_dotenv()
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
@@ -148,7 +144,7 @@ class GoogleCalendarConnector:
             self.authenticate()
         
         if not start_date:
-            start_date = datetime.datetime.utcnow()
+            start_date = get_now()
         if not end_date:
             end_date = start_date + datetime.timedelta(days=30)
 
@@ -181,7 +177,7 @@ class GoogleCalendarConnector:
                     event_obj.source = cal_id
                     events_total.append(event_obj)
             except Exception as e:
-                print(f"⚠️ Error al obtener eventos de '{cal_id}': {e}")
+                print(f"Error al obtener eventos de '{cal_id}': {e}")
 
         return events_total
     
@@ -261,33 +257,23 @@ class GoogleCalendarConnector:
         
         
     # ============= ACTUALIZACIÓN DE EVENTOS =============
-    def update_event(self, calendar_id: str, event_id: str, updated_fields: dict) -> Union[Event, dict]:
-        """
-        Actualiza campos específicos de un evento existente.
-
-        Args:
-            calendar_id (str): ID del calendario donde está el evento.
-            event_id (str): ID del evento a actualizar.
-            updated_fields (dict): Diccionario con campos a modificar.
-
-        Returns:
-            Event | dict: Evento actualizado o dict con error.
-        """
+    def update_event(self, calendar_id: str, event_id: str, 
+                 summary: str = None, description: str = None,
+                 start_time: str = None, end_time: str = None) -> Union[Event, dict]:
         try:
-            # Obtener el evento actual
-            existing_event = self.service.events().get(calendarId=calendar_id, eventId=event_id).execute()
+            existing_event = self.service.events().get(
+                calendarId=calendar_id, eventId=event_id
+            ).execute()
 
-            # Actualizar los campos deseados
-            for key, value in updated_fields.items():
-                if key in ["start", "end"]:
-                    existing_event[key] = {
-                        "dateTime": value.isoformat(),
-                        "timeZone": "UTC"
-                    }
-                else:
-                    existing_event[key] = value
+            if summary:
+                existing_event["summary"] = summary
+            if description:
+                existing_event["description"] = description
+            if start_time:
+                existing_event["start"] = {"dateTime": start_time, "timeZone": "America/Guayaquil"}
+            if end_time:
+                existing_event["end"] = {"dateTime": end_time, "timeZone": "America/Guayaquil"}
 
-            # Enviar actualización
             updated = self.service.events().update(
                 calendarId=calendar_id,
                 eventId=event_id,
@@ -295,31 +281,19 @@ class GoogleCalendarConnector:
             ).execute()
 
             return self._to_event_object(updated)
-
         except Exception as e:
-            print(f"Error al actualizar el evento: {e}")
             return {"error": str(e)}
 
 
     # ============= BORRADO DE EVENTOS =============
-    def delete_event(self, calendar_id: str, event_id: str) -> bool:
-        """
-        Elimina un evento del calendario.
-
-        Args:
-            calendar_id (str): ID del calendario.
-            event_id (str): ID del evento a eliminar.
-
-        Returns:
-            bool: True si se eliminó correctamente, False si falló.
-        """
+    def delete_event(self, calendar_id: str, event_id: str) -> dict:
         try:
-            self.service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
-            print(f"Evento eliminado: {event_id}")
-            return True
+            self.service.events().delete(
+                calendarId=calendar_id, eventId=event_id
+            ).execute()
+            return {"success": True, "event_id": event_id}
         except Exception as e:
-            print(f"Error al eliminar el evento: {e}")
-            return False
+            return {"success": False, "error": str(e)}
 
 
     # ============= FILTRAR POR TITULO Y FECHA =============
@@ -415,18 +389,18 @@ class GoogleCalendarConnector:
             if range_type == "daily":
                 start = tz_ecu.localize(datetime(now.year, now.month, now.day))
                 end = start + timedelta(days=1)
-                title = f"🗓️ Resumen de eventos para hoy ({start.strftime('%d/%m/%Y')}) - Hora Ecuador (GMT-5):"
+                title = f"Resumen de eventos para hoy ({start.strftime('%d/%m/%Y')}) - Hora Ecuador (GMT-5):"
             elif range_type == "weekly":
                 start = tz_ecu.localize(datetime(now.year, now.month, now.day)) - timedelta(days=now.weekday())
                 end = start + timedelta(days=7)
-                title = f"📅 Resumen de eventos para la semana ({start.strftime('%d/%m')} - {end.strftime('%d/%m')}) - Hora Ecuador (GMT-5):"
+                title = f"Resumen de eventos para la semana ({start.strftime('%d/%m')} - {end.strftime('%d/%m')}) - Hora Ecuador (GMT-5):"
             else:
-                return "⚠️ Tipo de resumen no válido. Usa 'daily' o 'weekly'."
+                return "Tipo de resumen no válido. Usa 'daily' o 'weekly'."
             
             if calendar_id is None or calendar_id == "":
                 calendar_ids = [c["id"] for c in self.list_calendars()]
                 if not calendar_ids:
-                    return f"{title}\n\n⚠️ No se encontraron calendarios disponibles."
+                    return f"{title}\n\n No se encontraron calendarios disponibles."
             else:
                 calendar_ids = [calendar_id]
             
@@ -446,7 +420,7 @@ class GoogleCalendarConnector:
 
                     if not events:
                         calendar_name = self.get_calendar_name(cid)
-                        all_summaries.append(f"📅 [{calendar_name}] Sin eventos.")
+                        all_summaries.append(f"[{calendar_name}] Sin eventos.")
                         continue
                     
                     lines = []
@@ -461,7 +435,7 @@ class GoogleCalendarConnector:
                         lines.append(f"• {fecha} a las {hora}: {summary}{loc_str}")
                         
                     calendar_name = self.get_calendar_name(cid)
-                    summary = f"📅 [{calendar_name}]:\n" + "\n".join(lines)
+                    summary = f"[{calendar_name}]:\n" + "\n".join(lines)
                         
                     all_summaries.append(summary)
                 except Exception as e:
