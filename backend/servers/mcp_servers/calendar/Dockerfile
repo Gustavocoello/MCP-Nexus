@@ -18,10 +18,15 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copiamos todo el backend
-COPY ../../.. .
+COPY . .
 
-RUN pip install --upgrade pip && pip install -r requirements.txt
+# Instalamos las dependencias específicas
+RUN pip install --upgrade pip && \
+    if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-# Calendar Server normalmente no expone puertos
-CMD ["python", "src/mcps/server/calendar_server.py"]
+# Definimos el PYTHONPATH para que Python encuentre los subdirectorios
+ENV PYTHONPATH="/app"
+
+# Comando de inicio (ajusta el nombre del archivo según la carpeta)
+CMD ["python", "calendar_server.py"]
 
