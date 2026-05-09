@@ -1,0 +1,20 @@
+name: Deploy Automatico a Lubuntu Local
+
+on:
+  push:
+    branches:
+      - master  # O el nombre de la rama principal que uses (a veces es 'master')
+
+jobs:
+  deploy:
+    runs-on: self-hosted  # ¡Aquí está la línea que te decía GitHub!
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v3
+
+      - name: Actualizar y Reiniciar Backend Docker
+        run: |
+          cd ~/mi_servidor
+          git pull origin master
+          docker compose up -d --build backend
