@@ -1,10 +1,10 @@
 # src/services/agent/nexus/tools.py
 import asyncio
 import json
+import json as _json
 from typing import Optional, Dict, List
 from langchain.tools import tool
 from src.mcps.client.client_manager import MCPClientManager
-
 
 def _run(coro):
     """Helper para correr async desde tools síncronas de LangChain."""
@@ -45,6 +45,41 @@ def _parse_mcp_result(result) -> str:
         return json.dumps(content, ensure_ascii=False)
     except Exception as e:
         return f"Error parsing result: {e}"
+    
+def _parse_args(kwargs: dict, expected_keys: list) -> dict:
+    """
+    Sanitiza argumentos del LLM.
+    Caso 1: {"key": "valor"} → correcto, pasa directo
+    Caso 2: {"key": '{"key": "valor", "key2": "valor2"}'} → extrae el JSON del string
+    Caso 3: Cualquier valor string que contenga JSON con las keys esperadas
+    """
+    # Revisar TODOS los valores, no solo el primero
+    for key, val in kwargs.items():
+        if isinstance(val, str):
+            val_stripped = val.strip()
+            if val_stripped.startswith("{"):
+                try:
+                    parsed = _json.loads(val_stripped)
+                    # Si el JSON parseado contiene AL MENOS UNA key esperada → úsalo
+                    if any(k in parsed for k in expected_keys):
+                        return parsed
+                except Exception:
+                    pass
+    
+    return kwargs
+
+def _clean_id(value) -> str:
+    """Limpia IDs que el LLM manda como JSON completo."""
+    if not value:
+        return value
+    value = str(value).strip()
+    if value.startswith("{"):
+        try:
+            parsed = _json.loads(value)
+            return str(next(iter(parsed.values())))
+        except Exception:
+            pass
+    return value
 
 # --- CALENDAR TOOLS ---
 def build_calendar_tools(user_id: str):
@@ -98,43 +133,93 @@ def build_calendar_tools(user_id: str):
         return _parse_mcp_result(result)
 
     @tool
-    def eventos_por_titulo(calendar_id: str, keyword: str) -> str:
+    def eventos_por_titulo(calendar_id: str, keyword: Optional[str] = None) -> str:
         """
         Busca eventos que contengan una palabra clave en el título.
         Input: calendar_id, keyword.
         """
+        args = _parse_args(
+            {"calendar_id": calendar_id, "keyword": keyword},
+            ["calendar_id", "keyword"]
+        )
+        calendar_id = _clean_id(args.get("calendar_id", calendar_id))
+        keyword = args.get("keyword", keyword)
+        
         result = _run(get_calendar().eventos_por_titulo(calendar_id=calendar_id, keyword=keyword))
         return _parse_mcp_result(result)
 
     @tool
-    def eventos_por_rango(calendar_id: str, start_date: str, end_date: str) -> str:
+    def eventos_por_rango(calendar_id: str, start_date: str, end_date: Optional[str] = None) -> str:
         """
         Eventos de un calendario en un rango de fechas.
         Input: calendar_id, start_date (ISO), end_date (ISO).
         """
+        args = _parse_args(
+            {"calendar_id": calendar_id, "start_date": start_date, "end_date": end_date or ""},
+            ["calendar_id", "start_date", "end_date"]
+        )
+        calendar_id = _clean_id(args.get("calendar_id", calendar_id))
+        start_date = args.get("start_date", start_date)
+        end_date = args.get("end_date", end_date)
+        
+        if not end_date:
+            return "Error: end_date es requerido."
+        
         result = _run(get_calendar().eventos_por_rango(
             calendar_id=calendar_id, start_date=start_date, end_date=end_date
         ))
         return _parse_mcp_result(result)
 
     @tool
-    def eventos_todos_calendarios_rango(start_date: str, end_date: str) -> str:
+    def eventos_todos_calendarios_rango(start_date: str, end_date: Optional[str] = None) -> str:
         """
         Eventos de TODOS los calendarios en un rango de fechas.
         Input: start_date (ISO), end_date (ISO).
         """
+        args = _parse_args(
+            {"start_date": start_date, "end_date": end_date or ""},
+            ["start_date", "end_date"]
+        )
+        start_date = args.get("start_date", start_date)
+        end_date = args.get("end_date", end_date)
+        
+        if not end_date:
+            return "Error: end_date es requerido."
+    
         result = _run(get_calendar().eventos_todos_calendarios_rango(
             start_date=start_date, end_date=end_date
         ))
         return _parse_mcp_result(result)
 
     @tool
-    def crear_evento(summary: str, description: str, start_time: str,
-                     end_time: str, calendar_id: str = "primary") -> str:
+    def crear_evento(summary: str, description: str = "", start_time: Optional[str] = None,
+                     end_time: Optional[str] = None, calendar_id: str = "primary") -> str:
         """
         Crea un evento en Google Calendar.
         Input: summary, description, start_time (ISO), end_time (ISO), calendar_id.
         """
+        safe_description = description or ""
+        
+        args = _parse_args(
+            {
+                "summary": summary, 
+                "description": safe_description,
+                "start_time": start_time or "", 
+                "end_time": end_time or "", 
+                "calendar_id": calendar_id
+            },
+            ["summary", "start_time", "end_time"]
+        )
+        summary = args.get("summary", summary)
+        description = args.get("description", safe_description)
+        start_time = args.get("start_time", start_time)
+        end_time = args.get("end_time", end_time)
+        calendar_id = _clean_id(args.get("calendar_id", calendar_id))
+
+        # Validación manual (tú tienes el control, no Pydantic)
+        if not summary or not start_time or not end_time:
+            return "Error: summary, start_time y end_time son requeridos."
+        
         result = _run(get_calendar().crear_evento(
             summary=summary, description=description,
             start_time=start_time, end_time=end_time, calendar_id=calendar_id
@@ -161,6 +246,19 @@ def build_calendar_tools(user_id: str):
         Input: calendar_id, event_id (obtenido de búsqueda previa), 
                y los campos a cambiar: summary, description, start_time, end_time.
         """
+        args = _parse_args(
+            {"calendar_id": calendar_id, "event_id": event_id,
+            "summary": summary, "description": description,
+            "start_time": start_time, "end_time": end_time},
+            ["calendar_id", "event_id"]
+        )
+        calendar_id = _clean_id(args.get("calendar_id", calendar_id))
+        event_id = _clean_id(args.get("event_id", event_id))
+        summary = args.get("summary", summary)
+        description = args.get("description", description)
+        start_time = args.get("start_time", start_time)
+        end_time = args.get("end_time", end_time)
+        
         result = _run(get_calendar().actualizar_evento(
             calendar_id=calendar_id, event_id=event_id,
             summary=summary or None, description=description or None,
@@ -175,6 +273,13 @@ def build_calendar_tools(user_id: str):
         SOLO usar cuando el usuario lo pida explícitamente.
         Input: calendar_id, event_id (obtenido de búsqueda previa).
         """
+        args = _parse_args(
+            {"calendar_id": calendar_id, "event_id": event_id},
+            ["calendar_id", "event_id"]
+        )
+        calendar_id = _clean_id(args.get("calendar_id", calendar_id))
+        event_id = _clean_id(args.get("event_id", event_id))
+        
         result = _run(get_calendar().eliminar_evento(
             calendar_id=calendar_id, event_id=event_id
         ))
@@ -240,12 +345,23 @@ def build_notion_tools(user_id: str):
         return _parse_mcp_result(result)
 
     @tool
-    def notion_create_page(parent_id: str, properties: str, is_db_parent: bool = True) -> str:
+    def notion_create_page(parent_id: str, properties: Optional [str] = None, is_db_parent: bool = True) -> str:
         """
         Crea una nueva página en Notion dentro de una base de datos o página padre.
         Usa esto cuando el usuario quiera crear una tarea, nota, o entrada nueva.
         Input: parent_id (str), properties (str JSON), is_db_parent (bool).
         """
+        args = _parse_args(
+            {"parent_id": parent_id, "properties": properties or "", "is_db_parent": is_db_parent},
+            ["parent_id", "properties"]
+        )
+        parent_id = _clean_id(args.get("parent_id", parent_id))
+        properties = args.get("properties", properties)
+        is_db_parent = args.get("is_db_parent", is_db_parent)
+        
+        if not properties:
+            return "Error: properties es requerido."
+        
         props = json.loads(properties) if isinstance(properties, str) else properties
         result = _run(get_notion().notion_create_page(
             parent_id=parent_id, properties=props, is_db_parent=is_db_parent
@@ -253,26 +369,46 @@ def build_notion_tools(user_id: str):
         return _parse_mcp_result(result)
 
     @tool
-    def notion_update_page_properties(page_id: str, properties: str) -> str:
+    def notion_update_page_properties(page_id: str, properties: Optional [str] = None) -> str:
         """
         Actualiza las propiedades de una página existente en Notion.
         Usa esto para marcar tareas como completadas, cambiar status, fechas, etc.
         Input: page_id (str), properties (str JSON con los campos a actualizar).
         """
-        props = json.loads(properties) if isinstance(properties, str) else properties
+        args = _parse_args(
+            {"page_id": page_id, "properties": properties or ""},
+            ["page_id", "properties"]
+        )
+        page_id = _clean_id(args.get("page_id", page_id))
+        properties = args.get("properties", properties)
+        
+        if not properties:
+            return "Error: properties es requerido."
+
+        props = _json.loads(properties) if isinstance(properties, str) else properties
         result = _run(get_notion().notion_update_page_properties(
             page_id=page_id, properties=props
         ))
         return _parse_mcp_result(result)
 
     @tool
-    def notion_append_block_children(block_id: str, blocks: str) -> str:
+    def notion_append_block_children(block_id: str, blocks: Optional [str] = None) -> str:
         """
         Añade contenido (bloques) a una página o bloque existente en Notion.
         Usa esto para agregar texto, listas, o notas a una página ya creada.
         Input: block_id (str), blocks (str JSON — lista de bloques Notion).
         """
-        blocks_list = json.loads(blocks) if isinstance(blocks, str) else blocks
+        args = _parse_args(
+            {"block_id": block_id, "blocks": blocks or ""},
+            ["block_id", "blocks"]
+        )
+        block_id = _clean_id(args.get("block_id", block_id))
+        blocks = args.get("blocks", blocks)
+        
+        if not blocks:
+            return "Error: blocks es requerido."
+        
+        blocks_list = _json.loads(blocks) if isinstance(blocks, str) else blocks
         result = _run(get_notion().notion_append_block_children(
             block_id=block_id, blocks=blocks_list
         ))
@@ -285,7 +421,14 @@ def build_notion_tools(user_id: str):
         Usa esto para listar tareas, filtrar por status, fecha, prioridad, etc.
         Input: database_id (str), filter_params (str JSON opcional con filtros Notion).
         """
-        params = json.loads(filter_params) if filter_params else None
+        args = _parse_args(
+            {"database_id": database_id, "filter_params": filter_params},
+            ["database_id"]
+        )
+        database_id = _clean_id(args.get("database_id", database_id))
+        filter_params = args.get("filter_params", filter_params)
+    
+        params = _json.loads(filter_params) if filter_params else None
         result = _run(get_notion().notion_query_database(
             database_id=database_id, filter_params=params
         ))

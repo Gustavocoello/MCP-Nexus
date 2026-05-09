@@ -17,7 +17,7 @@ load_dotenv()
 
 RENDER_SERVER = os.getenv("RENDER_SERVER").lower() == "true"
 
-LOCAL_URL = os.getenv("LOCAL_PING")
+LOCAL_URL = os.getenv("LOCAL_PING") # Contabilidad 
 DEPLOY_URL = os.getenv("PRODU_PING")
 
 if RENDER_SERVER:

@@ -426,13 +426,19 @@ class GoogleCalendarConnector:
                     lines = []
                     for ev in events:
                         start_time = ev["start"].get("dateTime", ev["start"].get("date"))
+                        end_time = ev["end"].get("dateTime", ev["end"].get("date"))
+                        
                         parsed_start = datetime.fromisoformat(start_time).astimezone(tz_ecu)
-                        hora = parsed_start.strftime('%H:%M')
+                        parsed_end = datetime.fromisoformat(end_time).astimezone(tz_ecu)
+                        
+                        hora_inicio = parsed_start.strftime('%H:%M')
+                        hora_fin = parsed_end.strftime('%H:%M')
+                        
                         fecha = parsed_start.strftime('%d/%m/%Y')
                         summary = ev.get("summary", "Sin título")
                         location = ev.get("location", "")
                         loc_str = f" en {location}" if location else ""
-                        lines.append(f"• {fecha} a las {hora}: {summary}{loc_str}")
+                        lines.append(f"• {fecha} de {hora_inicio} a {hora_fin}: {summary}{loc_str}")
                         
                     calendar_name = self.get_calendar_name(cid)
                     summary = f"[{calendar_name}]:\n" + "\n".join(lines)
