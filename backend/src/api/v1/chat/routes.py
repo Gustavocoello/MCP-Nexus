@@ -6,21 +6,21 @@ import threading
 from queue import Queue, Empty
 from sqlalchemy import select, delete
 from werkzeug.utils import secure_filename
-from src.config.time_helper import get_now
-from src.database.models.models import Chat, Message, Document, User, UserToken
-from src.database.config.connection import SessionLocal
-from src.services.cache.redis_sidebar import SidebarCache
+
+from src.core.logging import get_logger
+from src.core.time_helper import get_now
 from src.services.cache.redis_cache import ChatCache
-from src.config.logging_config import get_logger
-from src.services.integrations.onedrive_service import upload_to_onedrive, get_user_onedrive_token
-from src.services.llm.providers.utils import generate_prompt, extract_text_from_file, analyze_image_with_azure, can_upload_image
-from src.services.llm.llm_router import completion,completion_stream
-from src.services.llm.chat.chat_service import build_payload, execute_mcp_tool
-from src.services.llm.memory.service import MAX_RAW, summarize_and_trim
+from src.database.settings.connection import SessionLocal
+from src.services.cache.redis_sidebar import SidebarCache
+from src.services.llm.chat.free_tier import generate_prompt
+from src.database.models.models import Chat, Message, Document
+from src.services.mcps.client.client_manager import MCPClientManager
+from src.services.llm.chat.llm_router import completion, completion_stream
+from src.services.llm.chat.chat_service import build_payload, execute_mcp_tool, summarize_and_trim
 from src.services.auth.auth.auth_middleware import auth_required
-from src.services.auth.mcp.mcp_jwt import generate_mcp_jwt
+from src.services.integrations.onedrive.onedrive_service import upload_to_onedrive, get_user_onedrive_token
+from src.services.integrations.azure.azure_vision import analyze_image_with_azure
 from flask import Blueprint, jsonify, Response, request, stream_with_context, session, copy_current_request_context, g
-from src.mcps.client.client_manager import MCPClientManager
 
 # -- Logger --
 logger = get_logger('routes')
@@ -30,7 +30,7 @@ event_queue = Queue()
 mcp_client = MCPClientManager(user_id=None)  # user_id se asignará dinámicamente en cada llamada
 
 ## -------------- Mensajes de la IA con memoria -----------
-chat_bp = Blueprint('chat', __name__, url_prefix='/api/chat')
+chat_bp = Blueprint('chat_v1', __name__)
 
 ## ----------- Mensajes de la IA sin memoria --------------
 """ Create a blueprint for search API """
@@ -292,7 +292,6 @@ def send_message(chat_id):
                 Message.id != user_message.id  # excluye el que acabas de insertar
             )
             .order_by(Message.created_at.desc())
-            .limit(MAX_RAW)
             .all()[::-1]
         )
 
@@ -403,7 +402,7 @@ def extract_file():
         else:
             from io import BytesIO
             file_stream = BytesIO(file_bytes)
-            final_text = extract_text_from_file(file_stream, original_filename)
+            #final_text = extract_text_from_file(file_stream, original_filename)
             resp_text = f"File content '{original_filename}':\n\n{final_text}"
 
         @copy_current_request_context

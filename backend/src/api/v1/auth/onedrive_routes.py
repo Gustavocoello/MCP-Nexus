@@ -7,12 +7,12 @@ from sqlalchemy import select
 from extensions import db
 from dotenv import load_dotenv
 from urllib.parse import urlencode
-from src.config.time_helper import get_now
+from src.core.time_helper import get_now
 from datetime import datetime, timedelta, timezone
 from src.database.models.models import UserToken, User
-from src.database.config.connection import SessionLocal
+from src.database.settings.connection import SessionLocal
 from src.services.auth.auth.auth_middleware import auth_required
-from src.config.logging_config import get_logger
+from src.core.logging import get_logger
 
 logger = get_logger(__name__)
 

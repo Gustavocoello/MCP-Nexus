@@ -1,21 +1,14 @@
-import os
-import json
-from dotenv import load_dotenv
-from upstash_redis import Redis
+# test_sandbox.py (ponlo en sandbox_worker/)
+import sys
+sys.path.insert(0, r"C:\work\mcp-nexus\mcp-scratch\backend")
 
-# Cargar credenciales
-load_dotenv()
-REDIS_URL = os.getenv('REDIS_URL')
-REDIS_TOKEN = os.getenv('REDIS_TOKEN')
+from src.services.agent.Koda.tools.sandbox_client import execute_in_sandbox
 
-r = Redis(url=REDIS_URL, token=REDIS_TOKEN)
+print("=== Test 1: Python ===")
+print(execute_in_sandbox("python3 --version"))
 
-# Creamos la tarea para la IA
-tarea = {
-    "id_tarea": "prueba_001",
-    "comando": "echo 'console.log(\"¡Hola! El sandbox de 16GB funciona a la perfección. 🚀\");' > app.js && node app.js"
-}
+print("\n=== Test 2: Node ===")
+print(execute_in_sandbox("node --version"))
 
-# La enviamos a la cola en Upstash
-r.lpush('cola_tareas_agente', json.dumps(tarea))
-print("¡Tarea enviada a Upstash! Revisa la terminal de tu Worker.")
+print("\n=== Test 3: Script real ===")
+print(execute_in_sandbox("python3 -c \"print(2+2)\""))

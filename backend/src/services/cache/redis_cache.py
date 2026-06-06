@@ -6,9 +6,9 @@ from typing import List, Optional
 from datetime import datetime
 from sqlalchemy import select
 from src.services.cache.redis_client import redis_client
-from src.config.logging_config import get_logger
+from src.core.logging import get_logger
 from src.database.models.models import Message
-from src.config.time_helper import get_now
+from src.core.time_helper import get_now
 from extensions import db
 
 logger = get_logger('chat_cache')

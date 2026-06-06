@@ -1,12 +1,11 @@
 # src/services/auth/clerk_middleware.py (Restaurado a PyJWT)
-from asyncio.log import logger
 import os
-import requests
 import jwt
 import time
+import requests
 from functools import wraps
 from flask import request, jsonify, g
-from src.config.time_helper import get_now
+from src.core.time_helper import get_now
 from src.services.auth.auth.user_sync import CLERK_API_URL, sync_user_universal
 from src.database.models import AuthProvider
 from dotenv import load_dotenv

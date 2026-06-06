@@ -4,7 +4,7 @@ from flask import Blueprint, redirect, request, jsonify, g
 from src.services.auth.google.google_oauth import start_google_oauth, handle_google_callback
 from src.services.auth.auth.auth_middleware import auth_required
 from src.services.auth.auth.user_sync import sync_user_universal
-from src.config.logging_config import get_logger
+from src.core.logging import get_logger
 from dotenv import load_dotenv
 import os 
 

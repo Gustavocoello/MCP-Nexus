@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify, g
 from sqlalchemy import select
 from src.services.auth.auth.auth_middleware import auth_required
 from src.services.auth.auth.user_sync import sync_user_universal
-from src.database.config.connection import SessionLocal
+from src.database.settings.connection import SessionLocal
 from src.database.models.models import UserToken
 from extensions import db
 

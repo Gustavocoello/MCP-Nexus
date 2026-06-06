@@ -25,7 +25,7 @@ backend_dir = current_dir.parent.parent
 sys.path.insert(0, str(backend_dir))
 
 from utils.time_helper import get_now
-from utils.Keep_alive_mcp import keep_alive_mcp
+from utils.keep_alive_mcp import keep_alive_mcp
 
 load_dotenv()
 

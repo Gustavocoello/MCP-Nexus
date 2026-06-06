@@ -1,0 +1,15 @@
+[
+  {
+    "timestamp": "2026-06-01T12:04:26.128793-05:00",
+    "source": "windows",
+    "targets": [
+      "linux"
+    ],
+    "success": true,
+    "duration_seconds": 38.895661,
+    "available_databases": [
+      "windows",
+      "linux"
+    ]
+  }
+]

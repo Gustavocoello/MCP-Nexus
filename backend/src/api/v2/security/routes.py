@@ -2,12 +2,12 @@ from urllib import response
 
 from flask import Blueprint, jsonify, request
 from http import HTTPStatus, client
-from src.config.time_helper import get_now
-from src.config.logging_config import get_logger
+from src.core.time_helper import get_now
+from src.core.logging import get_logger
 from src.database.models.models import PingLog
-from src.database.config.connection import SessionLocal, engine
-from src.config.ping.log_parser import parse_ping_log_v1, clean_log_message
-from src.database.config.azure.azure_config import test_connection_health, get_pool_stats 
+from src.database.settings.connection import SessionLocal, engine
+from src.core.ping.log_parser import parse_ping_log_v1, clean_log_message
+from src.database.settings.azure.azure_database import test_connection_health, get_pool_stats 
   
 logging = get_logger(__name__)
 
@@ -133,7 +133,7 @@ def db_health_check_route():
         logging.error(f"Error crítico en health check: {str(e)}")
         return jsonify({"status": "unhealthy", "error": str(e)}), 500
     finally:
-        db_session.close() # <--- OBLIGATORIO: Cerramos siempre
+        db_session.close()
 
 @health_bp.route('/pool-stats', methods=['GET'])
 def pool_stats_endpoint():

@@ -1,11 +1,11 @@
+import requests
 from re import A
 from extensions import db
-import requests
 from flask_login import login_user
 from urllib.parse import urlencode
 from flask import redirect, request, session, url_for
 from src.database.models.models import User, AuthProvider
-from src.database.config.connection import SessionLocal
+from src.database.settings.connection import SessionLocal
 from dotenv import load_dotenv
 import os
 

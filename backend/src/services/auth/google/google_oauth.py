@@ -1,13 +1,13 @@
 # src/services/auth/google/google_oauth.py
 import os
 import json
-from datetime import datetime, timedelta, timezone
-from google_auth_oauthlib.flow import Flow
 from extensions import db
+from datetime import timedelta
+from src.core.time_helper import get_now
 from src.database.models import UserToken
-from src.config.time_helper import get_now
+from google_auth_oauthlib.flow import Flow
+from src.database.settings.connection import SessionLocal
 from src.services.auth.utils.token_crypto import encrypt_token
-from src.database.config.connection import SessionLocal
 from dotenv import load_dotenv
 
 # Importar Redis y uuid4 para el manejo seguro del state

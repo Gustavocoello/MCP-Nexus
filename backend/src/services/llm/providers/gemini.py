@@ -1,6 +1,8 @@
 import os
 import json
 import google.auth.transport.requests
+from langchain_google_vertexai import ChatVertexAI
+from langchain_core.messages import SystemMessage, HumanMessage
 from google.oauth2 import service_account
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -8,10 +10,10 @@ from dotenv import load_dotenv
 # 1. Cargar variables de entorno (o configurarlas manualmente aquí)
 load_dotenv()
 
-GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID", "jarvis-endpoint-llm")
-GCP_LOCATION = os.getenv("GCP_LOCATION", "us-central1")
+GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID")
+GCP_LOCATION = os.getenv("GCP_LOCATION")
 # Ruta al archivo JSON de tu Service Account
-GCP_JSON_PATH = os.getenv("GCP_CREDENTIALS_JSON_PATH", "tu-archivo-credenciales.json") 
+GCP_JSON_PATH = os.getenv("GCP_CREDENTIALS_JSON_PATH") 
 gcp_json_str = GCP_JSON_PATH
 # 2. Configuración de Seguridad y Tokens
 if gcp_json_str:
@@ -60,13 +62,48 @@ def test_gemini():
             ]
         )
         
-        print("\n✅ RESPUESTA DEL MODELO:")
+        print("\n RESPUESTA DEL MODELO:")
         print(response.choices[0].message.content)
         print("\n--- Prueba finalizada con éxito ---")
 
     except Exception as e:
-        print(f"\n❌ ERROR DE CONEXIÓN:")
+        print(f"\n ERROR DE CONEXIÓN:")
         print(str(e))
+        
+        
+
+def test_vertex_openai_toolcalling():
+    """Usa la vía OpenAI-compatible de Vertex (la que YA funciona) con tool calling"""
+    from langchain_openai import ChatOpenAI
+    from langchain_core.tools import tool
+
+    print(f"\n--- Probando Vertex vía ChatOpenAI con tool calling ---")
+
+    @tool
+    def suma(a: int, b: int) -> int:
+        """Suma dos números."""
+        return a + b
+
+    try:
+        llm = ChatOpenAI(
+            base_url=f"https://aiplatform.googleapis.com/v1/projects/{GCP_PROJECT_ID}/locations/{GCP_LOCATION}/endpoints/openapi",
+            api_key=get_vertex_token(),   # el token fresco de tu service account
+            model="google/gemini-3.1-pro-preview",
+            temperature=0,
+        ).bind_tools([suma])
+
+        resp = llm.invoke([HumanMessage(content="¿Cuánto es 99 + 1?")])
+
+        if resp.tool_calls:
+            print(f"Tool calling FUNCIONA: {resp.tool_calls}")
+        else:
+            print(f"Respondió sin tool: {resp.content}")
+
+    except Exception as e:
+        print(f"\nERROR: {e}")
+
 
 if __name__ == "__main__":
-    test_gemini()
+    #test_gemini()
+    test_vertex_openai_toolcalling()
+    

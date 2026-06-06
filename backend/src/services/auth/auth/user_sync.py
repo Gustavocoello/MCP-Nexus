@@ -5,9 +5,9 @@ import requests
 from extensions import db
 from sqlalchemy import select
 from datetime import datetime, timezone
-from src.config.time_helper import get_now
+from src.core.time_helper import get_now
 from src.database.models import User, AuthProvider, UserIdentity
-from src.database.config.connection import SessionLocal
+from src.database.settings.connection import SessionLocal
 from dotenv import load_dotenv
 
 load_dotenv()

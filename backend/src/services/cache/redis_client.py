@@ -4,13 +4,12 @@
 
 import datetime
 import os
-import redis
 import json
 from uuid import UUID
 from typing import Optional
 from dotenv import load_dotenv
 from upstash_redis import Redis
-from src.config.logging_config import get_logger
+from src.core.logging import get_logger
 
 logger = get_logger('redis_client')
 

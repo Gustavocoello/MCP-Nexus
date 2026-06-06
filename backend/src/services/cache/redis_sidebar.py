@@ -5,7 +5,7 @@
 from typing import List
 from sqlalchemy import select
 from src.services.cache.redis_client import redis_client
-from src.config.logging_config import get_logger
+from src.core.logging import get_logger
 from src.database.models.models import Chat
 
 logger = get_logger('sidebar_cache')

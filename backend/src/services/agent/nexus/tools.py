@@ -3,8 +3,11 @@ import asyncio
 import json
 import json as _json
 from typing import Optional, Dict, List
-from langchain.tools import tool
-from src.mcps.client.client_manager import MCPClientManager
+from langchain_core.tools import tool, Tool
+from src.services.mcps.client.client_manager import MCPClientManager
+
+# Base de datos y Chat 
+from src.database.models.models import Message
 
 def _run(coro):
     """Helper para correr async desde tools síncronas de LangChain."""
@@ -82,19 +85,37 @@ def _clean_id(value) -> str:
     return value
 
 # --- CALENDAR TOOLS ---
-def build_calendar_tools(user_id: str):
+def build_calendar_tools(user_id: str, chat_id: Optional[str] = None, db_session=None):
     """
     Factory: genera las 12 tools de Google Calendar vinculadas a un user_id.
     """
     manager = MCPClientManager(user_id=user_id)
+    provider_name = "google_calendar"
 
     def get_calendar():
-        return manager.get_client("google_calendar")
-
+        return manager.get_client(provider_name)
+    
+    def _record_tool_usage(tool_name: str):
+        """Guarda un registro ligero en BD de qué herramienta usó el agente."""
+        if not db_session or not chat_id:
+            return
+        
+        # 1. Guardar en la Base de Datos (rol: mcp-tool)
+        # Solo guardamos el nombre de la herramienta. ¡Nada de JSONs gigantes!
+        mcp_context_str = json.dumps({
+            "tool_used": tool_name,
+            "provider": provider_name
+        })
+        
+        mcp_msg = Message(chat_id=chat_id, role="mcp-tool", content=mcp_context_str)
+        db_session.add(mcp_msg)
+        db_session.commit()
+    
     @tool
     def google_listar_calendarios() -> str:
         """Lista todos los calendarios del usuario en Google Calendar."""
         result = _run(get_calendar().google_listar_calendarios())
+        _record_tool_usage("google_listar_calendarios")
         return _parse_mcp_result(result)
 
     @tool
@@ -104,6 +125,7 @@ def build_calendar_tools(user_id: str):
         Usa calendar_id="" para todos los calendarios.
         """
         result = _run(get_calendar().google_resumen_diario(calendar_id=calendar_id or None))
+        _record_tool_usage("google_resumen_diario")
         return _parse_mcp_result(result)
 
     @tool
@@ -113,6 +135,7 @@ def build_calendar_tools(user_id: str):
         Usa calendar_id="" para todos los calendarios.
         """
         result = _run(get_calendar().google_resumen_semanal(calendar_id=calendar_id or None))
+        _record_tool_usage("google_resumen_semanal")
         return _parse_mcp_result(result)
 
     @tool
@@ -124,12 +147,14 @@ def build_calendar_tools(user_id: str):
         result = _run(get_calendar().google_disponibilidad_diaria(
             date=date or None, duration_minutes=duration_minutes
         ))
+        _record_tool_usage("google_disponibilidad_diaria")
         return _parse_mcp_result(result)
 
     @tool
     def google_disponibilidad_semanal(duration_minutes: int = 60) -> str:
         """Espacios libres de los próximos 7 días en horario Ecuador (GMT-5)."""
         result = _run(get_calendar().google_disponibilidad_semanal(duration_minutes=duration_minutes))
+        _record_tool_usage("google_disponibilidad_semanal")
         return _parse_mcp_result(result)
 
     @tool
@@ -146,6 +171,7 @@ def build_calendar_tools(user_id: str):
         keyword = args.get("keyword", keyword)
         
         result = _run(get_calendar().eventos_por_titulo(calendar_id=calendar_id, keyword=keyword))
+        _record_tool_usage("eventos_por_titulo")
         return _parse_mcp_result(result)
 
     @tool
@@ -168,6 +194,7 @@ def build_calendar_tools(user_id: str):
         result = _run(get_calendar().eventos_por_rango(
             calendar_id=calendar_id, start_date=start_date, end_date=end_date
         ))
+        _record_tool_usage("eventos_por_rango")
         return _parse_mcp_result(result)
 
     @tool
@@ -189,6 +216,7 @@ def build_calendar_tools(user_id: str):
         result = _run(get_calendar().eventos_todos_calendarios_rango(
             start_date=start_date, end_date=end_date
         ))
+        _record_tool_usage("eventos_todos_calendarios_rango")
         return _parse_mcp_result(result)
 
     @tool
@@ -224,6 +252,7 @@ def build_calendar_tools(user_id: str):
             summary=summary, description=description,
             start_time=start_time, end_time=end_time, calendar_id=calendar_id
         ))
+        _record_tool_usage("crear_evento")
         return _parse_mcp_result(result)
 
     @tool
@@ -236,6 +265,7 @@ def build_calendar_tools(user_id: str):
         result = _run(get_calendar().crear_evento_desde_texto(
             texto_usuario=texto_usuario, calendar_id=calendar_id
         ))
+        _record_tool_usage("crear_evento_desde_texto")
         return _parse_mcp_result(result)
 
     @tool
@@ -264,6 +294,7 @@ def build_calendar_tools(user_id: str):
             summary=summary or None, description=description or None,
             start_time=start_time or None, end_time=end_time or None
         ))
+        _record_tool_usage("actualizar_evento")
         return _parse_mcp_result(result)
 
     @tool
@@ -283,6 +314,7 @@ def build_calendar_tools(user_id: str):
         result = _run(get_calendar().eliminar_evento(
             calendar_id=calendar_id, event_id=event_id
         ))
+        _record_tool_usage("eliminar_evento")
         return _parse_mcp_result(result)
 
     return [
@@ -303,15 +335,32 @@ def build_calendar_tools(user_id: str):
 
 # --- NOTION TOOLS ---
 
-def build_notion_tools(user_id: str):
+def build_notion_tools(user_id: str, chat_id: Optional[str] = None, db_session=None):
     """
     Factory: genera las 9 tools de Notion vinculadas a un user_id específico.
     Se llama UNA vez al crear NexusAgent(user_id).
     """
     manager = MCPClientManager(user_id=user_id)
+    provider_name = "notion"
 
     def get_notion():
-        return manager.get_client("notion")
+        return manager.get_client(provider_name)
+    
+    def _record_tool_usage(tool_name: str):
+        """Guarda un registro ligero en BD de qué herramienta usó el agente."""
+        if not db_session or not chat_id:
+            return
+        
+        # 1. Guardar en la Base de Datos (rol: mcp-tool)
+        # Solo guardamos el nombre de la herramienta. ¡Nada de JSONs gigantes!
+        mcp_context_str = json.dumps({
+            "tool_used": tool_name,
+            "provider": provider_name
+        })
+        
+        mcp_msg = Message(chat_id=chat_id, role="mcp-tool", content=mcp_context_str)
+        db_session.add(mcp_msg)
+        db_session.commit()
 
     # ----------------------------------------------------------------
 
@@ -323,6 +372,7 @@ def build_notion_tools(user_id: str):
         Input: query (str) — término de búsqueda.
         """
         result = _run(get_notion().notion_search(query=query))
+        _record_tool_usage("notion_search")
         return _parse_mcp_result(result)
     @tool
     def notion_get_page(page_id: str) -> str:
@@ -332,6 +382,7 @@ def build_notion_tools(user_id: str):
         Input: page_id (str) — ID de la página.
         """
         result = _run(get_notion().notion_get_page(page_id=page_id))
+        _record_tool_usage("notion_get_page")
         return _parse_mcp_result(result)
 
     @tool
@@ -342,6 +393,7 @@ def build_notion_tools(user_id: str):
         Input: block_id (str) — ID del bloque o página.
         """
         result = _run(get_notion().notion_get_block_children(block_id=block_id))
+        _record_tool_usage("notion_get_block_children")
         return _parse_mcp_result(result)
 
     @tool
@@ -366,6 +418,7 @@ def build_notion_tools(user_id: str):
         result = _run(get_notion().notion_create_page(
             parent_id=parent_id, properties=props, is_db_parent=is_db_parent
         ))
+        _record_tool_usage("notion_create_page")
         return _parse_mcp_result(result)
 
     @tool
@@ -389,6 +442,7 @@ def build_notion_tools(user_id: str):
         result = _run(get_notion().notion_update_page_properties(
             page_id=page_id, properties=props
         ))
+        _record_tool_usage("notion_update_page_properties")
         return _parse_mcp_result(result)
 
     @tool
@@ -412,6 +466,7 @@ def build_notion_tools(user_id: str):
         result = _run(get_notion().notion_append_block_children(
             block_id=block_id, blocks=blocks_list
         ))
+        _record_tool_usage("notion_append_block_children")
         return _parse_mcp_result(result)
 
     @tool
@@ -432,6 +487,7 @@ def build_notion_tools(user_id: str):
         result = _run(get_notion().notion_query_database(
             database_id=database_id, filter_params=params
         ))
+        _record_tool_usage("notion_query_database")
         return _parse_mcp_result(result)
 
     @tool
@@ -442,6 +498,7 @@ def build_notion_tools(user_id: str):
         Input: database_id (str).
         """
         result = _run(get_notion().notion_get_database_structure(database_id=database_id))
+        _record_tool_usage("notion_get_database_structure")
         return _parse_mcp_result(result)
 
     @tool
@@ -452,6 +509,7 @@ def build_notion_tools(user_id: str):
         Input: block_id (str).
         """
         result = _run(get_notion().notion_delete_block(block_id=block_id))
+        _record_tool_usage("notion_delete_block")
         return _parse_mcp_result(result)
 
     return [

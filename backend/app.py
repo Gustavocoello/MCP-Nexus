@@ -3,22 +3,21 @@ import faulthandler
 from pickle import FALSE
 from flask import Flask
 from flask_cors import CORS
-
-from redis import Redis
-from src.config.config import Config
-from werkzeug.middleware.proxy_fix import ProxyFix
-
-from extensions import db
-from src.config.logging_config import get_logger
+# Rutas v1
 from src.api.v1.chat.routes import search_bp, chat_bp
-from src.api.v1.chat.mcp_tools import mcp_tools_bp
 from src.api.v1.auth.github_routes import github_auth_bp
 from src.api.v1.auth.google_routes import google_auth_bp
 from src.api.v1.auth.onedrive_routes import onedrive_bp
 from src.api.v1.auth.user_routes import user_bp, integrations_bp
+# Rutas v2
+from src.api.v2.chat.routes import chat_bp as chat_v2_bp
 from src.api.v2.security.routes import ping_bp, health_bp, ping_logs_bp
-from src.database.config.connection import get_database_url
+# Settings
+from extensions import db
+from src.core.logging import get_logger
+from src.database.settings.connection import DATABASE_URL
 from src.services.auth.utils.keep_alive_jarvis import keep_alive
+from werkzeug.middleware.proxy_fix import ProxyFix
 from dotenv import load_dotenv
 
 faulthandler.enable()
@@ -30,6 +29,8 @@ load_dotenv()
 PORT = os.getenv("PORT", 5000)
 HOST = os.getenv("HOST", "0.0.0.0")
 SECRET_KEY = os.getenv("SECRET_KEY")
+ENV = os.getenv("ENV").lower()
+SYNC_ON_START = os.getenv("SYNC_ON_START").lower() == "true"
 
 # Configurar logging
 logger = get_logger('app')
@@ -37,6 +38,7 @@ logger = get_logger('app')
 # Inicializamos la aplicación Flask
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
+
 # Configurar ProxyFix para manejar proxies inversos
 app.wsgi_app = ProxyFix(
     app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
@@ -54,9 +56,10 @@ CORS(app, supports_credentials=True, origins=[
 
 
 # Configuración de la aplicación Flask
-app.config.from_object(Config)
-uri = get_database_url()
+uri = DATABASE_URL
+
 app.config["SQLALCHEMY_DATABASE_URI"] = uri
+
 logger.info(f"URI Final aplicada: {uri}")
 
 db.init_app(app)
@@ -77,6 +80,13 @@ app.register_blueprint(github_auth_bp)
 """Rutas de OneDrive"""
 app.register_blueprint(onedrive_bp, url_prefix='/api/onedrive')
 
+"""Rutas de usuario"""
+app.register_blueprint(user_bp, url_prefix="/api/v1/user")
+
+"""Rutas de integraciones"""
+app.register_blueprint(integrations_bp, url_prefix="/api/v1/integrations")
+
+# ----------- V2 ---------------
 """Rutas de seguridad v2"""
 app.register_blueprint(ping_bp, url_prefix="/v2")
 
@@ -84,33 +94,32 @@ app.register_blueprint(health_bp, url_prefix="/v2")
 
 app.register_blueprint(ping_logs_bp, url_prefix="/v2")
 
-"""Rutas de usuario"""
-app.register_blueprint(user_bp, url_prefix="/api/v1/user")
+app.register_blueprint(chat_v2_bp, url_prefix="/api/v2/chat")
 
-"""Rutas de integraciones"""
-app.register_blueprint(integrations_bp, url_prefix="/api/v1/integrations")
 
-"""Rutas de herramientas MCP"""
-app.register_blueprint(mcp_tools_bp, url_prefix='/api/v1/mcp')
-
-# Iniciar keep-alive SOLO si se especifica la variable de entorno
-# (necesario para Render donde gunicorn no ejecuta if __name__)
-INIT_KEEP_ALIVE = os.getenv("INIT_KEEP_ALIVE").lower() == "true"
-
-if INIT_KEEP_ALIVE and not getattr(app, "keep_alive_started", False):
-    keep_alive()
-    app.keep_alive_started = True
-    print("🚀 Keep-alive Jarvis iniciado (vía INIT_KEEP_ALIVE)")
-
-# Inicia el servidor Flask (solo desarrollo local)
-if __name__ == "__main__":
-    is_prod = os.getenv("RENDER", False)
-    
-    # Iniciar keep-alive si NO se inició arriba
+# --- MODO PRODUCCION (Linux/Render) ---
+if ENV == "prod":
     if not getattr(app, "keep_alive_started", False):
         keep_alive()
         app.keep_alive_started = True
-        print("🚀 Keep-alive Jarvis iniciado (vía if __name__)")
-    
-    if not is_prod:
-        app.run(debug=True, host=HOST, port=PORT, use_reloader=False)
+        print("Keep-alive Jarvis iniciado para Produccion")
+
+if __name__ == "__main__":
+    # Hidratacion de Datos (Linux -> Windows)
+    if ENV == "dev" and SYNC_ON_START:
+        print("\n" + "="*50)
+        print("HIDRATANDO ENTORNO DEV: Sincronizando Linux -> Windows...")
+        print("="*50)
+        
+        try:
+            from src.database.tools.auto_sync import AutoSync
+            auto_sync = AutoSync()
+            if auto_sync.run_sync(source='linux', targets=['windows']):
+                print("Datos sincronizados con exito. Listo para programar.")
+            else:
+                print("Advertencia: Hubo un problema sincronizando algunos datos.")
+        except Exception as e:
+            print(f"Error al iniciar Auto-Sync: {e}")
+            
+        print("="*50 + "\n")    
+    app.run(debug=True, host=HOST, port=PORT, use_reloader=False)
