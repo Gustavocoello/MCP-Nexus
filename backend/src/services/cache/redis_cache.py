@@ -3,13 +3,12 @@
 # ============================================================
 
 from typing import List, Optional
-from datetime import datetime
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 from src.services.cache.redis_client import redis_client
-from src.config.logging_config import get_logger
+from src.core.logging import get_logger
 from src.database.models.models import Message
-from src.config.time_helper import get_now
-from extensions import db
+from src.core.time_helper import get_now
 
 logger = get_logger('chat_cache')
 
@@ -24,12 +23,8 @@ class ChatCache:
         return f"chat:messages:{chat_id}"
     
     @classmethod
-    def get_messages(cls, chat_id: str, db_session=None) -> List[dict]:
-        """
-        Obtiene mensajes de Redis, con fallback automático a DB
-        
-        SIEMPRE retorna una lista (nunca None)
-        """
+    def get_messages(cls, chat_id: str, db_session: Session = None) -> List[dict]:
+        """Obtiene mensajes de Redis, con fallback automático a DB"""
         key = cls._get_key(chat_id)
         
         # 1. INTENTO: Redis
@@ -62,7 +57,7 @@ class ChatCache:
                     "id": msg.id,
                     "role": msg.role,
                     "content": msg.content,
-                    "created_at": msg.created_at.isoformat(),
+                    "created_at": msg.created_at.isoformat() if msg.created_at else None,
                     "html": None,
                     "stable": True
                 }
@@ -76,15 +71,11 @@ class ChatCache:
             return serialized
         
         except Exception as e:
-            logger.error(f"Error en DB fallback: {e}")
+            logger.error(f"Error en DB fallback: {str(e)}")
             return []
     
     @classmethod
     def set_messages(cls, chat_id: str, messages: List) -> bool:
-        """
-        Guarda mensajes en Redis (solo últimos 10)
-        Returns: True si cacheó, False si falló (no crítico)
-        """
         if not messages:
             return False
         
@@ -95,7 +86,7 @@ class ChatCache:
                 "id": msg.id,
                 "role": msg.role,
                 "content": msg.content,
-                "created_at": msg.created_at.isoformat(),
+                "created_at": msg.created_at.isoformat() if hasattr(msg.created_at, 'isoformat') else str(msg.created_at),
                 "html": None,
                 "stable": True
             }
@@ -114,23 +105,17 @@ class ChatCache:
     
     @classmethod
     def invalidate_chat(cls, chat_id: str):
-        """Elimina el caché de un chat (no crítico si falla)"""
         key = cls._get_key(chat_id)
         redis_client.delete(key)
     
     @classmethod
     def append_message(cls, chat_id: str, message: dict):
-        """
-        Agrega un mensaje al caché sin ir a DB
-        Si falla, no es crítico (se recargará desde DB)
-        """
         key = cls._get_key(chat_id)
         cached = redis_client.get(key)
         
         if not cached:
             return  # No hay caché previo, skip
         
-        # Obtenemos la fecha actual en ISO format para consistencia con la DB
         now_iso = get_now().isoformat()
         
         cached.append({

@@ -4,27 +4,16 @@
 
 import datetime
 import os
-import redis
 import json
 from uuid import UUID
-from typing import Optional
+from typing import Optional, Any
 from dotenv import load_dotenv
 from upstash_redis import Redis
-from src.config.logging_config import get_logger
+from src.core.logging import get_logger
 
 logger = get_logger('redis_client')
 
 load_dotenv()
-
-REDIS_URL = os.getenv('REDIS_URL')
-REDIS_TOKEN = os.getenv('REDIS_TOKEN')
-
-# Evita el error 'startswith' validando antes de instanciar
-if REDIS_URL and REDIS_TOKEN:
-    redis_client = Redis(url=REDIS_URL, token=REDIS_TOKEN)
-else:
-    redis_client = None
-    print("ADVERTENCIA: Variables de Redis no encontradas")
 
 class RedisClient:
     _instance = None
@@ -46,23 +35,24 @@ class RedisClient:
             return
 
         try:
-            # Usamos el SDK de Upstash que es más ligero para tu RAM de 1.5GB
+            # Usamos el SDK de Upstash (Ideal para entornos Serverless)
             self.client = Redis(url=self.url, token=self.token)
             # Test simple
             self.client.get("ping") 
             self._available = True
             logger.info("Upstash Redis (HTTP) conectado correctamente")
         except Exception as e:
-            logger.warning(f"Redis no disponible: {e}")
+            logger.warning(f"Redis no disponible: {str(e)}")
 
     def is_available(self) -> bool:
         return self._available and self.client is not None
     
-    def custom_serializer(self, obj):
+    def custom_serializer(self, obj: Any) -> str:
         """Maneja UUID y Datetime para JSON"""
         if isinstance(obj, UUID):
             return str(obj)
-        if isinstance(obj, datetime):
+        # Importante: chequear explicitamente contra datetime.datetime
+        if isinstance(obj, datetime.datetime):
             return obj.isoformat()
         raise TypeError(f"Type {type(obj)} not serializable")
 
@@ -74,27 +64,24 @@ class RedisClient:
             
             # Si Upstash devuelve un string, lo convertimos a dict
             if isinstance(value, str):
-                return json.loads(value)
+                try:
+                    return json.loads(value)
+                except json.JSONDecodeError:
+                    return value # Es un string plano
             return value
         except Exception as e:
-            logger.error(f"Error GET {key}: {e}")
+            logger.error(f"Error GET {key}: {str(e)}")
             return None
 
-    def set(self, key: str, value: any, ttl: int = 3600) -> bool:
-        """
-        Guarda valores serializando UUIDs y fechas automáticamente.
-        """
+    def set(self, key: str, value: Any, ttl: int = 3600) -> bool:
+        """Guarda valores serializando UUIDs y fechas automáticamente."""
         if not self.is_available(): return False
         try:
-            # Forzamos la serialización usando nuestro custom_serializer
-            # Esto evita el error de "Object of type UUID is not JSON serializable"
             json_value = json.dumps(value, default=self.custom_serializer, ensure_ascii=False)
-            
-            # Usamos el cliente de Upstash para guardar el string JSON
             self.client.set(key, json_value, ex=ttl)
             return True
         except Exception as e:
-            logger.error(f"Error SET {key}: {e}")
+            logger.error(f"Error SET {key}: {str(e)}")
             return False
 
     def delete(self, key: str):
@@ -103,8 +90,7 @@ class RedisClient:
     
     def invalidate_pattern(self, pattern: str) -> bool:
         """Elimina todas las claves que coincidan con un patrón"""
-        if not self.is_available():
-            return False
+        if not self.is_available(): return False
         
         try:
             keys = self.client.keys(pattern)
@@ -113,7 +99,7 @@ class RedisClient:
                 logger.info(f"Invalidadas {len(keys)} claves: {pattern}")
             return True
         except Exception as e:
-            logger.error(f"Error invalidando {pattern}: {e}")
+            logger.error(f"Error invalidando {pattern}: {str(e)}")
             return False
 
 # Singleton global

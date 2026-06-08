@@ -1,83 +1,81 @@
-# src/api/v1/auths/google_routes.py
-
-from flask import Blueprint, redirect, request, jsonify, g
-from src.services.auth.google.google_oauth import start_google_oauth, handle_google_callback
-from src.services.auth.clerk.clerk_middleware import clerk_required
-from src.services.auth.clerk.clerk_user_sync import sync_clerk_user
-from src.config.logging_config import get_logger
+import os
+from fastapi import APIRouter, Depends, Request, HTTPException, status
+from fastapi.responses import RedirectResponse
 from dotenv import load_dotenv
-import os 
+
+from src.services.auth.google.google_oauth import start_google_oauth, handle_google_callback
+from src.services.auth.auth.auth_middleware import get_current_user
+from src.core.logging import get_logger
 
 load_dotenv()
 
 FRONTEND_URL = os.getenv("FRONTEND_URL")
 BACKEND_URL = os.getenv("BACKEND_URL")
 
-google_auth_bp = Blueprint("google_auth", __name__, url_prefix="/api/v1/auth/google")
-
-# Configurar logger
 logger = get_logger(__name__)
 
+google_auth_router = APIRouter(prefix="/api/v1/auth/google", tags=["Google Auth"])
+
 # 1) Login: Ruta protegida por Clerk JWT
-@google_auth_bp.route("/login")
-@clerk_required 
-def login():
-    clerk_id = g.get("clerk_id")
-    
-    if not clerk_id:
-        return jsonify({"error": "Authentication required (Clerk JWT missing or invalid)"}), 401
-
-    # 1. Sincronizar/Crear el perfil de usuario en la DB local
+@google_auth_router.get("/login")
+async def login(
+    request: Request, 
+    user_data: dict = Depends(get_current_user) # FastAPI valida el token y sincroniza al usuario
+):
     try:
-        local_user = sync_clerk_user(clerk_user_id=clerk_id)
+        # Extraemos el UUID directamente del middleware
+        user_id = str(user_data["user_id"])
+        
+        # OBTENEMOS LA URL BASE DINÁMICA DEL SERVIDOR
+        # request.base_url en FastAPI devuelve la URL raíz (ej. http://localhost:5000/)
+        backend_base_url = BACKEND_URL or str(request.base_url).rstrip('/')
+        
+        # Inicia el flujo de Google
+        auth_url, state = start_google_oauth(
+            user_id=user_id,
+            backend_base_url=backend_base_url
+        )
+         
+        return {
+            "auth_url": auth_url,
+            "state": state
+        }
+        
     except Exception as e:
-        return jsonify({"error": f"User synchronization failed: {str(e)}"}), 500
+        logger.exception("Error generando Google OAuth URL")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-    # OBTENEMOS LA URL BASE DINÁMICA DEL SERVIDOR (ej. http://localhost:5000)
-    backend_base_url = BACKEND_URL or request.url_root.rstrip('/')
-    
-    auth_url, state = start_google_oauth(
-        user_id=str(local_user.id),
-        backend_base_url=backend_base_url # <-- Pasamos la base de la URL
-    )
-     
-    return jsonify({
-        "auth_url": auth_url,
-        "state": state
-    })
 
 # 2) Callback: Ruta que recibe la respuesta de Google
-@google_auth_bp.route("/callback")
-def callback():
+@google_auth_router.get("/callback")
+async def callback(request: Request):
     user_id_from_redis = None
     
     try:
-        # El state viene en el query param de Google 
-        state_param = request.args.get("state")
+        # Extraemos el 'state' de los query parameters
+        state_param = request.query_params.get("state")
         
         if not state_param:
-            # Notar que ya no se espera el 'userId' aquí
-            return jsonify({"error": "Missing state parameter in OAuth callback"}), 400
+            raise ValueError("Missing state parameter in OAuth callback")
 
-        full_url = request.url
+        # FastAPI: request.url contiene la URL completa con todos los queries
+        full_url = str(request.url)
         
-        # handle_google_callback extrae el userId de Redis
+        # (Si handle_google_callback es síncrono y pesado, idealmente usarías run_in_threadpool)
         user_id_from_redis = handle_google_callback(
             authorization_response_url=full_url
         )
         
-        # Redirige al frontend, ahora pasando el userId extraído de Redis
-        return redirect(f"{FRONTEND_URL}/c/{user_id_from_redis}/settings")
+        # Redirige al frontend exitosamente usando RedirectResponse nativo de FastAPI
+        return RedirectResponse(url=f"{FRONTEND_URL}/c/{user_id_from_redis}/settings")
         
     except Exception as e:
-        # Captura errores de State/CSRF o cualquier error interno
-        logger.error(f"Google OAuth Callback Error: {e}")
+        logger.error(f"Google OAuth Callback Error: {str(e)}")
         
-        # Si tenemos el user_id, redirigimos a la página de configuración con un mensaje de error específico
+        # Si ocurre un error, construimos la URL de fallback hacia el frontend
         if user_id_from_redis:
             error_url = f"{FRONTEND_URL}/c/{user_id_from_redis}/settings?error=oauth_failed&details={str(e)}"
         else:
-            # Si no tenemos user_id, redirigir a una página de error genérica
             error_url = f"{FRONTEND_URL}/auth/error?error=oauth_failed&details={str(e)}"
         
-        return redirect(error_url)
+        return RedirectResponse(url=error_url)

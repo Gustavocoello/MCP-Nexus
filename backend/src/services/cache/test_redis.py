@@ -17,7 +17,7 @@ def test_redis_logic():
     print(f"¿Redis disponible?: {available}")
     
     if not available:
-        print("❌ FALLO: El cliente no está disponible. Revisa las credenciales en el .env")
+        print("FALLO: El cliente no está disponible. Revisa las credenciales en el .env")
         return
 
     # 2. Probar escritura (SET)
@@ -32,9 +32,9 @@ def test_redis_logic():
     print(f"Datos recuperados: {retrieved_data}")
 
     if retrieved_data and retrieved_data.get("status") == "operacional":
-        print("✅ CONCLUSIÓN: Redis está funcionando perfectamente con tu clase RedisClient.")
+        print("CONCLUSIÓN: Redis está funcionando perfectamente con tu clase RedisClient.")
     else:
-        print("❌ CONCLUSIÓN: Error al recuperar los datos.")
+        print("CONCLUSIÓN: Error al recuperar los datos.")
 
     # 4. Limpieza (DELETE)
     redis_client.delete(test_key)

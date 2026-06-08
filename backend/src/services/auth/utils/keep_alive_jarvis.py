@@ -9,15 +9,15 @@ import random
 import os
 import threading
 from dotenv import load_dotenv
-from src.config.time_helper import get_now
-from src.database.config.connection import SessionLocal
+from src.core.time_helper import get_now
+from src.database.settings.connection import SessionLocal
 from src.database.models.models import PingLog
 
 load_dotenv()
 
 RENDER_SERVER = os.getenv("RENDER_SERVER").lower() == "true"
 
-LOCAL_URL = os.getenv("LOCAL_PING")
+LOCAL_URL = os.getenv("LOCAL_PING") # Contabilidad 
 DEPLOY_URL = os.getenv("PRODU_PING")
 
 if RENDER_SERVER:

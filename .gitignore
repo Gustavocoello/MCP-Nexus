@@ -62,6 +62,7 @@ dist-ssr
 start_worker.bat
 worker_invisible.vbs
 espacio_trabajo/
+__pycache__/
 /__pycache__
 __pycache__/
 /.node_version
@@ -78,5 +79,4 @@ functions/logs/
 credentials/
 *backup.sql
 *.sql
-
-/
+sdk/

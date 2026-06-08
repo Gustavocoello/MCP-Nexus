@@ -1,6 +1,5 @@
 # src/database/models/__init__.py
-from .models import User, Chat, Message, UserToken, AuthProvider, Document
-
+from .models import User, Chat, Message, UserToken, AuthProvider, Document, UserIdentity, PingLog, SystemStats, LLMLog, PomodoroSession
 __all__ = [
     "User",
     "Chat",
@@ -9,6 +8,8 @@ __all__ = [
     "AuthProvider",
     "Document",
     "PingLog",
-    "SystemStat",
-    "LLMLog"
+    "SystemStats",
+    "LLMLog",
+    "UserIdentity",
+    "PomodoroSession"
 ]

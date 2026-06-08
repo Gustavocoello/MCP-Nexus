@@ -1,69 +1,70 @@
-from urllib import response
+from typing import Optional
+from pydantic import BaseModel
+from fastapi import APIRouter, Depends, Request, Header, HTTPException, status
+from sqlalchemy.orm import Session
 
-from flask import Blueprint, jsonify, request
-from http import HTTPStatus, client
-from src.config.time_helper import get_now
-from src.config.logging_config import get_logger
+from src.core.time_helper import get_now
+from src.core.logging import get_logger
 from src.database.models.models import PingLog
-from src.database.config.connection import SessionLocal, engine
-from src.config.ping.log_parser import parse_ping_log_v1, clean_log_message
-from src.database.config.azure.azure_config import test_connection_health, get_pool_stats 
-  
-logging = get_logger(__name__)
+from src.database.settings.connection import get_db, engine
+from src.core.ping.log_parser import parse_ping_log_v1, clean_log_message
+from src.database.settings.azure.azure_database import test_connection_health, get_pool_stats
 
-ping_logs_bp = Blueprint('ping_logs', __name__)
-ping_bp = Blueprint("ping_bp", __name__)
-health_bp = Blueprint('health', __name__)
+logger = get_logger(__name__)
 
-@ping_logs_bp.route('/ping_log', methods=['POST'])
-def receive_ping_log():
+# En FastAPI, en lugar de 3 Blueprints, podemos crear 3 Routers 
+# (Luego en tu app principal haces app.include_router(...) con los prefijos que desees)
+ping_logs_router = APIRouter()
+ping_router = APIRouter()
+health_router = APIRouter()
+
+# ==========================================
+# MODELOS PYDANTIC
+# ==========================================
+class PingLogRequest(BaseModel):
+    log: str
+
+# ==========================================
+# 1. PING LOGS (Monitoreo de latencias)
+# ==========================================
+@ping_logs_router.post("/ping_log", status_code=status.HTTP_201_CREATED)
+async def receive_ping_log(
+    request: Request,
+    payload: PingLogRequest,
+    db: Session = Depends(get_db)
+):
     """
-    Endpoint centralizado para recibir pings. 
-    Usa el mismo patrón de cierre de sesión que los mensajes de chat.
+    Endpoint centralizado para recibir pings.
+    Validado automáticamente por Pydantic (garantiza que 'log' sea un string).
     """
-    db_session = SessionLocal() # Instanciamos la sesión localmente
-    client_host = request.remote_addr
+    # FastAPI extrae la IP real de manera segura
+    client_host = request.client.host if request.client else "unknown"
     
     try:
-        # 1. Obtener y validar datos
-        try:
-            data = request.get_json()
-            raw_message = data.get("log", "")
-        except Exception:
-            return jsonify({"error": "Invalid JSON"}), 400
-
+        raw_message = payload.log.strip()
         if not raw_message:
-            return jsonify({"error": "No log provided"}), 400
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No log provided")
 
-        # Limpiar caracteres extraños y parsear el mensaje
+        # 1. Limpiar y parsear el mensaje
         cleaned_message = clean_log_message(raw_message)
-        # Parsear el log ya limpio
         parsed = parse_ping_log_v1(cleaned_message)
-        # Tiempo de respuesta
+        
+        # Nota: (get_now() - get_now()) casi siempre será 0. Lo dejo como en tu original.
         response_ms = (get_now() - get_now()).total_seconds() * 1000  
-        # Extraer el nombre del servicio 
-        service_name = parsed.get("service")
         
-        # Si el parser NO lo reconoce, creamos un objeto 'parsed' genérico
+        # 2. Asignación segura de variables (Corregido el bug de las comas/tuplas de Flask)
         if not parsed:
-            parsed = {
-                "service": "General-Log",
-                "event_type": "info",
-                "status_code": 200,
-                "message": cleaned_message,
-                "next_ping_sc": None
-            }
+            service = "General-Log"
+            event_type = "info"
+            status_code = 200
+            message = cleaned_message
+            next_ping_sc = None
         else:
-            service=service_name,
-            event_type=parsed.get('event_type'),
-            message=parsed.get('message'),
-            response_ms=response_ms,
-            status_code=parsed.get('status_code'),
-            client_ip=client_host,
-            next_ping_sc=parsed.get('next_ping_sc'),
-            timestamp=get_now()
-            
-        
+            service = parsed.get("service", "Unknown")
+            event_type = parsed.get("event_type", "info")
+            message = parsed.get("message", cleaned_message)
+            status_code = parsed.get("status_code", 200)
+            next_ping_sc = parsed.get("next_ping_sc")
 
         # 3. Crear y guardar el registro
         new_log = PingLog(
@@ -72,78 +73,94 @@ def receive_ping_log():
             message=message,
             response_ms=response_ms,
             status_code=status_code,
-            client_ip=client_ip,
+            client_ip=client_host,
             next_ping_sc=next_ping_sc,
-            timestamp=timestamp
+            timestamp=get_now()
         )
         
-        db_session.add(new_log)
-        db_session.commit()
+        db.add(new_log)
+        db.commit()
         
-        return jsonify({
+        return {
             "status": "ok",
-            "service": parsed['service'],
+            "service": service,
             "timestamp": get_now().isoformat()
-        }), 201
+        }
 
+    except HTTPException:
+        raise
     except Exception as e:
-        db_session.rollback() # Importante hacer rollback si falla el commit
-        logging.exception("Error guardando ping log centralizado")
-        return jsonify({"error": str(e)}), 500
-        
-    finally:
-        db_session.close()
+        db.rollback() 
+        logger.exception("Error guardando ping log centralizado")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
-@ping_bp.route("/ping", methods=["GET"])
-def ping():
-    client_ip = request.remote_addr
-    user_agent = request.headers.get("User-Agent", "unknown")
-    # Usar timezone-aware datetime para evitar problemas de servidor
+
+# ==========================================
+# 2. PING SIMPLE (Verificador de estado del Server)
+# ==========================================
+@ping_router.get("/ping")
+async def ping(
+    request: Request,
+    # Inyectamos el User-Agent automáticamente, con "unknown" como fallback
+    user_agent: Optional[str] = Header(default="unknown", alias="User-Agent")
+):
+    client_ip = request.client.host if request.client else "unknown"
     now = get_now().isoformat()
-    #logging.info(f"[PONG]")
-    return jsonify({
+    
+    # logging.info(f"[PONG]")
+    return {
         "status": "pong",
-        "message": "Render server is alive! - Backend ",
+        "message": "Render server is alive! - Backend",
         "client_ip": client_ip,
         "user_agent": user_agent,
         "timestamp": now
-    })
+    }
 
-@health_bp.route("/db-health", methods=["GET"])
-def db_health_check_route():
+
+# ==========================================
+# 3. HEALTH CHECKS Y POOL STATS (BD)
+# ==========================================
+@health_router.get("/db-health")
+async def db_health_check_route():
     """
-    Función de Health Check que utiliza la función auxiliar para despertar Azure.
+    Health Check que utiliza la función auxiliar para despertar Azure.
     """
-    db_session = SessionLocal() # Creamos sesión por si el test la necesita
     try:
-        # Usamos el engine directamente para el health check
+        # Usamos el engine global directamente (No es necesario abrir una SessionLocal
+        # si test_connection_health utiliza el engine a bajo nivel)
         health_data = test_connection_health(engine)
         
         if health_data.get('status') == 'unhealthy':
-            logging.error(f"DB Health Check Falló: {health_data.get('error')}")
-            return jsonify(health_data), HTTPStatus.SERVICE_UNAVAILABLE
-        
-        # Opcional: Ejecutar una query simple con la sesión para asegurar que el pool sirve
-        # db_session.execute(text("SELECT 1")) 
+            logger.error(f"DB Health Check Falló: {health_data.get('error')}")
+            # Retornamos código 503 pero incluimos la data para que el dashboard lo lea
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE, 
+                detail=health_data
+            )
 
-        logging.info("DB Health Check Exitoso (Azure está despierto)")
-        return jsonify(health_data), HTTPStatus.OK
+        logger.info("DB Health Check Exitoso (Azure está despierto)")
+        return health_data
         
+    except HTTPException:
+        raise
     except Exception as e:
-        logging.error(f"Error crítico en health check: {str(e)}")
-        return jsonify({"status": "unhealthy", "error": str(e)}), 500
-    finally:
-        db_session.close() # <--- OBLIGATORIO: Cerramos siempre
+        logger.exception("Error crítico en health check")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"status": "unhealthy", "error": str(e)}
+        )
 
-@health_bp.route('/pool-stats', methods=['GET'])
-def pool_stats_endpoint():
+@health_router.get('/pool-stats')
+async def pool_stats_endpoint():
     """
     Endpoint para monitorear el pool de conexiones y evitar fugas de RAM.
     """
     try:
-        # get_pool_stats analiza el estado interno del engine (conexiones usadas/libres)
         stats_data = get_pool_stats(engine) 
-        return jsonify(stats_data), HTTPStatus.OK
+        return stats_data
     except Exception as e:
-        logging.error(f"Error obteniendo pool stats: {e}")
-        return jsonify({"error": str(e)}), 500
+        logger.exception(f"Error obteniendo pool stats: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=str(e)
+        )

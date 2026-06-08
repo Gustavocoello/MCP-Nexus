@@ -2,8 +2,9 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@pro/*": ["src/projects/*"]
     }
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "../../jarvis-sdk/src/ui/components/ChatMenu", "../../jarvis-sdk/src/ui/components/CodeBlock", "../../jarvis-sdk/src/ui/components/Config/tabs/Theme", "../../jarvis-sdk/src/ui/components/Config/tabs/MemoryTab", "../../jarvis-sdk/src/ui/components/Config/tabs/McpTab/utils", "../../jarvis-sdk/src/ui/components/Sidebar/Sidebar.jsx", "../../jarvis-sdk/src/ui/components/Sidebar/utils", "../../jarvis-sdk/src/ui/components/SearchBar/SearchBar.jsx", "../../jarvis-sdk/src/ui/components/SearchBar/utils"]
 }

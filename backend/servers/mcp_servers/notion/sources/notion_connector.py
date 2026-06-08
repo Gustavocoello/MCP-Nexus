@@ -56,8 +56,15 @@ class NotionConnector:
         Consulta tus tablas con muchas columnas. 
         Permite enviar filtros complejos desde Lamar.
         """
-        clean_id = database_id.replace("-", "")
-        return await self._request("POST", f"databases/{clean_id}/query", json_data=filter_params or {})
+        body = {}
+        if filter_params:
+            # Si el LLM manda el filtro sin el wrapper "filter", lo agregamos
+            if "filter" not in filter_params and ("property" in filter_params or "and" in filter_params or "or" in filter_params):
+                body["filter"] = filter_params
+            else:
+                body.update(filter_params)
+        
+        return await self._request("POST", f"databases/{database_id}/query", json_data=body)
 
     # --- 8. notion_get_database_structure ---
     async def get_database_structure(self, database_id: str):
