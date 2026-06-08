@@ -3,7 +3,7 @@ import os
 import time
 from sqlalchemy import text
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 from src.core.logging import get_logger
 from src.database.settings.azure.azure_database import get_azure_engine
 from src.database.settings.postgres.database_win_config import get_pg_engine as win_pg_engine
@@ -90,3 +90,25 @@ try:
 except Exception as e:
     logger.critical(f"No se pudo crear SessionLocal: {str(e)}")
     raise
+
+# ==========================================
+# CONFIGURACIONES ESPECÍFICAS PARA FASTAPI
+# ==========================================
+
+# 1. Base para los modelos
+Base = declarative_base()
+
+# 2. Inyección de dependencias para las rutas
+def get_db():
+    """
+    Generador que crea una sesión de base de datos por cada petición HTTP
+    y se asegura de cerrarla automáticamente al terminar.
+    """
+    db = SessionLocal()
+    try:
+        yield db
+    except Exception as e:
+        db.rollback()
+        raise e
+    finally:
+        db.close()

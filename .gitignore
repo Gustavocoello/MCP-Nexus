@@ -79,3 +79,4 @@ functions/logs/
 credentials/
 *backup.sql
 *.sql
+sdk/

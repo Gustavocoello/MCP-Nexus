@@ -4,7 +4,7 @@ from enum import Enum
 from pgvector.sqlalchemy import Vector 
 from datetime import datetime, timezone
 from src.core.time_helper import get_now
-#from src.database.settings.connection import Base
+from src.database.settings.connection import Base
 from sqlalchemy import Enum as PgEnum
 from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy.dialects.postgresql import UUID
@@ -13,7 +13,7 @@ from sqlalchemy import text, Column, String, Integer, Boolean, DateTime, Text, F
 
 #from werkzeug.security import generate_password_hash, check_password_hash
 
-Base = declarative_base()
+#Base = declarative_base()
 
 # --- ENUMS NATIVOS ---
 class AuthProvider(str, Enum):

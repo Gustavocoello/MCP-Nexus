@@ -65,8 +65,7 @@ logger = get_logger("backend.create_tables")
 
 # Importar db de Flask-SQLAlchemy
 try:
-    from extensions import db
-    USE_FLASK_DB = True
+    USE_FLASK_DB = False
     logger.info("Usando Flask-SQLAlchemy (db.Model)")
 except ImportError:
     logger.warning("No se encontro Flask-SQLAlchemy, usando SQLAlchemy puro")

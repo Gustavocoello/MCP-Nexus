@@ -1,36 +1,21 @@
-# services/extensions/onedrive_service.py
 import os
-import time
 import requests
-from extensions import db
 from sqlalchemy import select
-from datetime import datetime, timedelta, timezone
-from src.database.models.models import UserToken
-from src.database.settings.connection import SessionLocal
+from datetime import timedelta, timezone
+
 from src.core.logging import get_logger
 from src.core.time_helper import get_now
+from src.database.models.models import UserToken
+from src.database.settings.connection import SessionLocal
 from dotenv import load_dotenv
 
-# Este servicio se encarga de toda la lógica relacionada con la integración de OneDrive,
-logger = get_logger(__name__)
+# Importamos nuestro cliente de Redis centralizado
+from src.services.cache.redis_client import redis_client
 
+logger = get_logger(__name__)
 load_dotenv()
 
-DRIVE_ID = os.getenv("ONEDRIVE_DRIVE_ID")  # ponlo en .env
-
-def upload_to_onedrive(access_token, filename, file_bytes):
-    url = f"https://graph.microsoft.com/v1.0/me/drive/root:/Datos adjuntos/Work/Personal_Projects/MCP-Nexus/2025/{filename}:/content"
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/octet-stream"
-    }
-    resp = requests.put(url, headers=headers, data=file_bytes)
-    if resp.status_code in [200, 201]:
-        return resp.json()["@microsoft.graph.downloadUrl"]
-    else:
-        raise Exception(f"OneDrive upload failed: {resp.text}")
-
-
+DRIVE_ID = os.getenv("ONEDRIVE_DRIVE_ID") 
 
 TENANT_ID = os.getenv("AZURE_TENANT_ID")
 CLIENT_ID = os.getenv("AZURE_CLIENT_ID")
@@ -39,17 +24,47 @@ CLIENT_SECRET = os.getenv("AZURE_CLIENT_SECRET")
 TOKEN_URL = f"https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token"
 SCOPE = "https://graph.microsoft.com/.default"
 
-# cache simple en memoria
-_token_cache = {"access_token": None, "expires_at": 0}
+# ==========================================
+# 1. SUBIR ARCHIVO A ONEDRIVE
+# ==========================================
+def upload_to_onedrive(access_token: str, filename: str, file_bytes: bytes) -> str:
+    """
+    Sube un archivo a OneDrive.
+    Esta función es sincrónica, pero es segura porque FastAPI la ejecuta 
+    dentro de un BackgroundTask (Threadpool) sin bloquear el servidor.
+    """
+    url = f"https://graph.microsoft.com/v1.0/me/drive/root:/Datos adjuntos/Work/Personal_Projects/MCP-Nexus/2025/{filename}:/content"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/octet-stream"
+    }
+    
+    resp = requests.put(url, headers=headers, data=file_bytes)
+    
+    if resp.status_code in [200, 201]:
+        return resp.json()["@microsoft.graph.downloadUrl"]
+    else:
+        logger.error(f"OneDrive upload failed: {resp.text}")
+        raise Exception(f"OneDrive upload failed: {resp.status_code}")
 
-def get_onedrive_service_token():
-    global _token_cache
 
-    # Si el token aún es válido, lo devolvemos
-    if _token_cache["access_token"] and _token_cache["expires_at"] > time.time():
-        return _token_cache["access_token"]
+# ==========================================
+# 2. TOKEN DE SERVICIO (App-Only) CON REDIS
+# ==========================================
+def get_onedrive_service_token() -> str:
+    """
+    Obtiene el token de servicio de la aplicación.
+    Utiliza Redis para asegurar que todos los workers compartan el mismo token.
+    """
+    cache_key = "onedrive:service_token"
+    
+    # 1. Intentar obtener de Redis
+    cached_token = redis_client.get(cache_key)
+    if cached_token:
+        return cached_token
 
-    # Pedimos un token nuevo
+    # 2. Si no hay token o expiró, pedimos uno nuevo a Microsoft
+    logger.info("Solicitando nuevo Service Token a Microsoft...")
     data = {
         "client_id": CLIENT_ID,
         "client_secret": CLIENT_SECRET,
@@ -59,22 +74,27 @@ def get_onedrive_service_token():
 
     resp = requests.post(TOKEN_URL, data=data)
     if resp.status_code != 200:
-        raise Exception(f"Error getting OneDrive token: {resp.text}")
+        logger.error(f"Error getting OneDrive token: {resp.text}")
+        raise Exception(f"Error getting OneDrive token: {resp.status_code}")
 
     token_data = resp.json()
     access_token = token_data["access_token"]
-    expires_in = token_data["expires_in"]
+    expires_in = token_data.get("expires_in", 3600)
 
-    _token_cache["access_token"] = access_token
-    _token_cache["expires_at"] = time.time() + expires_in - 60  # refrescar 1 min antes
+    # 3. Guardar en Redis (Le restamos 60 seg al TTL para refrescarlo antes de que expire)
+    safe_ttl = max(10, expires_in - 60)
+    redis_client.set(cache_key, access_token, ttl=safe_ttl)
 
     return access_token
 
 
-def get_user_onedrive_token(user_id):
+# ==========================================
+# 3. TOKEN DE USUARIO (Delegated)
+# ==========================================
+def get_user_onedrive_token(user_id: str) -> str:
     """
-    Obtiene el token de acceso, refrescándolo si es necesario.
-    user_id es el UUID interno del sistema.
+    Obtiene el token de acceso de un usuario, refrescándolo si es necesario.
+    Maneja su propia db_session porque puede ser llamado desde hilos en segundo plano.
     """
     db_session = SessionLocal()
     try:
@@ -82,10 +102,8 @@ def get_user_onedrive_token(user_id):
         user_token = db_session.execute(stmt).scalar_one_or_none()
         
         if not user_token:
-            # En lugar de solo Exception, podrías devolver None para manejarlo mejor
             raise Exception("El usuario no ha vinculado su cuenta de OneDrive")
 
-        # Usamos timezone.utc para evitar problemas de desfase horario
         now = get_now()
         
         # Si expiró o está a punto de expirar (margen de 1 minuto)
