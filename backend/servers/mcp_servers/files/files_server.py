@@ -16,7 +16,7 @@ from starlette.middleware.base import BaseHTTPMiddleware, Request
 from contextvars import ContextVar
 from dotenv import load_dotenv
 from typing import Optional, Dict, List
-from sources.file_manager import list_local_directory, read_local_file, patch_local_file
+from sources.file_manager import list_local_directory, read_local_file, patch_local_file, search_local_items, set_active_workspace, generate_project_tree, write_local_file, list_skills
 
 # --- Tu Helper de Tiempo ---
 
@@ -142,24 +142,28 @@ app = Starlette(
 
 #==================== HELPERS =====================
 def extract_context_from_fastmcp(context: Context) -> dict:
-    """Extrae el contexto MCP desde la variable global o el fallback de FastMCP"""
+    """Extrae el contexto MCP desde la variable global del ContextVar."""
     mcp_context = _current_request_context.get()
     
-    print(f" [extract_context] Contexto Global: user_id={mcp_context.get('user_id')} ")
-    
-    if mcp_context and mcp_context.get('notion_api_key'):
+    user_id = mcp_context.get('user_id')
+    print(f" [extract_context] Contexto Global: user_id={user_id}")
+
+    # Si el ContextVar tiene user_id válido, úsalo directamente
+    if user_id:
         return mcp_context.copy()
-    
-    # Fallback: intentar desde request_context (Igual que en Calendar)
-    req_ctx = context.request_context
-    mcp_context = {
-        "user_id": getattr(req_ctx, "user_id", None),
-        "provider": getattr(req_ctx, "provider", None),
-    }
-    
-    print(f" [extract_context] Fallback - user_id={mcp_context.get('user_id')} ")
-    
-    return mcp_context
+
+    # Fallback: intentar desde request_context de FastMCP
+    try:
+        req_ctx = context.request_context
+        fallback = {
+            "user_id": getattr(req_ctx, "user_id", None),
+            "provider": getattr(req_ctx, "provider", None),
+        }
+    except Exception:
+        fallback = {"user_id": None, "provider": None}
+
+    print(f" [extract_context] Fallback - user_id={fallback.get('user_id')}")
+    return fallback
 
 
 
@@ -171,22 +175,65 @@ def extract_context_from_fastmcp(context: Context) -> dict:
 async def mcp_list_directory(context: Context, directory_path: str = "."):
     """Lists files and folders inside a specific directory."""
     user_context = extract_context_from_fastmcp(context)
-    print(f"[ACTION] User {user_context.get('user_id')} requested directory list: {directory_path}")
-    return list_local_directory(directory_path)
+    user_id = user_context.get("user_id")
+    print(f"[ACTION] User {user_id} requested directory list: {directory_path}")
+    return list_local_directory(directory_path, user_id=user_id)
 
 @mcp.tool()
 async def mcp_read_file(context: Context, file_path: str):
     """Reads the content of a local file in the workspace."""
     user_context = extract_context_from_fastmcp(context)
-    print(f"[ACTION] User {user_context.get('user_id')} requested file read: {file_path}")
-    return read_local_file(file_path)
+    user_id = user_context.get("user_id")
+    print(f"[ACTION] User {user_id} requested file read: {file_path}")
+    return read_local_file(file_path, user_id=user_id)
 
 @mcp.tool()
 async def mcp_patch_file(context: Context, file_path: str, search_block: str, replace_block: str):
     """Surgically edits an existing file without rewriting the entire document."""
     user_context = extract_context_from_fastmcp(context)
-    print(f"[ACTION] User {user_context.get('user_id')} requested file patch: {file_path}")
-    return patch_local_file(file_path, search_block, replace_block)
+    user_id = user_context.get("user_id")
+    print(f"[ACTION] User {user_id} requested file patch: {file_path}")
+    return patch_local_file(file_path, search_block, replace_block, user_id=user_id)
+
+@mcp.tool()
+async def mcp_search_items(context: Context, query: str, search_type: str = "all"):
+    """Searches recursively for files or folders matching a name anywhere in the project."""
+    user_context = extract_context_from_fastmcp(context)
+    user_id = user_context.get("user_id")
+    print(f"[ACTION] User {user_id} requested search for: {query}")
+    return search_local_items(query, search_type, user_id=user_id)
+
+@mcp.tool()
+async def mcp_set_workspace(context: Context, new_absolute_path: str):
+    """Changes the working directory of the agent dynamically."""
+    user_context = extract_context_from_fastmcp(context)
+    user_id = user_context.get("user_id")
+    print(f"[ACTION] User {user_id} changing workspace to: {new_absolute_path}")
+    return set_active_workspace(new_absolute_path, user_id=user_id)
+
+@mcp.tool()
+async def mcp_get_tree(context: Context, directory_path: str = ".", max_depth: int = 3):
+    """Generates a visual directory tree structure to understand project layout."""
+    user_context = extract_context_from_fastmcp(context)
+    user_id = user_context.get("user_id")
+    print(f"[ACTION] User {user_id} requesting tree for: {directory_path}")
+    return generate_project_tree(directory_path, max_depth, user_id=user_id)
+
+@mcp.tool()
+async def mcp_write_file(context: Context, file_path: str, content: str, overwrite: bool = False):
+    """Creates a new file. For skills/ paths, auto-resolves to the correct directory."""
+    user_context = extract_context_from_fastmcp(context)
+    user_id = user_context.get("user_id")
+    print(f"[ACTION] User {user_id} requested write file: {file_path}")
+    return write_local_file(file_path, content, overwrite, user_id=user_id)
+
+@mcp.tool()
+async def mcp_list_skills(context: Context):
+    """Lists all available skills found in the skills/ directory."""
+    user_context = extract_context_from_fastmcp(context)
+    user_id = user_context.get("user_id")
+    print(f"[ACTION] User {user_id} requested skills list")
+    return list_skills(user_id=user_id)
 
 if __name__ == "__main__":
     keep_alive_mcp()

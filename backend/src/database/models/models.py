@@ -57,7 +57,7 @@ class UserIdentity(Base):
     provider_user_id = Column(String(255), nullable=False) # Aquí va el 'sub' de Clerk o AWS
     
     # Un usuario no puede tener dos identidades del mismo proveedor
-    __table_args__ = (UniqueConstraint('provider', 'provider_user_id', name='_provider_user_uc'),)
+    __table_args__ = (UniqueConstraint('app_id', 'provider', 'provider_user_id', name='_app_provider_user_uc'),)
     
 class Chat(Base):
     __tablename__ = 'chat'

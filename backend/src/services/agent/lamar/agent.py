@@ -9,6 +9,7 @@ current_dir = Path(__file__).resolve().parent.parent.parent
 backend_dir = current_dir.parent.parent
 sys.path.insert(0, str(backend_dir))
 
+from src.core.time_helper import get_now
 from src.services.agent.common.base_agent import BaseAgent
 from src.services.agent.lamar.tools import (
     get_current_datetime_and_knowledge_info,
@@ -31,38 +32,22 @@ load_dotenv()
 def get_lamar_template() -> str:
     """Genera el template maestro leyendo AGENT.md y agregando sufijos de LangChain."""
     
+    now = get_now()
+    current_date = now.strftime("%A %d de %B de %Y, %H:%M")
+    
     # 1. Leer dinámicamente el archivo AGENT.md
     agent_md_path = Path(__file__).resolve().parent / "AGENT.md"
     with open(agent_md_path, "r", encoding="utf-8") as f:
         agent_identity_and_rules = f.read()
 
     # 2. Agregar las variables obligatorias y el formato de LangChain
-    langchain_suffix = """
-CONVERSATION HISTORY (use this to understand context from previous messages):
-{chat_history}
+    langchain_suffix = f"""
+CURRENT DATE AND TIME (Ecuador GMT-5): {current_date}
+Use this date as reference for "today", "tomorrow", "this week", etc.
+NEVER use years prior to 2026.
 
-AVAILABLE TOOLS:
-{tools}
-
-Use the following format STRICTLY:
-
-Thought: (always in English) Reason about whether you need a tool or not.
-
---- If you DO need a tool:
-Action: one of [{tool_names}]
-Action Input: a valid JSON object — flat, no nested keys
-Observation: the result of the action
-... (repeat only if necessary)
-Thought: I now know the final answer.
-Final Answer: your response to the user.
-
---- If you DO NOT need a tool:
-Thought: No tool needed. I will respond directly.
-Final Answer: your response to the user.
-
-User input: {input}
-
-{agent_scratchpad}"""
+LANGUAGE RULE: Always respond in the exact same language the user used.
+"""
 
     # 3. Unir todo
     return agent_identity_and_rules + "\n" + langchain_suffix

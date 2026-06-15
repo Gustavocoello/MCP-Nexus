@@ -99,7 +99,7 @@ async def send_message_v2(
         async def generate():
             gen_session = SessionLocal()
             try:
-                yield "[THOUGHT] 🧠 Analizando la solicitud inicial y preparando estrategia de ejecución...\n"
+                yield "[THOUGHT] Analizando la solicitud inicial y preparando estrategia de ejecución...\n"
                 
                 full_reply = ""
                 session_uuid = str(chat_id) # Usamos el chat_id o generas un uuid único de sesión
@@ -123,20 +123,20 @@ async def send_message_v2(
                             # Formateamos los argumentos de manera legible pero segura
                             args_str = json.dumps(t_args, ensure_ascii=False) if t_args else "{}"
                             
-                            yield f"[THOUGHT] ⚙️ Acción requerida: Ejecutando herramienta '{t_name}'.\n"
-                            yield f"[THOUGHT] 📥 Parámetros inyectados: {args_str}\n"
-                            yield f"[THOUGHT] ⏳ Esperando respuesta del sistema externo...\n"
+                            yield f"[THOUGHT] Acción requerida: Ejecutando herramienta '{t_name}'.\n"
+                            yield f"[THOUGHT] Parámetros inyectados: {args_str}\n"
+                            yield f"[THOUGHT] Esperando respuesta del sistema externo...\n"
 
                     # CASO B: La herramienta terminó y devolvió un resultado
                     elif isinstance(last_msg, ToolMessage):
                         t_name = last_msg.name
                         # No mostramos toda la data (puede ser enorme), solo avisamos que se obtuvo
-                        yield f"[THOUGHT] ✅ Herramienta '{t_name}' ejecutada con éxito. Extrayendo datos relevantes...\n"
-                        yield f"[THOUGHT] 🔍 Evaluando los resultados obtenidos para formular el siguiente paso...\n"
+                        yield f"[THOUGHT] Herramienta '{t_name}' ejecutada con éxito. Extrayendo datos relevantes...\n"
+                        yield f"[THOUGHT] Evaluando los resultados obtenidos para formular el siguiente paso...\n"
 
                     # CASO C: El agente da la respuesta final al usuario (Fin del ciclo)
                     elif isinstance(last_msg, AIMessage) and not last_msg.tool_calls:
-                        yield "[THOUGHT] 🎯 Análisis completado. Generando respuesta final...\n"
+                        yield "[THOUGHT] Análisis completado. Generando respuesta final...\n"
                         full_reply = last_msg.content
                         
                         # (Opcional) Si quieres simular un stream de texto del resultado final:

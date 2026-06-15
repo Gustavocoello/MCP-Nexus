@@ -80,7 +80,7 @@ Is mcp_tool a dict?                 → Yes → Use .get() / No → Use getattr(
 # In sync_mcps.py
 AGENT_MCP_MAPPING = {
     "koda":       ["github", "context7", "files"],
-    "nexus":      ["notion", "google_calendar"],
+    "nexus":      ["notion", "google_calendar", "devtools", "github"],
     #"new_agent":  ["slack", "jira"]          # ← add here
 }
 

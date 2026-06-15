@@ -9,6 +9,7 @@ from src.services.mcps.client.notion.client_notion import NotionMCPClient as Not
 from src.services.mcps.client.files.client_files import FilesMCPClient as FilesClient
 from src.services.mcps.client.github.client_github import GithubMCPClient as GithubClient
 from src.services.mcps.client.context.client_context7 import Context7MCPClient as Context7Client
+from src.services.mcps.client.google.client_devtools import DevToolsMCPClient as DevToolsClient
 
 logger = get_logger("mcp_manager")
 
@@ -36,12 +37,16 @@ class MCPClientManager:
             "context7": {
                 "class": Context7Client,
                 "url": None # Stdio no usa URL, usa la terminal local de Linux
+            },
+            "devtools": {
+                "class": DevToolsClient,
+                "url": None
             }
         }
 
     def get_client(self, provider_name: str):
         config = self._providers.get(provider_name)
-        if provider_name == "context7":
+        if provider_name in ["context7", "devtools"]:
             return config["class"]() # Koda lo instancia limpio
         
         if not config:

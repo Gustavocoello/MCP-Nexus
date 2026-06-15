@@ -91,12 +91,12 @@ app.add_middleware(
 
 # --- REGISTRO DE RUTAS ---
 # Rutas v1
-app.include_router(search_router, prefix='/api/search')
-app.include_router(chat_router, prefix='/api/chat')
+app.include_router(search_router, prefix='/api/v1/search')
+app.include_router(chat_router, prefix='/api/v1/chat')
 app.include_router(google_auth_router)
 app.include_router(github_auth_router)
-app.include_router(onedrive_router, prefix='/api/onedrive')
-app.include_router(user_router, prefix="/api/v1/user")
+app.include_router(user_router)
+app.include_router(onedrive_router, prefix='/api/v1/onedrive')
 app.include_router(integrations_router, prefix="/api/v1/integrations")
 
 # Rutas v2

@@ -7,6 +7,7 @@ from src.database.models.models import Message, UserToken
 from src.services.auth.utils.token_crypto import encrypt_token
 from src.services.llm.prompts.system_prompt import SYSTEM_PROMPT
 from src.services.llm.chat.llm_router import completion
+from src.core.time_helper import get_now
 from src.core.logging import get_logger
 
 # CHAT V2

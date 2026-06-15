@@ -10,7 +10,7 @@ backend_dir = current_dir.parent.parent
 sys.path.insert(0, str(backend_dir))
 
 from src.services.agent.common.base_agent import BaseAgent
-from src.services.agent.nexus.tools import build_calendar_tools, build_notion_tools
+from src.services.agent.nexus.tool import build_calendar_tools, build_notion_tools, build_github_tools, build_devtools_tools, build_files_tools
 from src.services.llm.chat.llm_router import get_langchain_llm
 from src.core.time_helper import get_now
 
@@ -27,37 +27,13 @@ def get_nexus_template():
         agent_identity_and_rules = f.read()
 
     # 2. Agregar las variables obligatorias y el formato de LangChain
-    langchain_suffix = """
-CURRENT DATE AND TIME (Ecuador GMT-5): CURRENT_DATE_PLACEHOLDER
-Use this date as a reference for calculating "today," "tomorrow," "this week," etc.
-NEVER use years prior to 2026 in dates or Futures dates depend the data.
+    langchain_suffix = f"""
+CURRENT DATE AND TIME (Ecuador GMT-5): {current_date}
+Use this date as reference for "today", "tomorrow", "this week", etc.
+NEVER use years prior to 2026.
 
-CONVERSATION HISTORY:
-{chat_history}
-
-AVAILABLE TOOLS:
-{tools}
-
-Use the following format STRICTLY:
-
-Thought: (always in English) Reason step by step.
-
---- If you need a tool:
-Action: one of [{tool_names}]
-Action Input: a valid JSON object
-Observation: the result of the action
-... (repeat if necessary)
-Thought: I now know the final answer.
-Final Answer: your response to the user.
-
---- If you do NOT need a tool:
-Thought: No tool needed.
-Final Answer: your response to the user.
-
-User input: {input}
-
-{agent_scratchpad}"""
-
+LANGUAGE RULE: Always respond in the exact same language the user used.
+"""
     # 3. Unir todo y reemplazar la fecha
     full_template = agent_identity_and_rules + "\n" + langchain_suffix
     return full_template.replace("CURRENT_DATE_PLACEHOLDER", current_date)
@@ -70,7 +46,10 @@ class NexusAgent(BaseAgent):
         llm = get_langchain_llm()
         tools = [
             *build_notion_tools(user_id=user_id),
-            *build_calendar_tools(user_id=user_id)
+            *build_calendar_tools(user_id=user_id),
+            *build_github_tools(user_id=user_id),
+            *build_devtools_tools(user_id=user_id),
+            *build_files_tools(user_id=user_id)
         ]
         template = get_nexus_template()
         super().__init__(llm, tools, template)

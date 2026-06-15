@@ -467,7 +467,7 @@ async def update_chat_title(
         db.commit()
         
         # === AVISAR A REDIS ===
-        SidebarCache.invalidate_user(user["user_id"])
+        SidebarCache.invalidate_user(user["user_id"], user["app_id"])
         logger.info(f"[Redis] Sidebar invalidado por actualización de título del chat: {chat_id}")
 
         return {'message': 'Título actualizado', 'title': payload.title}

@@ -38,7 +38,7 @@ async def test_integracion():
     except Exception as e:
         print(f"Notion no disponible: {type(e).__name__} : {e}")
 
-    print("✅ Todo fluye por el Manager")
+    print("Todo fluye por el Manager")
 
 if __name__ == "__main__":
     asyncio.run(test_integracion())

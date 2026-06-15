@@ -408,44 +408,51 @@ _provider_index  = 0          # estado global sencillo
 
 def completion(messages):
     """
-    Llama a la API con rotación automática. Recibe `messages` estilo OpenAI.
-    Devuelve el string respuesta del assistant.
+    Llama a la API con rotación automática usando API_PROVIDERS_TO_AGENT.
     """
     global _provider_index
     retries = 0
 
-    while _provider_index < len(API_PROVIDERS):
-        prov = API_PROVIDERS[_provider_index]
+    while _provider_index < len(API_PROVIDERS_TO_AGENT):
+        prov = API_PROVIDERS_TO_AGENT[_provider_index]
         logger.info(f"Usando provider '{prov['name']}'  (reintento {retries+1})")
 
         try:
             # 1. EVALUACIÓN DINÁMICA DE LA LLAVE O KEY
             if "key_func" in prov:
-                # Si tiene key_func, llamamos a la función con () para generar un token nuevo
                 api_key = prov["key_func"]() 
             else:
-                # Si no, simplemente usamos la llave estática que guardamos
-                api_key = prov["key"]
+                # OBTENER DEL .ENV usando el nombre de la variable
+                api_key = os.getenv(prov.get("key", ""))
             
-            # 2. RECONSTRUCCIÓN DEL CLIENTE CON LA LLAVE ACTUALIZADA
+            if not api_key:
+                raise ValueError("API Key no encontrada en el .env")
+
+            # 2. RESOLVER BASE URL (Caso Cloudflare)
+            base_url = prov["base_url"]
+            if base_url.startswith("CLOUDFLARE_ID"):
+                cf_id = os.getenv(base_url)
+                if not cf_id: raise ValueError("Cloudflare ID no encontrado")
+                base_url = get_cf_url(cf_id)
+
+            # 3. RECONSTRUCCIÓN DEL CLIENTE
             client = OpenAI(
-                base_url=prov["base_url"],
+                base_url=base_url,
                 api_key=api_key
             )
-            # 3. LLAMADA A LA API
+            
+            # 4. LLAMADA A LA API
             resp = client.chat.completions.create(
                 model=prov["model"],
                 messages=messages
             )    
-            # éxito: no cambiamos índice
             return resp.choices[0].message.content.strip()
 
         except Exception as err:
             logger.error(f"Provider '{prov['name']}' falló: {err}")
             if retries < MAX_RETRIES - 1:
                 retries += 1
-                continue      # nuevo intento con el mismo proveedor
-            # agoté reintentos → next provider
+                continue
             _provider_index += 1
             retries = 0
 
@@ -454,14 +461,13 @@ def completion(messages):
 
 def completion_stream(messages):
     """
-    Igual a `completion`, pero retorna chunks progresivos con stream=True.
-    Es un generador.
+    Generador de streaming usando API_PROVIDERS_TO_AGENT.
     """
     global _provider_index
     retries = 0
 
-    while _provider_index < len(API_PROVIDERS):
-        prov = API_PROVIDERS[_provider_index]
+    while _provider_index < len(API_PROVIDERS_TO_AGENT):
+        prov = API_PROVIDERS_TO_AGENT[_provider_index]
         logger.info(f"[STREAMING] Usando provider '{prov['name']}' (reintento {retries+1})")
 
         try:
@@ -469,13 +475,25 @@ def completion_stream(messages):
             if "key_func" in prov:
                 api_key = prov["key_func"]() 
             else:
-                api_key = prov["key"]
-            # 2. RECONSTRUCCIÓN DEL CLIENTE
+                api_key = os.getenv(prov.get("key", ""))
+                
+            if not api_key:
+                raise ValueError("API Key no encontrada en el .env")
+
+            # 2. RESOLVER BASE URL (Caso Cloudflare)
+            base_url = prov["base_url"]
+            if base_url.startswith("CLOUDFLARE_ID"):
+                cf_id = os.getenv(base_url)
+                if not cf_id: raise ValueError("Cloudflare ID no encontrado")
+                base_url = get_cf_url(cf_id)
+
+            # 3. RECONSTRUCCIÓN DEL CLIENTE
             client = OpenAI(
-                base_url=prov["base_url"],
+                base_url=base_url,
                 api_key=api_key
             )
-            # 3. LLAMADA A LA API CON STREAMING
+            
+            # 4. LLAMADA A LA API CON STREAMING
             resp = client.chat.completions.create(
                 model=prov["model"],
                 messages=messages,
@@ -486,7 +504,7 @@ def completion_stream(messages):
                 if delta:
                     yield delta
 
-            return  # salgo después de terminar el yield
+            return  
 
         except Exception as err:
             logger.error(f"[STREAMING] Provider '{prov['name']}' falló: {err}")

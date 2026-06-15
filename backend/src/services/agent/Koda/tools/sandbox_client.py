@@ -18,7 +18,7 @@ else:
 
 def execute_in_sandbox(command: str, timeout_seconds: int = 65) -> str:
     """
-    Envía un comando al worker de 16GB y espera la respuesta.
+    Envía un comando al worker de 8GB y espera la respuesta.
     (Mantiene las llaves del JSON en español para compatibilidad con el Worker existente).
     """
     if not redis_client:
@@ -50,13 +50,19 @@ def execute_in_sandbox(command: str, timeout_seconds: int = 65) -> str:
                 print(f"[KODA SANDBOX] Response received!")
                 
                 if result.get("exito"):
-                    return f"Execution successful.\nOutput (stdout):\n{result.get('stdout')}"
-                else:
-                    return f"Execution failed.\nError (stderr):\n{result.get('stderr')}\nOutput (stdout):\n{result.get('stdout')}"
+                    # Extraer stdout de forma segura
+                    stdout = result.get('stdout', '')
+                    if stdout is None: stdout = ''
+                    
+                    # SI EL COMANDO FUNCIONÓ PERO NO DEVOLVIÓ NADA
+                    if not stdout.strip():
+                        return "Execution successful. No output produced in console (empty output)."
+                        
+                    return f"Execution successful.\nOutput (stdout):\n{stdout}"
             else:
                 # Si el resultado es de otra tarea, lo devolvemos a la cola
                 redis_client.rpush('cola_resultados_agente', json.dumps(result))
         
         time.sleep(2)
         
-    return "Timeout: The 16GB execution environment did not respond in time."
+    return "Timeout: The 8GB execution environment did not respond in time."

@@ -46,10 +46,10 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 4. **Database Constraints**: When querying `system_stats` or `llm_logs`, always use pagination or limits (e.g., `LIMIT 50`) to prevent memory overload.
 5. **Action Input Format**: Action Input MUST be a valid JSON object — flat, no nested keys, never a function call. NUNCA envuelvas el input en una clave extra.
 6. **Tool Execution Flow**:
-   - NEVER use `Action: None`. If no tool needed, go directly to Final Answer.
-   - NEVER call the same tool twice in one turn. Once a tool returns, go to Final Answer.
-   - If `test_single_provider` returns `Alive: False`, ALWAYS run `diagnose_provider_failure` before Final Answer.
-   - NEVER call `diagnose_provider_failure` in a loop — use `diagnose_all_failed_providers` for multiple failures.
+   - If no tool is needed, respond directly — do not call any tool.
+   - Never call the same tool twice in one turn.
+   - If `test_single_provider` returns `Alive: False`, always run `diagnose_provider_failure` before responding.
+   - Never call `diagnose_provider_failure` in a loop — use `diagnose_all_failed_providers` for multiple failures.
 7. **Error Handling**: If a 429 error is detected, report it and suggest a provider swap.
 8. **Confidentiality**: API keys are CONFIDENTIAL. NEVER reveal, reference, or guess any key name or value.
 9. **Integrity**: NEVER invent or fabricate information. If data is unavailable, say: "I do not have that information." NEVER execute a tool just because the user is describing or explaining it.

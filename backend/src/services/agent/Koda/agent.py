@@ -14,6 +14,7 @@ current_dir = Path(__file__).resolve().parent.parent.parent
 backend_dir = current_dir.parent.parent
 sys.path.insert(0, str(backend_dir))
 
+from src.core.time_helper import get_now
 from src.database.models.models import AgentSession, AgentStatus
 from src.services.agent.Koda.tools.hitl import check_timeout
 logging.getLogger('apscheduler').setLevel(logging.WARNING)
@@ -59,8 +60,8 @@ start_koda_scheduler()
 
 def get_koda_template() -> str:
     """Genera el template maestro leyendo AGENT.md y agregando sufijos de LangChain."""
-    ec_tz = pytz.timezone("America/Guayaquil")
-    now = datetime.now(ec_tz)
+    
+    now = get_now()
     current_date = now.strftime("%A, %B %d, %Y - %H:%M")
     
     # 1. Leer dinámicamente el archivo AGENT.md
@@ -69,34 +70,13 @@ def get_koda_template() -> str:
         agent_identity_and_rules = f.read()
 
     # 2. Agregar las variables obligatorias y el formato de LangChain
-    langchain_suffix = """
-CURRENT DATE AND TIME (Ecuador GMT-5): CURRENT_DATE_PLACEHOLDER
+    langchain_suffix = f"""
+CURRENT DATE AND TIME (Ecuador GMT-5): {current_date}
+Use this date as reference for "today", "tomorrow", "this week", etc.
+NEVER use years prior to 2026.
 
-CONVERSATION HISTORY:
-{chat_history}
-
-AVAILABLE TOOLS:
-{tools}
-
-Use the following format STRICTLY:
-
-Thought: (always in English) Reason about the next step.
-
---- If you need a tool:
-Action: one of [{tool_names}]
-Action Input: a valid JSON object
-Observation: the result of the action
-... (repeat if necessary)
-Thought: I now know the final answer or need to stop for HITL approval.
-Final Answer: your response to the user.
-
---- If you do NOT need a tool:
-Thought: No tool needed.
-Final Answer: your response to the user.
-
-User input: {input}
-
-{agent_scratchpad}"""
+LANGUAGE RULE: Always respond in the exact same language the user used.
+"""
 
     # 3. Unir todo y reemplazar la fecha
     full_template = agent_identity_and_rules + "\n" + langchain_suffix

@@ -28,35 +28,11 @@ def get_ragel_template():
         agent_identity_and_rules = f.read()
 
     # 2. Agregar las variables obligatorias y el formato de LangChain
-    langchain_suffix = """
-CURRENT DATE AND TIME (Ecuador GMT-5): CURRENT_DATE_PLACEHOLDER
-Use this date as a reference for recent news, events, and temporal queries (e.g., "today", "yesterday", "last week").
-
-CONVERSATION HISTORY:
-{chat_history}
-
-AVAILABLE TOOLS:
-{tools}
-
-Use the following format STRICTLY:
-
-Thought: (always in English) Reason step by step.
-
---- If you need a tool:
-Action: one of [{tool_names}]
-Action Input: a valid JSON object
-Observation: the result of the action
-... (repeat if necessary)
-Thought: I now know the final answer.
-Final Answer: your response to the user.
-
---- If you do NOT need a tool:
-Thought: No tool needed.
-Final Answer: your response to the user.
-
-User input: {input}
-
-{agent_scratchpad}"""
+    langchain_suffix = f"""
+CURRENT DATE AND TIME (Ecuador GMT-5): {current_date}
+Use this date as reference for recent news, events, and temporal queries.
+LANGUAGE RULE: Always respond in the exact same language the user used.
+"""
 
     # 3. Unir todo y reemplazar la fecha
     full_template = agent_identity_and_rules + "\n" + langchain_suffix

@@ -2,8 +2,9 @@
 import uuid
 import json 
 import asyncio
-from typing import Optional
+from typing import List, Optional
 from langchain_core.tools import tool, Tool
+from langchain_core.tools import StructuredTool
 from langchain_core.runnables import RunnableConfig  #Para extraer session_id
 from langgraph.errors import NodeInterrupt      
 
@@ -11,19 +12,26 @@ from .hitl import hitl_guard, is_paused
 from .sandbox_client import execute_in_sandbox
 from .web_scraper import scrape_technical_doc
 from .ast_analyzer import get_code_skeleton
+
+from src.database.models.models import Message
 from src.services.rag.pipeline import RAGPipeline
 from src.database.settings.connection import SessionLocal
 from src.services.mcps.client.client_manager import MCPClientManager
-from src.services.mcps.client.github.client_github import GithubMCPClient
+from src.services.agent.common.mcp_errors import mcp_offline_error, mcp_no_client
 
 
 @tool("koda_execute_code")
 def koda_execute_code(command: str, config: RunnableConfig) -> str:
     """
     Use this tool to execute Bash scripts, Python, Node.js, or 
-    install dependencies in an isolated Linux environment (16GB RAM Sandbox).
+    install dependencies in an isolated Linux environment (8GB RAM Sandbox).
     ALWAYS use it to test your code before delivering it to the user.
     Example command: 'python test.py' or 'npm run build'.
+    
+    CRITICAL RULE: DO NOT use this tool to simply list directories, 
+    read files, or find folders (like 'ls' or 'find'). For reading the 
+    file system, ALWAYS use the 'Files MCP' tools instead. Only use this 
+    Sandbox when you need to EXECUTE or COMPILE code.
     """
     # 1. Extraer el contexto inyectado por LangGraph
     configurable = config.get("configurable", {})
@@ -192,7 +200,7 @@ def _parse_mcp_result(result) -> str:
     except Exception as e:
         return f"Error parsing result: {e}"
 
-def build_koda_files_tools(user_id: str):
+def build_koda_files_tools(user_id: str, chat_id: Optional[str] = None, db_session=None):
     """
     Factory: generates the tools for Koda, including Sandbox, Scraper, 
     and the local Files MCP operations.
@@ -202,6 +210,20 @@ def build_koda_files_tools(user_id: str):
 
     def get_files():
         return manager.get_client(provider_name)
+    
+    def _record_tool_usage(tool_name: str):
+        """Guarda un registro en BD de la herramienta utilizada."""
+        if not db_session or not chat_id:
+            return
+        
+        mcp_context_str = json.dumps({
+            "tool_used": tool_name,
+            "provider": "koda_file"
+        })
+        
+        mcp_msg = Message(chat_id=chat_id, role="mcp-tool", content=mcp_context_str)
+        db_session.add(mcp_msg)
+        db_session.commit()
     
     # --- FILES MCP TOOLS ---
 
@@ -215,13 +237,31 @@ def build_koda_files_tools(user_id: str):
         try:
             client = get_files()
             if not client:
-                return "Error: The files MCP server is completely offline or not configured."
+                return mcp_no_client("Files_koda")
                 
             result = _run(client.list_directory(directory_path=directory_path))
+            _record_tool_usage("koda_list_directory")
             return _parse_mcp_result(result)
         except Exception as e:
             # Fase 4: Manejo de errores amigable para el LLM
-            return f"Error: Cannot list directory because the files server is offline or unreachable. Details: {str(e)}"
+            return mcp_offline_error("Files_koda", "list_directory", str(e))
+    @tool
+    def koda_search_items(query: str, search_type: str = "all") -> str:
+        """
+        Searches recursively for files or folders matching a specific name inside the ENTIRE project.
+        'search_type' can be 'file', 'dir', or 'all'.
+        ALWAYS use this tool FIRST if you don't know the exact path of a folder or file!
+        """
+        try:
+            client = get_files()
+            if not client:
+                return mcp_no_client("Files_koda")
+
+            result = _run(client.search_items(query=query, search_type=search_type))
+            _record_tool_usage("koda_search_items")
+            return _parse_mcp_result(result)
+        except Exception as e:
+            return mcp_offline_error("Files_koda", "search_items", str(e))
 
     @tool
     def koda_read_file(file_path: str) -> str:
@@ -233,12 +273,13 @@ def build_koda_files_tools(user_id: str):
         try:
             client = get_files()
             if not client:
-                return "Error: The files MCP server is completely offline or not configured."
+                return mcp_no_client("Files_koda")
 
             result = _run(client.read_file(file_path=file_path))
+            _record_tool_usage("koda_read_file")
             return _parse_mcp_result(result)
         except Exception as e:
-            return f"Error: Cannot read file because the server is offline. Details: {str(e)}"
+            return mcp_offline_error("Files_koda", "read_file", str(e))
 
     @tool
     def koda_patch_file(file_path: str, search_block: str, replace_block: str, config: RunnableConfig) -> str:
@@ -271,32 +312,81 @@ def build_koda_files_tools(user_id: str):
         try:
             client = get_files()
             if not client:
-                return "Error: The files MCP server is completely offline or not configured."
+                return mcp_no_client("Files_koda")
 
             result = _run(client.patch_file(
                 file_path=file_path, 
                 search_block=search_block, 
                 replace_block=replace_block
             ))
+            _record_tool_usage("koda_patch_file")
             return _parse_mcp_result(result)
         except Exception as e:
-            return f"Error: Cannot patch file because the server is offline. Details: {str(e)}"
+            return mcp_offline_error("Files_koda", "patch_file", str(e))
+        
+    @tool
+    def set_workspace(new_absolute_path: str) -> str:
+        """
+        Changes the root working directory of the project.
+        Use this when the user asks to work on a completely different project or path on their computer.
+        Input must be an absolute path (e.g. 'C:/Users/Name/Projects/NewApp').
+        """
+        try:
+            client = get_files()
+            if not client: return mcp_no_client("Files_koda")
+            result = _run(client.set_workspace(new_absolute_path=new_absolute_path))
+            return _parse_mcp_result(result)
+        except Exception as e:
+            return mcp_offline_error("Files_koda", "set_workspace", str(e))
+
+    @tool
+    def get_directory_tree(directory_path: str = ".", max_depth: int = 3) -> str:
+        """
+        Generates a visual map (tree) of a folder and all its subfolders.
+        ALWAYS use this tool FIRST when exploring a new folder to understand its structure instantly,
+        instead of listing directories one by one.
+        """
+        try:
+            client = get_files()
+            if not client: return "Error: Server offline."
+            result = _run(client.get_tree(directory_path=directory_path, max_depth=max_depth))
+            return _parse_mcp_result(result)
+        except Exception as e:
+            return mcp_offline_error("Files_koda", "get_tree", str(e))
 
     return [
         koda_list_directory,
+        koda_search_items,
         koda_read_file,
-        koda_patch_file
+        koda_patch_file,
+        set_workspace,
+        get_directory_tree
     ]
     
     # ----- MCP CONTEXT7 TOOLS (EN client_context7.py) -----
     
-def build_koda_context7_tools(user_id: str):
+def build_koda_context7_tools(user_id: str, chat_id: Optional[str] = None, db_session=None) -> List[Tool]:
     """
     Factory: Obtiene dinámicamente las herramientas de documentación de Context7.
     Nota: Requiere ser ejecutado dentro de un contexto asíncrono para extraerlas,
     por lo que usamos el _run() síncrono para la fase de construcción.
     """
     manager = MCPClientManager(user_id=user_id)
+    provider_name = "koda_context7"
+    
+    def _record_tool_usage(tool_name: str):
+        """Guarda un registro en BD de la herramienta utilizada."""
+        if not db_session or not chat_id:
+            return
+        
+        mcp_context_str = json.dumps({
+            "tool_used": tool_name,
+            "provider": provider_name
+        })
+        
+        mcp_msg = Message(chat_id=chat_id, role="mcp-tool", content=mcp_context_str)
+        db_session.add(mcp_msg)
+        db_session.commit()
     
     async def _fetch_tools():
         client = manager.get_client("context7")
@@ -312,15 +402,30 @@ def build_koda_context7_tools(user_id: str):
         return []
     
     # ---- MCPS GITHUB TOOLS (EN client_github.py) ----
-def build_koda_github_tools(user_id: str):
+def build_koda_github_tools(user_id: str, chat_id: Optional[str] = None, db_session=None):
     """
     Factory: Genera las herramientas de GitHub para Koda.
     Incluye protección HITL para acciones de escritura (ramas, commits, PRs).
     """
     manager = MCPClientManager(user_id=user_id)
+    provider_name = "github"
 
     def get_github():
         return manager.get_client("github")
+    
+    def _record_tool_usage(tool_name: str):
+        """Guarda un registro en BD de la herramienta utilizada."""
+        if not db_session or not chat_id:
+            return
+        
+        mcp_context_str = json.dumps({
+            "tool_used": tool_name,
+            "provider": "koda_github"
+        })
+        
+        mcp_msg = Message(chat_id=chat_id, role="mcp-tool", content=mcp_context_str)
+        db_session.add(mcp_msg)
+        db_session.commit()
 
     # --- 🟢 ACCIONES DE LECTURA (SAFE) ---
 
@@ -333,6 +438,7 @@ def build_koda_github_tools(user_id: str):
         try:
             client = get_github()
             result = _run(client.github_search_repositories(query=query))
+            _record_tool_usage("koda_github_search_repositories")
             return _parse_mcp_result(result)
         except Exception as e:
             return f"Error: Cannot search repositories. {str(e)}"
@@ -347,6 +453,7 @@ def build_koda_github_tools(user_id: str):
         try:
             client = get_github()
             result = _run(client.github_search_code(query=query))
+            _record_tool_usage("koda_github_search_code")
             return _parse_mcp_result(result)
         except Exception as e:
             return f"Error: Cannot search code. {str(e)}"
@@ -360,6 +467,7 @@ def build_koda_github_tools(user_id: str):
         try:
             client = get_github()
             result = _run(client.github_get_file_contents(owner, repo, path, branch))
+            _record_tool_usage("koda_github_get_file_contents")
             return _parse_mcp_result(result)
         except Exception as e:
             return f"Error: Cannot read file contents. {str(e)}"
@@ -373,6 +481,7 @@ def build_koda_github_tools(user_id: str):
         try:
             client = get_github()
             result = _run(client.github_get_issue(owner, repo, issue_number))
+            _record_tool_usage("koda_github_get_issue")
             return _parse_mcp_result(result)
         except Exception as e:
             return f"Error: Cannot fetch issue. {str(e)}"
@@ -387,6 +496,7 @@ def build_koda_github_tools(user_id: str):
         try:
             client = get_github()
             result = _run(client.github_get_branch_sha(owner, repo, branch))
+            _record_tool_usage("koda_github_get_branch_sha")
             return _parse_mcp_result(result)
         except Exception as e:
             return f"Error: Cannot get branch SHA. {str(e)}"
@@ -420,6 +530,7 @@ def build_koda_github_tools(user_id: str):
         try:
             client = get_github()
             result = _run(client.github_create_branch(owner, repo, ref, sha))
+            _record_tool_usage("koda_github_create_branch")
             return _parse_mcp_result(result)
         except Exception as e:
             return f"Error: Cannot create branch. {str(e)}"
@@ -449,6 +560,7 @@ def build_koda_github_tools(user_id: str):
         try:
             client = get_github()
             result = _run(client.github_create_or_update_file(owner, repo, path, content, message, branch, sha))
+            _record_tool_usage("koda_github_create_or_update_file")
             return _parse_mcp_result(result)
         except Exception as e:
             return f"Error: Cannot commit file. {str(e)}"
@@ -479,6 +591,7 @@ def build_koda_github_tools(user_id: str):
         try:
             client = get_github()
             result = _run(client.github_create_pull_request(owner, repo, title, head, base, body))
+            _record_tool_usage("koda_github_create_pull_request")
             return _parse_mcp_result(result)
         except Exception as e:
             return f"Error: Cannot create Pull Request. {str(e)}"
@@ -493,6 +606,79 @@ def build_koda_github_tools(user_id: str):
         koda_github_create_or_update_file,
         koda_github_create_pull_request
     ]
+    
+# --- DEVTOOLS TOOLS ---
+def build_devtools_tools(user_id: str, chat_id: Optional[str] = None, db_session=None) -> List[Tool]:
+    """
+    Factory: genera las tools de Chrome DevTools vinculadas a un user_id.
+    Se conecta dinámicamente al servidor MCP para extraer las tools y envuelve
+    sus ejecuciones para guardar un historial en la BD.
+    """
+    manager = MCPClientManager(user_id=user_id)
+    provider_name = "devtools"
+
+    def get_devtools_client():
+        return manager.get_client(provider_name)
+    
+    def _record_tool_usage(tool_name: str):
+        """Guarda un registro en BD de la herramienta utilizada."""
+        if not db_session or not chat_id:
+            return
+        
+        mcp_context_str = json.dumps({
+            "tool_used": tool_name,
+            "provider": provider_name
+        })
+        
+        mcp_msg = Message(chat_id=chat_id, role="mcp-tool", content=mcp_context_str)
+        db_session.add(mcp_msg)
+        db_session.commit()
+
+    async def fetch_tools():
+        client = get_devtools_client()
+        
+        # Entramos en el contexto para inicializar la sesión MCP.
+        # Esto permite que client.get_langchain_tools() lea el esquema exitosamente.
+        async with client:
+            tools = await client.get_langchain_tools()
+            
+            wrapped_tools = []
+            for t in tools:
+                original_sync = t.func
+                original_async = t.coroutine
+                
+                # Creamos closures para atrapar el nombre e inyectar el logging a la base de datos
+                def make_sync_wrapper(name, orig_func):
+                    def sync_wrapper(*args, **kwargs):
+                        _record_tool_usage(name)
+                        return orig_func(*args, **kwargs)
+                    return sync_wrapper
+
+                def make_async_wrapper(name, orig_coro):
+                    async def async_wrapper(*args, **kwargs):
+                        _record_tool_usage(name)
+                        return await orig_coro(*args, **kwargs)
+                    return async_wrapper
+
+                # Recreamos el StructuredTool para no mutar el objeto original 
+                # y mantener la compatibilidad con los validadores de Pydantic
+                wrapped_tool = StructuredTool.from_function(
+                    func=make_sync_wrapper(t.name, original_sync),
+                    coroutine=make_async_wrapper(t.name, original_async) if original_async else None,
+                    name=t.name,
+                    description=t.description,
+                    args_schema=t.args_schema
+                )
+                wrapped_tools.append(wrapped_tool)
+                
+            return wrapped_tools
+
+    try:
+        # Extraemos todo sincronamente antes de pasárselo al LLM
+        return _run(fetch_tools())
+    except Exception as e:
+        print(f"Error cargando tools de DevTools: {str(e)}")
+        return []
 
 # TOOLS TEMPLATE AGENT
 
@@ -505,5 +691,6 @@ def build_koda_tools(user_id: str):
         *get_koda_rag_tools(user_id),
         *build_koda_files_tools(user_id),
         *build_koda_github_tools(user_id),
-        *build_koda_context7_tools(user_id)
+        *build_koda_context7_tools(user_id),
+        *build_devtools_tools(user_id)
     ]

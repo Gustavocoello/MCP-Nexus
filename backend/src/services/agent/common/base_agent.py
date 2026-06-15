@@ -34,7 +34,7 @@ class BaseAgent:
             checkpointer=self.memory # Fundamental para el HITL
         )
 
-    def run_task(self, instruction: str, user_id: str, chat_id: str = None) -> dict:
+    def run_task(self, instruction: str, user_id: str, chat_id: str = None, thread_id: str = None) -> dict:
         
         # 1. CREAR LA SESIÓN EN BASE DE DATOS (Aparece en tu Frontend Panel)
         session_id = create_agent_session(
@@ -44,17 +44,20 @@ class BaseAgent:
             timeout_seconds=3600
         )
         
+        current_thread_id = thread_id if thread_id else session_id
+        
         # Configurar LangGraph con el session_id generado
         config = {
             "configurable": {
-                "thread_id": session_id,
+                "thread_id": current_thread_id,
                 "user_id": user_id,
                 "session_id": session_id
-            }
+            },
+            "recursion_limit": 25 # Limitar recursión para evitar loops infinitos
         }
 
         try:
-            # 3Koda empieza a trabajar
+            # Koda empieza a trabajar
             state = self.app.invoke(
                 {"messages": [HumanMessage(content=instruction)]}, 
                 config=config
@@ -88,7 +91,8 @@ class BaseAgent:
                 "thread_id": session_id,
                 "user_id": user_id,
                 "session_id": session_id
-            }
+            }, 
+            "recursion_limit": 25
         }
         
         # LangGraph devuelve eventos (chunks) paso a paso

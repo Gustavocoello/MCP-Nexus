@@ -14,7 +14,7 @@ from src.services.llm.chat.llm_router import get_langchain_llm
 
 # Asumimos que aquí importarás las herramientas que delegan a los otros agentes
 # (Te dejaré un ejemplo de cómo se verán estas herramientas en el siguiente paso)
-from src.services.agent.jarvis.tools import build_jarvis_tools
+from src.services.agent.jarvis.tool import build_jarvis_tools
 
 def get_jarvis_template():
     """Genera el template maestro leyendo AGENT.md y agregando sufijos de LangChain."""
@@ -27,40 +27,13 @@ def get_jarvis_template():
         agent_identity_and_rules = f.read()
 
     # 2. Agregar las variables obligatorias que LangChain necesita para funcionar
-    langchain_suffix = """
-CURRENT SYSTEM DATE AND TIME (Ecuador GMT-5): CURRENT_DATE_PLACEHOLDER
-Use this as your absolute ground truth for any time-based reasoning.
+    langchain_suffix = f"""
+CURRENT DATE AND TIME (Ecuador GMT-5): {current_date}
+Use this date as reference for "today", "tomorrow", "this week", etc.
+NEVER use years prior to 2026.
 
-CONVERSATION HISTORY:
-{chat_history}
-
-AVAILABLE TOOLS (Your Sub-Agents & Skills):
-{tools}
-
-Follow this execution format STRICTLY:
-
-Thought: (always in English) Analyze the user's request with extreme precision. State if a tool is needed or not.
-
---- If you NEED to delegate to a sub-agent or run a skill:
-Action: the tool name (one of [{tool_names}])
-Action Input: a valid JSON object with the exact parameters needed.
-Observation: the intelligence returned by the sub-agent.
-... (repeat Thought/Action/Observation if further delegation is required)
-Thought: I have gathered all necessary intelligence. I am ready to respond.
-Final Answer: Your perfectly crafted response to the user.
-
---- If you DO NOT need a tool (Direct Answer):
-Thought: No tool needed. I have the knowledge required in my memory. I will now explain this in detail.
-Final Answer: [Your expansive, friendly, and highly detailed response, using markdown and ending with an engaging question].
-
-CRITICAL CONSTRAINTS:
-- NEVER expose internal tool names, JSON payloads, or raw agent mechanics to the user.
-- Action Input MUST be valid JSON.
-- If a sub-agent reports an error, gracefully inform the user of the system failure and propose a secondary plan.
-
-User input: {input}
-
-{agent_scratchpad}"""
+LANGUAGE RULE: Always respond in the exact same language the user used.
+"""
 
     # 3. Unir todo y reemplazar la fecha
     full_template = agent_identity_and_rules + "\n" + langchain_suffix
@@ -99,12 +72,19 @@ def get_jarvis(user_id: str) -> JarvisAgent:
 
 if __name__ == "__main__":
     import os
+    import uuid
     test_user = os.getenv("USUARIO_TEST")
+    # 1. Creamos un ID único para ESTA conversación en la terminal
+    memory_thread = str(uuid.uuid4())
 
     print("\n" + "=" * 50)
     print("JARVIS: PERSONAL ASSISTANT")
     print("Type 'q' to exit.")
     print("=" * 50)
+    
+    from src.services.agent.jarvis.tools.run_skills import list_skills, SKILLS_DIR
+    print(f"Available skills in {SKILLS_DIR}:")
+    print(list_skills())
 
     jarvis = get_jarvis(user_id=test_user)
 
@@ -114,13 +94,19 @@ if __name__ == "__main__":
             if user_input.lower() in ["salir", "exit", "quit", "q"]:
                 print("Jarvis going offline.")
                 break
+            if user_input.lower() in ["reload", "restart", "reboot"]:
+                _jarvis_cache.clear()
+                jarvis = get_jarvis(user_id=test_user)
+                print("Jarvis reloaded with updated AGENT.md")
+                continue
             if not user_input.strip():
                 continue
             print("\nJarvis thinking...")
             result = jarvis.run_task(
                 instruction=user_input, 
                 user_id=test_user,
-                #chat_id=test_chat_id
+                chat_id=None,
+                thread_id=memory_thread,
             )
             print(f"\nJarvis: {result['output']}")
         except KeyboardInterrupt:

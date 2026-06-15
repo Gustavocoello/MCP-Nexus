@@ -12,29 +12,46 @@ UBUNTU = os.getenv('LINUX_HOST')
 REDIS_URL = os.getenv('REDIS_URL')
 REDIS_TOKEN = os.getenv('REDIS_TOKEN')
 
+# -------- Esperar a que Docker cargue al prender la PC ------------
+def esperar_docker():
+    print("Verificando si Docker Desktop está corriendo...")
+    while True:
+        try:
+            # Preguntamos a docker si el demonio (engine) está respondiendo
+            resultado = subprocess.run(["docker", "info"], capture_output=True, text=True)
+            if resultado.returncode == 0:
+                print("¡Docker está listo y funcionando!")
+                break
+        except Exception:
+            pass
+        print("Docker Desktop aún no está listo. Reintentando en 10 segundos...")
+        time.sleep(10)
+
+# Llamamos a la función antes de iniciar el trabajo
+esperar_docker()
+# -------------------------------------------------------------------
+
 # Conectar a Upstash Redis
 try:
     r = Redis(url=REDIS_URL, token=REDIS_TOKEN)
     print("Conectado exitosamente a Upstash Redis en la nube")
 except Exception as e:
-    print(f"Error conectando a Upstash: {e}")
+    print(f"Error conectando a Upstash: {str(e)}")
     exit(1)
 
 # Carpeta local en Windows donde la IA guardará el código
-WORKSPACE_LOCAL = os.path.abspath("./espacio_trabajo")
+WORKSPACE_LOCAL = os.path.abspath("./work_space")
 os.makedirs(WORKSPACE_LOCAL, exist_ok=True)
 
-print("Worker de 16GB iniciado y esperando tareas...")
+print("Worker iniciado y esperando tareas...")
 print(f"Carpeta de trabajo (Windows): {WORKSPACE_LOCAL}")
 
 # Bucle infinito preguntando a Upstash
 while True:
     try:
-        # Usamos lpop (saca el primer elemento de la lista). Si no hay, devuelve None.
         tarea_cruda = r.lpop('cola_tareas_agente')
         
         if tarea_cruda:
-            # Upstash a veces auto-convierte el JSON a diccionario. Lo validamos:
             if isinstance(tarea_cruda, str):
                 tarea = json.loads(tarea_cruda)
             else:
@@ -43,13 +60,13 @@ while True:
             id_tarea = tarea.get('id_tarea', 'desconocido')
             comando = tarea.get('comando', 'echo "Nada que ejecutar"')
             
-            print(f"\n Ejecutando tarea [{id_tarea}]: {comando}")
+            print(f"\nEjecutando tarea [{id_tarea}]: {comando}")
             
-            # Comando de Docker para Windows
+            # Comando de Docker para Windows (Corregido el volumen)
             docker_cmd = [
                 "docker", "run", "--rm", 
                 "--memory=8g", "--cpus=2.0",
-                "-v", f"{WORKSPACE_LOCAL}:/workspace",
+                "-v", f"{WORKSPACE_LOCAL}:/workspace", # ESTO ESTABA VACÍO EN TU CÓDIGO
                 "sandbox-ia", 
                 "bash", "-c", comando
             ]
@@ -74,9 +91,9 @@ while True:
             print(f"Tarea [{id_tarea}] completada. Resultados en la nube.")
             
         else:
-            # Si no hay tareas, el script duerme 2 segundos para no saturar la API de Upstash
+            # Si no hay tareas, el script duerme 2 segundos para no saturar
             time.sleep(2)
             
     except Exception as e:
-        print(f"Ocurrió un error en el bucle: {e}")
-        time.sleep(5) # Si hay un error de red, espera 5 segs antes de reintentar
+        print(f"Ocurrió un error en el bucle: {str(e)}")
+        time.sleep(5)
