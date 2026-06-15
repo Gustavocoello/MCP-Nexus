@@ -13,7 +13,7 @@ sys.path.insert(0, str(backend_dir))
 from src.core.time_helper import get_now
 from src.services.agent.common.base_agent import BaseAgent
 from src.services.llm.chat.llm_router import get_langchain_llm
-from src.services.agent.ragel.tools import build_ragel_tools
+from src.services.agent.ragel.tool import build_ragel_tools
 
 load_dotenv()
 

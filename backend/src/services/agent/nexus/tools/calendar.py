@@ -1,3 +1,14 @@
+import json
+from typing import Optional, Dict, List
+from langchain_core.tools import tool, Tool
+from .helpers import _clean_id, _parse_args, _parse_mcp_result, _run
+from src.services.mcps.client.client_manager import MCPClientManager
+from src.services.agent.common.mcp_errors import mcp_offline_error, mcp_no_client
+
+
+# Base de datos y Chat 
+from src.database.models.models import Message
+
 # --- CALENDAR TOOLS ---
 def build_calendar_tools(user_id: str, chat_id: Optional[str] = None, db_session=None):
     """

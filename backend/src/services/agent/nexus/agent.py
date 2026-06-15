@@ -10,7 +10,7 @@ backend_dir = current_dir.parent.parent
 sys.path.insert(0, str(backend_dir))
 
 from src.services.agent.common.base_agent import BaseAgent
-from src.services.agent.nexus.tool import build_calendar_tools, build_notion_tools, build_github_tools, build_devtools_tools, build_files_tools
+from src.services.agent.nexus.tool import build_nexus_tools
 from src.services.llm.chat.llm_router import get_langchain_llm
 from src.core.time_helper import get_now
 
@@ -44,13 +44,7 @@ class NexusAgent(BaseAgent):
     def __init__(self, user_id: str):
         self.user_id = user_id
         llm = get_langchain_llm()
-        tools = [
-            *build_notion_tools(user_id=user_id),
-            *build_calendar_tools(user_id=user_id),
-            *build_github_tools(user_id=user_id),
-            *build_devtools_tools(user_id=user_id),
-            *build_files_tools(user_id=user_id)
-        ]
+        tools = build_nexus_tools(user_id=user_id)
         template = get_nexus_template()
         super().__init__(llm, tools, template)
 

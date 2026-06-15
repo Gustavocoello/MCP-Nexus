@@ -23,7 +23,7 @@ logging.getLogger('tzlocal').setLevel(logging.WARNING)
 logging.getLogger('mcp.client.streamable_http').setLevel(logging.WARNING)
 from src.database.settings.connection import SessionLocal
 from src.services.agent.common.base_agent import BaseAgent
-from src.services.agent.Koda.tools import build_koda_tools
+from src.services.agent.Koda.tool import build_koda_tools
 from src.services.llm.chat.llm_router import get_langchain_llm
 
 load_dotenv()
