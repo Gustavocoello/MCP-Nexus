@@ -11,17 +11,7 @@ sys.path.insert(0, str(backend_dir))
 
 from src.core.time_helper import get_now
 from src.services.agent.common.base_agent import BaseAgent
-from src.services.agent.lamar.tools import (
-    get_current_datetime_and_knowledge_info,
-    report_provider_status,
-    get_llm_usage_report,
-    trigger_full_system_check,
-    test_single_provider,
-    diagnose_provider_failure,
-    diagnose_all_failed_providers,
-    ping_single_service,
-    ping_services
-)
+from src.services.agent.lamar.tool import build_lamar_tools
 from src.services.llm.chat.llm_router import API_PROVIDERS_TO_AGENT, get_langchain_llm
 
 load_dotenv()
@@ -35,21 +25,20 @@ def get_lamar_template() -> str:
     now = get_now()
     current_date = now.strftime("%A %d de %B de %Y, %H:%M")
     
-    # 1. Leer dinámicamente el archivo AGENT.md
     agent_md_path = Path(__file__).resolve().parent / "AGENT.md"
     with open(agent_md_path, "r", encoding="utf-8") as f:
         agent_identity_and_rules = f.read()
 
-    # 2. Agregar las variables obligatorias y el formato de LangChain
     langchain_suffix = f"""
-CURRENT DATE AND TIME (Ecuador GMT-5): {current_date}
-Use this date as reference for "today", "tomorrow", "this week", etc.
-NEVER use years prior to 2026.
+        CURRENT DATE AND TIME (Ecuador GMT-5): {current_date}
+        Use this date as reference for "today", "tomorrow", "this week", etc.
+        NEVER use years prior to 2026.
 
-LANGUAGE RULE: Always respond in the exact same language the user used.
-"""
+        LANGUAGE RULE: Always respond in the exact same language the user used.
+        
+        You are Lamar, DevOps AI. Keep it technical.
+        """
 
-    # 3. Unir todo
     return agent_identity_and_rules + "\n" + langchain_suffix
 # =================================================================
 #                        AGENT CLASS
@@ -60,28 +49,9 @@ class LamarAgent(BaseAgent):
     def __init__(self, user_id: str):
         self.user_id = user_id
         llm = get_langchain_llm()
-        tools = [
-            ping_single_service,
-            ping_services,
-            test_single_provider,
-            report_provider_status,
-            get_llm_usage_report,
-            trigger_full_system_check,
-            get_current_datetime_and_knowledge_info,
-            diagnose_provider_failure,
-            diagnose_all_failed_providers,
-        ]
+        tools = build_lamar_tools()
         template = get_lamar_template()
         super().__init__(llm, tools, template)
-
-    def run_task(self, instruction: str, **kwargs) -> dict:
-        api_names = [f"[{i+1}] {p['name']}" for i, p in enumerate(API_PROVIDERS_TO_AGENT)]
-        system_context = (
-            f"\n\n[SYSTEM CONTEXT]: You have {len(api_names)} active providers. "
-            f"Numbered list: {', '.join(api_names)}. "
-            "If the Boss refers to a number (e.g. the fifth one), identify it in this list."
-        )
-        return super().run_task(instruction + system_context, **kwargs)
 
 
 # =================================================================

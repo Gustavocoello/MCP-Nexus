@@ -1,0 +1,15 @@
+headless: true
+timeout: 60000
+viewport:
+  width: 1280
+  height: 720
+
+model:
+  provider: openai
+  name: meta-llama/llama-4-scout-17b-16e-instruct
+  temperature: 0.0
+  base_url: https://api.groq.com/openai/v1
+
+agent:
+  system_template: default    
+  instance_template: default  

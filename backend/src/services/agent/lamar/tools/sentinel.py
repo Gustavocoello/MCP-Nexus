@@ -1,17 +1,68 @@
-# src/services/llm/lamar/sentinel.py
-from http import client
+# src/services/agent/lamar/tools/sentinel.py
 import os
 import gc
 import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 from langchain_openai import ChatOpenAI
-from src.core.time_helper import get_now, TIMEZONE
 from langchain_core.messages import HumanMessage
-from src.database.models.models import PingLog
-from src.database.settings.connection import SessionLocal
-from .alerts import send_429_email
-from .memory import is_provider_blocked, set_provider_cooldown
 
+from src.core.time_helper import get_now, TIMEZONE
+from src.database.models.models import PingLog
+from src.database.settings.connection import get_db
+
+# ---- HELPERS --- 
+def set_provider_cooldown(provider_name, minutes=60):
+    """Marca un proveedor como 'No Disponible' por N minutos."""
+    try:
+        db = next(get_db())
+        unlock_time = get_now() + timedelta(minutes=minutes)
+        message = f"cooldown|until:{unlock_time.strftime('%H:%M')}"
+        
+        stat = PingLog(
+            service=provider_name[:18],
+            event_type="provider_cooldown",
+            message=message,
+            status_code=429,
+            response_ms=0,
+            client_ip="lamar",
+            next_ping_sc=minutes * 60,
+            timestamp=get_now()
+        )
+        db.add(stat)
+        db.commit()
+    except Exception as e:
+        if 'db' in locals(): db.rollback()
+        print(f"Error setting cooldown for {provider_name}: {str(e)}")
+    finally:
+        if 'db' in locals(): db.close()
+
+def is_provider_blocked(provider_name):
+    """Verifica si el proveedor sigue en su periodo de cooldown."""
+    try:
+        db = next(get_db())
+        last_status = db.query(PingLog)\
+            .filter(PingLog.service == provider_name)\
+            .filter(PingLog.event_type == "provider_cooldown")\
+            .order_by(PingLog.timestamp.desc()).first()
+
+        if last_status and last_status.next_ping_sc:
+            unlock_time = last_status.timestamp + timedelta(seconds=last_status.next_ping_sc)
+            
+            if unlock_time.tzinfo is None:
+                unlock_time = TIMEZONE.localize(unlock_time)
+            else:
+                unlock_time = unlock_time.astimezone(TIMEZONE)
+                
+            return get_now() < unlock_time
+
+        return False
+    except Exception as e:
+        print(f"Error checking cooldown for {provider_name}: {str(e)}")
+        return False
+    finally:
+        if 'db' in locals(): db.close()
+        
+        
 class LamarSentinel:
     def __init__(self, providers_list):
         self.providers = providers_list
@@ -27,25 +78,24 @@ class LamarSentinel:
             print("ERROR: Provider list is empty.")
             return results
 
-        session = SessionLocal()
         try:
+            db = next(get_db())
             for i, p in enumerate(self.providers):
                 print(f"Number: {i} Processing: {p.get('name', 'No Name')}")
                 try:
-                    last_success = session.query(PingLog).filter(
+                    last_success = db.query(PingLog).filter(
                         PingLog.service == p['name'],
                         PingLog.status_code == 200,
-                    ).order_by(PingLog.timestamp.desc()).first()  # sin filtro de fecha
+                    ).order_by(PingLog.timestamp.desc()).first()
 
                     if last_success:
                         db_ts = last_success.timestamp
-                        # Normalize timezone before comparing
                         if db_ts.tzinfo is None:
                             db_ts = TIMEZONE.localize(db_ts)
                         else:
                             db_ts = db_ts.astimezone(TIMEZONE)
 
-                        if db_ts >= hace_una_hora:
+                        if db_ts >= hace_una_hora and not force:
                             print(f"[CACHE] {p['name']} OK. Skipping...")
                             results.append({
                                 "name": p['name'],
@@ -53,7 +103,7 @@ class LamarSentinel:
                             })
                             continue
                 except Exception as e:
-                    print(f"Warning: Date error for {p['name']}: {e}. Proceeding to real test.")
+                    print(f"Warning: Date error for {p['name']}: {str(e)}. Proceeding to real test.")
 
                 if is_provider_blocked(p['name']):
                     print(f"[SKIP] {p['name']} is in cooldown.")
@@ -63,7 +113,7 @@ class LamarSentinel:
                 self.save_status_to_db(p['name'], status)
 
                 if status['error_code'] == 429:
-                    send_429_email(p['name'], status['details'])
+                    # send_429_email(p['name'], status['details']) # Opcional: descomentar si tienes configurado alerts.py
                     set_provider_cooldown(p['name'], minutes=30)
                 elif not status['alive']:
                     set_provider_cooldown(p['name'], minutes=5)
@@ -71,8 +121,11 @@ class LamarSentinel:
                 results.append({"name": p['name'], "status": status})
                 gc.collect()
                 time.sleep(0.3)
+                
+        except StopIteration:
+            print("ERROR: Could not get DB session in Sentinel.")
         finally:
-            session.close()
+            if 'db' in locals(): db.close()
 
         return results
 
@@ -80,7 +133,6 @@ class LamarSentinel:
         try:
             base_url = config['base_url']
             
-            # Cloudflare: base_url is an account ID env var name
             if not base_url.startswith("http"):
                 account_id = os.getenv(base_url)
                 if not account_id:
@@ -92,11 +144,9 @@ class LamarSentinel:
                 base_url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1"
 
             if "key_func" in config:
-                # Si el config tiene una función para obtener la clave, la llamamos
                 api_key_value = config['key_func']()
             else:
                 api_key_value = os.getenv(config.get('key'))
-                # Intentamos también con 'key' dentro
                 if not api_key_value:
                     api_key_value = config.get('key')
             
@@ -112,32 +162,27 @@ class LamarSentinel:
             latency = (time.time() - start_time) * 1000
 
             return {
-                "alive": True,
-                "latency_ms": latency,
-                "supports_tools": True,
-                "error_code": 200,
+                "alive": True, "latency_ms": latency,
+                "supports_tools": True, "error_code": 200,
                 "details": "Working correctly"
             }
         except Exception as e:
             error_str = str(e)
             code = 429 if "429" in error_str else 500
             return {
-                "alive": False,
-                "latency_ms": 0,
-                "supports_tools": False,
-                "error_code": code,
+                "alive": False, "latency_ms": 0,
+                "supports_tools": False, "error_code": code,
                 "details": error_str
             }
 
     def save_status_to_db(self, name, status_data):
-        code =int(status_data['error_code'])
+        code = int(status_data['error_code'])
         latency = int(status_data['latency_ms'])
-        # short message: code|details (max 60 chars total)
         details_short = status_data['details'][:48]
         message = f"{code}|{details_short}"
         
-        session = SessionLocal()
         try:
+            db = next(get_db())
             new_ping = PingLog(
                 service=name[:20],
                 event_type="lamar_sentinel_check",
@@ -145,13 +190,12 @@ class LamarSentinel:
                 response_ms=latency,
                 status_code=code,
                 client_ip="lamar_sentinel",
-                next_ping_sc=None,
                 timestamp=get_now()
             )
-            session.add(new_ping)
-            session.commit()
+            db.add(new_ping)
+            db.commit()
         except Exception as e:
-            print(f"DB Error Sentinel ({name}): {e}")
-            session.rollback()
+            if 'db' in locals(): db.rollback()
+            print(f"DB Error Sentinel ({name}): {str(e)}")
         finally:
-            session.close()
+            if 'db' in locals(): db.close()

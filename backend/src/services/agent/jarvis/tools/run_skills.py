@@ -3,6 +3,7 @@ import yaml
 import subprocess
 import platform
 from pathlib import Path
+from langchain_core.tools import Tool
 from src.core.logging import get_logger
 
 logger = get_logger("JarvisTools_run_skills")
@@ -86,3 +87,50 @@ def read_skill(skill_name: str) -> str:
     if not skill_md.exists():
         return f"CRITICAL ERROR: '{skill_name}' no existe en {SKILLS_DIR}"
     return skill_md.read_text(encoding="utf-8")
+
+
+# ---- TOOLS FOR JARVIS ----
+
+def build_skills_tools(user_id: str) -> list:
+
+    def _list_skills(_: str = "") -> str:
+        logger.info(f"[JARVIS → SKILLS] user={user_id} | list_skills")
+        return list_skills()
+
+    def _read_skill(skill_name: str) -> str:
+        logger.info(f"[JARVIS → SKILLS] user={user_id} | read_skill={skill_name}")
+        return read_skill(skill_name.strip())
+
+    def _run_bash(command: str) -> str:
+        logger.info(f"[JARVIS → SKILLS] user={user_id} | run_bash={command[:80]}")
+        return run_bash(command.strip())
+
+    return [
+        Tool.from_function(
+            func=_list_skills,
+            name="list_skills",
+            description=(
+                "Returns a lightweight index (name, description, scope) of all available skills. "
+                "Use when the user asks what skills exist. "
+                "AFTER calling: respond directly to user. STOP. "
+                "Do NOT chain into read_skill or run_bash for informational questions."
+            )
+        ),
+        Tool.from_function(
+            func=_read_skill,
+            name="read_skill",
+            description=(
+                "Reads the full SKILL.md of one skill. "
+                "Only call when user explicitly asks to run or use a specific skill."
+            )
+        ),
+        Tool.from_function(
+            func=_run_bash,
+            name="run_bash",
+            description=(
+                "Executes a command from a skill's ## Commands section. "
+                "Restricted to ./skills/* paths. "
+                "Only call AFTER read_skill and ONLY if user asked to RUN something."
+            )
+        ),
+    ]

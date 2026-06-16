@@ -1,0 +1,5 @@
+# model_groq.yaml — Groq via OpenAI-compatible endpoint
+model:
+  model_class: openai
+  model_name: meta-llama/llama-4-scout-17b-16e-instruct
+  openai_endpoint: https://api.groq.com/openai/v1

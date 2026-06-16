@@ -37,7 +37,6 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | Action | Skill |
 |--------|-------|
 | After creating/modifying a skill | `skill-sync` |
-| Automating browser tasks or web interactions | `webwright` |
 | Creating new skills | `skill-creator` |
 | Regenerate AGENTS.md Auto-invoke tables (sync.sh) | `skill-sync` |
 | Syncing MCP documentation to the agents | `mcp-sync-docs` |
@@ -46,6 +45,14 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | diseño de interfaz | `frontend-design` |
 | frontend design | `frontend-design` |
 | guidance visual | `frontend-design` |
+| habla más natural | `human-tone` |
+| less formal | `human-tone` |
+| more natural tone | `human-tone` |
+| react, nextjs, performance, best-practices | `vercel-react-best-practices` |
+| responses sound robotic or stiff | `human-tone` |
+| respuestas suenan robóticas o formales | `human-tone` |
+| suena muy formal | `human-tone` |
+| sé más humano | `human-tone` |
 
 ---
 

@@ -114,15 +114,15 @@ class UserToken(Base):
     )
 
 # --- MONITOREO DE IA (Costos y Rendimiento) ---
-class LLMLog(Base):
-    __tablename__ = "llm_logs"
+class TokenLog(Base):
+    __tablename__ = "tokens"
     
     id                = Column(BigInteger, primary_key=True, autoincrement=True)
     user_id           = Column(UUID(as_uuid=True), ForeignKey("users.id"), index=True)
     chat_id           = Column(UUID(as_uuid=True), ForeignKey("chat.id"), index=True)
     model_name        = Column(String(100), nullable=False) # ej: "gpt-4o", "claud-3.5"
-    prompt_tokens     = Column(Integer, default=0)
-    completion_tokens = Column(Integer, default=0)
+    input_tokens      = Column(Integer, default=0)
+    output_tokens     = Column(Integer, default=0)
     total_tokens      = Column(Integer, default=0)
     response_time_sec = Column(Float)               # Tiempo que tardó el LLM en responder
     status            = Column(String(20))                     # "success", "error"

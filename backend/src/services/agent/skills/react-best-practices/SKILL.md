@@ -5,6 +5,9 @@ license: MIT
 metadata:
   author: vercel
   version: "1.0.0"
+  scope: [ui, koda, jarvis, root]
+  auto_invoke: [react, nextjs, performance, best-practices]
+allowed-tools: [koda]
 ---
 
 # Vercel React Best Practices

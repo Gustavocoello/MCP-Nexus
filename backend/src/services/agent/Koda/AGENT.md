@@ -57,11 +57,11 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 
 | Action | Skill |
 |--------|-------|
-| Automating browser tasks or web interactions | `webwright` |
 | UI design assistance | `frontend-design` |
 | diseño de interfaz | `frontend-design` |
 | frontend design | `frontend-design` |
 | guidance visual | `frontend-design` |
+| react, nextjs, performance, best-practices | `vercel-react-best-practices` |
 
 ---
 ## CRITICAL RULES
