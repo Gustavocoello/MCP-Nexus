@@ -23,6 +23,7 @@ HALLUCINATION_SIGNALS = [
 
 def build_delegation_tools(user_id: str) -> list:
 
+    # Productivity
     def ask_nexus(task_description: str) -> str:
         logger.info(f"[JARVIS → NEXUS] user={user_id} | task={task_description[:80]}")
         try:
@@ -49,6 +50,7 @@ def build_delegation_tools(user_id: str) -> list:
             logger.error(f"[JARVIS → NEXUS] Error: {e}")
             return f"CRITICAL FAILURE: Nexus error: {str(e)}. DO NOT RETRY. INFORM THE USER."
 
+    # Investigator 
     def ask_ragel(query: str) -> str:
         logger.info(f"[JARVIS → RAGEL] user={user_id} | query={query[:80]}")
         try:
@@ -59,6 +61,7 @@ def build_delegation_tools(user_id: str) -> list:
             logger.error(f"[JARVIS → RAGEL] Error: {e}")
             return f"CRITICAL FAILURE: Ragel error: {str(e)}. Inform the user."
 
+    # Software Engineer
     def ask_koda(coding_task: str) -> str:
         logger.info(f"[JARVIS → KODA] user={user_id} | task={coding_task[:80]}")
         try:
@@ -69,18 +72,26 @@ def build_delegation_tools(user_id: str) -> list:
             logger.error(f"[JARVIS → KODA] Error: {e}")
             return f"CRITICAL FAILURE: Koda error: {str(e)}. Inform the user."
         
-    # 1. Creamos la función de Lamar (DevOps)
+    # Agent DevOps
     def ask_lamar(devops_task: str) -> str:
         logger.info(f"[JARVIS → LAMAR] user={user_id} | task={devops_task[:80]}")
         try:
             agent = get_lamar(user_id=user_id)
             result = agent.run_task(instruction=devops_task, user_id=user_id)
-            
-            # Lamar va a devolver los tokens, así que podemos loguearlos aquí si queremos
-            tokens = result.get("metadata", {}).get("tokens", "No token info")
+        
+            if isinstance(result, dict):
+                metadata = result.get("metadata", {})
+                tokens = metadata.get("tokens", "No token info")
+                output = result.get("output", "Success but no output.")
+            else:
+                output = str(result)
+                tokens = "No token info (Result was not a dict)"
+
             logger.info(f"[LAMAR TOKENS] {tokens}")
             
-            return f"Lamar (DevOps) Execution Report:\n{result.get('output', 'Success but no output.')}"
+            # Lo importante: Jarvis DEBE leer esto.
+            return f"Lamar (DevOps) Execution Report:\n{output}"
+            
         except Exception as e:
             logger.error(f"[JARVIS → LAMAR] Error: {str(e)}")
             return f"CRITICAL FAILURE: Lamar error: {str(e)}. Inform the admin immediately."

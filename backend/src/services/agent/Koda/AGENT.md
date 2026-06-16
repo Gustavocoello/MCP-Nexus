@@ -57,6 +57,8 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 
 | Action | Skill |
 |--------|-------|
+| "diseño frontend", "auditoría UI", "mejorar interfaz", "accesibilidad web", "optimizar UX", "refinar diseño", "animaciones UI", "paleta de colores", "tipografía web", "layout responsive", "polish UI", "criticar diseño", "harden frontend", "delight UI", "live edit UI" | `impeccable` |
+| "ui design", "emil kowalski", "frontend design", "animations", "ui polish" | `emil-design-eng` |
 | UI design assistance | `frontend-design` |
 | diseño de interfaz | `frontend-design` |
 | frontend design | `frontend-design` |

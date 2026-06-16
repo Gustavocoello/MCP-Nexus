@@ -116,6 +116,14 @@ After ask_nexus creates the SKILL.md:
 6. NEVER run skill-sync automatically — it modifies multiple AGENTS.md files
    and requires explicit user approval every time
 
+## File Writes in skills/ — ALWAYS use ask_nexus, NEVER ask_koda
+
+For ANY operation that creates or modifies files inside skills/:
+- Use ask_nexus with write_file (overwrite=True for edits)
+- NEVER delegate to ask_koda for this — Koda's sandbox cannot access
+  the host filesystem's skills/ directory
+- Koda is for code tasks only, not for maintaining the skills system
+
 ## Downloading & Normalizing External Skills
 
 When the user asks to download or install an external skill from a GitHub or skills.sh URL:
@@ -326,6 +334,8 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 
 | Action | Skill |
 |--------|-------|
+| "diseño frontend", "auditoría UI", "mejorar interfaz", "accesibilidad web", "optimizar UX", "refinar diseño", "animaciones UI", "paleta de colores", "tipografía web", "layout responsive", "polish UI", "criticar diseño", "harden frontend", "delight UI", "live edit UI" | `impeccable` |
+| "ui design", "emil kowalski", "frontend design", "animations", "ui polish" | `emil-design-eng` |
 | After creating/modifying a skill | `skill-sync` |
 | Creating new skills | `skill-creator` |
 | Regenerate AGENTS.md Auto-invoke tables (sync.sh) | `skill-sync` |
