@@ -68,7 +68,7 @@ get_agents_path() {
 
         # --- Project Domains (Viven fuera de los Agentes, usamos WORKSPACE_ROOT) ---
         ui)         echo "$WORKSPACE_ROOT/frontend/AGENTS.md" ;;
-        api)        echo "$WORKSPACE_ROOT/backend/AGENTS.md" ;;
+        api)        echo "$WORKSPACE_ROOT/backend/api/AGENTS.md" ;;
         database)   echo "$WORKSPACE_ROOT/backend/src/database/AGENTS.md" ;;
         mcp_server) echo "$WORKSPACE_ROOT/backend/servers/AGENTS.md" ;;
         

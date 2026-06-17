@@ -102,12 +102,7 @@ def build_delegation_tools(user_id: str) -> list:
             func=ask_nexus,
             name="ask_nexus",
             description=(
-                "Use for: Google Calendar, Notion, file system READ operations, "
-                "and skill downloads from GitHub. "
-                "EXCEPTION — skill download: multi-step task allowed as ONE bounded operation. "
-                "ALL OTHER TASKS: ONE instruction only. Report result. STOP. "
-                "NEVER follow up automatically. Wait for user input after each result. "
-                "CRITICAL: Web automation/scraping is DEPRECATED. Do not use Nexus for web tasks."
+                "Use for: Google Calendar, Notion and productivity"
             )
         ),
         Tool.from_function(
@@ -126,8 +121,6 @@ def build_delegation_tools(user_id: str) -> list:
             description=(
                 "Use for: writing/debugging code, patching files, GitHub write operations "
                 "(branch, commit, PR), sandbox terminal commands. "
-                "Do NOT use for skill downloads, file exploration, or research. "
-                "Do NOT delegate failed run_bash commands here to fix or retry."
             )
         ),
     ]

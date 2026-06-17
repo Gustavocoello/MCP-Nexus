@@ -24,7 +24,7 @@
     "framer-motion": "^12.23.12",
     "gsap": "^3.14.2",
     "highlight.js": "^11.8.0",
-    "jarvis-sdk-ui": "link:C:/work/mcp-nexus/jarvis-sdk/jarvis-ui",
+    "jarvis-sdk-ui": "link:../sdk/jarvis-ui",
     "lucide-react": "^0.562.0",
     "markdown-it": "^13.0.1",
     "punycode": "^2.3.1",

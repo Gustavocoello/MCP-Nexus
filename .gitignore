@@ -61,7 +61,8 @@ dist-ssr
 /backend/.env
 start_worker.bat
 worker_invisible.vbs
-espacio_trabajo/
+work_space/
+outputs/
 __pycache__/
 /__pycache__
 __pycache__/

@@ -28,16 +28,12 @@ class BaseAgent:
         self.llm = llm
         self.tools = tools
         self.system_prompt = template
-        
-        # Checkpointer: Es la "memoria" que permite pausar y reanudar el Grafo
         self.memory = MemorySaver()
-        
-        # Construimos el Grafo del Agente
-        self.app = create_react_agent(
+        self.app = create_react_agent(          # Construimos el Grafo del Agente
             model=self.llm,
             tools=self.tools,
-            state_modifier=self.system_prompt, # Reemplaza el PromptTemplate
-            checkpointer=self.memory # Fundamental para el HITL
+            state_modifier=self.system_prompt,  # Reemplaza el PromptTemplate
+            checkpointer=self.memory            # Fundamental para el HITL
         )
 
     def _save_llm_log(self, user_id, chat_id, cb, response_time, status="success"):

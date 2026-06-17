@@ -236,6 +236,6 @@ async def mcp_list_skills(context: Context):
     return list_skills(user_id=user_id)
 
 if __name__ == "__main__":
-    keep_alive_mcp()
+    #keep_alive_mcp()
     port = int(os.getenv("PORT", 8003))
     uvicorn.run(app, host="0.0.0.0", port=port)
