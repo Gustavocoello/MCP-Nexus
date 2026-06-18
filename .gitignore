@@ -81,3 +81,4 @@ credentials/
 *backup.sql
 *.sql
 sdk/
+openspec/

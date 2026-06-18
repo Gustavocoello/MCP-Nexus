@@ -16,11 +16,19 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 |--------|-------|
 | "diseño frontend", "auditoría UI", "mejorar interfaz", "accesibilidad web", "optimizar UX", "refinar diseño", "animaciones UI", "paleta de colores", "tipografía web", "layout responsive", "polish UI", "criticar diseño", "harden frontend", "delight UI", "live edit UI" | `impeccable` |
 | "ui design", "emil kowalski", "frontend design", "animations", "ui polish" | `emil-design-eng` |
+| Cuando el usuario dice "menos formal | `human-tone` |
+| Cuando el usuario pide "hablar más natural | `human-tone` |
+| Cuando el usuario quiere "evitar detección de IA | `human-tone` |
+| Cuando el usuario solicita "tono humano | `human-tone` |
 | UI design assistance | `frontend-design` |
+| animaciones en React | `motion-framer` |
+| diseño de interacciones UI | `motion-framer` |
 | diseño de interfaz | `frontend-design` |
+| efectos de hover/tap/drag | `motion-framer` |
 | frontend design | `frontend-design` |
 | guidance visual | `frontend-design` |
 | react, nextjs, performance, best-practices | `vercel-react-best-practices` |
+| transiciones de página | `motion-framer` |
 
 ---
 

@@ -44,11 +44,29 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | Syncing MCP documentation to the agents | `mcp-sync-docs` |
 | Troubleshoot why a skill is missing from AGENTS.md auto-invoke | `skill-sync` |
 | UI design assistance | `frontend-design` |
+| actualizar specs principales | `openspec-sync-specs` |
+| analizar requisitos | `openspec-explore` |
+| animaciones en React | `motion-framer` |
+| aplicar cambios de delta specs | `openspec-sync-specs` |
+| archivar un cambio OpenSpec | `openspec-archive-change` |
+| continuar implementación de un cambio | `openspec-apply-change` |
+| crear propuesta OpenSpec | `openspec-propose` |
+| diseño de interacciones UI | `motion-framer` |
 | diseño de interfaz | `frontend-design` |
+| efectos de hover/tap/drag | `motion-framer` |
+| explorar ideas | `openspec-explore` |
+| finalizar cambio completado | `openspec-archive-change` |
 | frontend design | `frontend-design` |
+| generar diseño y tareas | `openspec-propose` |
 | guidance visual | `frontend-design` |
-| habla más natural, less formal, more natural tone, responses sound robotic or stiff, respuestas suenan robóticas o formales, suena muy formal, sé más humano | `human-tone` |
+| implementar tareas de un cambio OpenSpec | `openspec-apply-change` |
+| investigar un problema | `openspec-explore` |
+| pensar en voz alta | `openspec-explore` |
+| proponer un nuevo cambio | `openspec-propose` |
 | react, nextjs, performance, best-practices | `vercel-react-best-practices` |
+| sincronizar specs de un cambio | `openspec-sync-specs` |
+| trabajar en tareas de OpenSpec | `openspec-apply-change` |
+| transiciones de página | `motion-framer` |
 
 ---
 

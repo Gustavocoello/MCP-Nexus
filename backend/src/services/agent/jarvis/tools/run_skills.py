@@ -93,10 +93,6 @@ def read_skill(skill_name: str) -> str:
 
 def build_skills_tools(user_id: str) -> list:
 
-    def _list_skills(_: str = "") -> str:
-        logger.info(f"[JARVIS → SKILLS] user={user_id} | list_skills")
-        return list_skills()
-
     def _read_skill(skill_name: str) -> str:
         logger.info(f"[JARVIS → SKILLS] user={user_id} | read_skill={skill_name}")
         return read_skill(skill_name.strip())
@@ -106,16 +102,6 @@ def build_skills_tools(user_id: str) -> list:
         return run_bash(command.strip())
 
     return [
-        Tool.from_function(
-            func=_list_skills,
-            name="list_skills",
-            description=(
-                "Returns a lightweight index (name, description, scope) of all available skills. "
-                "Use when the user asks what skills exist. "
-                "AFTER calling: respond directly to user. STOP. "
-                "Do NOT chain into read_skill or run_bash for informational questions."
-            )
-        ),
         Tool.from_function(
             func=_read_skill,
             name="read_skill",

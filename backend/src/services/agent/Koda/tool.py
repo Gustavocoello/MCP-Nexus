@@ -15,7 +15,6 @@ from .tools.ast_analyzer import get_code_skeleton
 from .tools.github import build_koda_github_tools
 from .tools.context7 import build_koda_context7_tools
 from .tools.files import build_koda_files_tools
-from .tools.files_mcp import build_koda_files_tools_mcp
 from .tools.devtools import build_devtools_tools
 from .tools.rag import get_koda_rag_tools
 
@@ -96,7 +95,6 @@ def build_koda_tools(user_id: str):
         koda_get_code_skeleton,
         *get_koda_rag_tools(user_id),
         *build_koda_files_tools(user_id),
-        *build_koda_files_tools_mcp(user_id),
         *build_koda_github_tools(user_id),
         *build_koda_context7_tools(user_id),
         *build_devtools_tools(user_id)

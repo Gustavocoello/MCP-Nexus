@@ -4,7 +4,7 @@ from langchain_core.tools import tool, Tool
 from langchain_core.tools import StructuredTool
 from .helpers import _clean_id, _parse_args, _parse_mcp_result, _run
 from src.services.mcps.client.client_manager import MCPClientManager
-from src.services.agent.common.mcp_errors import mcp_offline_error, mcp_no_client
+from src.services.agent.common.helpers import mcp_offline_error, mcp_no_client
 
 
 # Base de datos y Chat 

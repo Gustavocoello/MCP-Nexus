@@ -67,7 +67,15 @@ def build_delegation_tools(user_id: str) -> list:
         try:
             agent = get_koda(user_id=user_id)
             result = agent.run_task(instruction=coding_task, user_id=user_id)
-            return f"Koda Execution Report:\n{result.get('output', 'Success but no output.')}"
+            output = result.get('output', 'Success but no output.')
+                        
+            if "offline" in output.lower() or "connection" in output.lower() or "CRITICAL" in output:
+                return (
+                    f"CRITICAL FAILURE IN KODA: {output}\n\n"
+                    "STOP. DO NOT call ask_lamar or any other agent to diagnose this. "
+                    "Report the exact error to the user and wait for instructions."
+                )
+            return f"Koda Execution Report:\n{output}"
         except Exception as e:
             logger.error(f"[JARVIS → KODA] Error: {e}")
             return f"CRITICAL FAILURE: Koda error: {str(e)}. Inform the user."
@@ -119,8 +127,12 @@ def build_delegation_tools(user_id: str) -> list:
             func=ask_koda,
             name="ask_koda",
             description=(
-                "Use for: writing/debugging code, patching files, GitHub write operations "
-                "(branch, commit, PR), sandbox terminal commands. "
+                "Use for: writing/debugging code, patching files, GitHub write operations, "
+                "creating/modifying/renaming/deleting skills, and sandbox terminal commands. "
+                "CRITICAL RULE: If the user asks an INFORMATIONAL question (like 'where is X folder?' "
+                "or 'does X file exist?'), use Koda ONCE to find it, and then STOP IMMEDIATELY. "
+                "Do NOT chain tools, do NOT create files, and do NOT run bash scripts unless "
+                "the user explicitly asked you to create or modify something."
             )
         ),
     ]

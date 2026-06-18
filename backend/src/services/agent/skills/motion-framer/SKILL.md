@@ -1,6 +1,16 @@
 ---
 name: motion-framer
 description: Modern animation library for React and JavaScript. Create smooth, production-ready animations with motion components, variants, gestures (hover/tap/drag), layout animations, AnimatePresence exit animations, spring physics, and scroll-based effects. Use when building interactive UI components, micro-interactions, page transitions, or complex animation sequences.
+metadata:
+  author: jarvis-system
+  version: "1.0"
+  scope: [ui, koda, root, jarvis]
+  auto_invoke:
+    - "animaciones en React"
+    - "diseño de interacciones UI"
+    - "efectos de hover/tap/drag"
+    - "transiciones de página"
+allowed-tools: []
 ---
 
 # Motion & Framer Motion
