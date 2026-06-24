@@ -80,7 +80,6 @@ functions/logs/
 credentials/
 *backup.sql
 *.sql
-sdk/
 openspec/
 
 # Ignorar archivos compilados de Python
