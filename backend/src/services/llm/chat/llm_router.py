@@ -4,6 +4,7 @@ import httpx
 import os, logging
 from dotenv import load_dotenv
 from typing import Callable
+from src.core.logging import get_logger
 
 from openai import OpenAI
 from langchain_openai import ChatOpenAI
@@ -12,6 +13,8 @@ from langchain_core.language_models.chat_models import BaseChatModel
 # CLOUD GCP
 from google.oauth2 import service_account
 import google.auth.transport.requests
+
+logger = get_logger("backend.engine.llm")
 
 class DynamicAuth(httpx.Auth):
     """Intercepta las peticiones HTTP y actualiza el token antes de enviarlas."""
@@ -96,9 +99,9 @@ if gcp_json_str:
             info,
             scopes=["https://www.googleapis.com/auth/cloud-platform"]
         )
-        print("Credenciales cargadas exitosamente desde el .env")
+        logger.info("Credenciales cargadas exitosamente desde el .env")
     except Exception as e:
-        print(f"Error al procesar el JSON del .env: {e}")
+        logger.info(f"Error al procesar el JSON del .env: {e}")
         
 def get_vertex_token():
     """Genera un token fresco para Vertex AI"""

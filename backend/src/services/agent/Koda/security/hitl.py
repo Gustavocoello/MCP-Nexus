@@ -6,19 +6,23 @@ Incluye: detección por regex, log a DB, control de AgentSession (pause/resume/c
 import re
 import uuid
 import json
-from dataclasses import dataclass
-from datetime import datetime, timezone, timedelta
 from typing import Optional
-
+from dataclasses import dataclass
 from sqlalchemy.orm import Session
+from datetime import datetime, timezone, timedelta
 
-from src.database.settings.connection import SessionLocal
+
 from src.core.time_helper import get_now
-
-# Importa los modelos nuevos
+from src.database.settings.connection import SessionLocal
+from src.services.agent.common.utils.session_manager import set_session_waiting
+from .security_guard import evaluate_command_security, evaluate_file_security
 from src.database.models.models import (
-    HITLLog, HITLRiskLevel, HITLVerdict,
-    AgentSession, AgentStatus,
+    HITLLog, 
+    HITLRiskLevel, 
+    HITLVerdict,
+    AgentSession, 
+    AgentStatus, 
+    Chat
 )
 
 
@@ -97,17 +101,21 @@ class HITLResult:
 
 def hitl_check(text: str) -> HITLResult:
     """Evalúa BLOCK primero, luego WARN. Retorna HITLResult."""
-    for level in (HITLRiskLevel.BLOCK, HITLRiskLevel.WARN):
-        for pattern in RULES[level]:
-            if re.search(pattern, text, re.IGNORECASE):
-                return HITLResult(level=level, matched=pattern)
+    status, matched_pattern = evaluate_command_security(text)
+    
+    if status == "BLOCK":
+        return HITLResult(level=HITLRiskLevel.BLOCK, matched=matched_pattern)
+    elif status == "CONFIRM":
+        return HITLResult(level=HITLRiskLevel.WARN, matched=matched_pattern)
+        
     return HITLResult(level=HITLRiskLevel.SAFE)
 
 
 def validate_path(path: str) -> HITLResult:
     """Validación especial para rutas de archivo (read, list)."""
-    if re.search(r"\.\.[/\\]", path):
-        return HITLResult(level=HITLRiskLevel.BLOCK, matched="path traversal")
+    is_safe = evaluate_file_security(path)
+    if not is_safe:
+        return HITLResult(level=HITLRiskLevel.BLOCK, matched="Restricted path or traversal detected")
     return HITLResult(level=HITLRiskLevel.SAFE)
 
 
@@ -174,151 +182,54 @@ def resolve_hitl_log(
         db.commit()
         return True
 
-
-# ─────────────────────────────────────────────────────────────
-#  CONTROL DE SESIÓN LARGA (pause / resume / checkpoint / timeout)
-# ─────────────────────────────────────────────────────────────
-
-def create_agent_session(
-    user_id: str,
-    task_description: str,
-    chat_id: Optional[str] = None,
-    steps_total: Optional[int] = None,
-    timeout_seconds: int = 3600,
-) -> str:
-    """Crea una nueva AgentSession. Retorna el session_id (UUID str)."""
-    session_id = uuid.uuid4()
-    with SessionLocal() as db:
-        session = AgentSession(
-            id               = session_id,
-            user_id          = uuid.UUID(str(user_id)),
-            chat_id          = uuid.UUID(str(chat_id)) if chat_id else None,
-            task_description = task_description,
-            steps_total      = steps_total,
-            timeout_seconds  = timeout_seconds,
-            status           = AgentStatus.RUNNING,
-        )
-        db.add(session)
-        db.commit()
-    return str(session_id)
-
-
-def update_session_step(session_id: str, current_step: str, steps_completed: int) -> None:
-    """Actualiza el paso actual y el heartbeat. Llama esto en cada iteración del agente."""
-    with SessionLocal() as db:
-        session = db.query(AgentSession).filter(AgentSession.id == uuid.UUID(session_id)).first()
-        if not session:
-            return
-        session.current_step    = current_step
-        session.steps_completed = steps_completed
-        session.last_heartbeat  = get_now()
-        db.commit()
-
-
-def save_checkpoint(session_id: str, checkpoint_data: dict) -> None:
-    """Serializa y guarda el estado del agente para poder resumirlo después."""
-    with SessionLocal() as db:
-        session = db.query(AgentSession).filter(AgentSession.id == uuid.UUID(session_id)).first()
-        if not session:
-            return
-        session.checkpoint_data = json.dumps(checkpoint_data, ensure_ascii=False)
-        session.last_heartbeat  = get_now()
-        db.commit()
-
-
-def load_checkpoint(session_id: str) -> Optional[dict]:
-    """Carga el último checkpoint guardado. Retorna None si no existe."""
-    with SessionLocal() as db:
-        session = db.query(AgentSession).filter(AgentSession.id == uuid.UUID(session_id)).first()
-        if not session or not session.checkpoint_data:
-            return None
-        return json.loads(session.checkpoint_data)
-
-
-def pause_session(session_id: str) -> bool:
-    """Pausa la sesión. El agente debe verificar is_paused() en su loop."""
-    with SessionLocal() as db:
-        session = db.query(AgentSession).filter(AgentSession.id == uuid.UUID(session_id)).first()
-        if not session or session.status != AgentStatus.RUNNING:
-            return False
-        session.status    = AgentStatus.PAUSED
-        session.paused_at = get_now()
-        db.commit()
-        return True
-
-
-def resume_session(session_id: str) -> bool:
-    """Reanuda una sesión pausada o en espera de aprobación HITL."""
-    with SessionLocal() as db:
-        session = db.query(AgentSession).filter(AgentSession.id == uuid.UUID(session_id)).first()
-        if not session or session.status not in (AgentStatus.PAUSED, AgentStatus.WAITING):
-            return False
-        session.status         = AgentStatus.RUNNING
-        session.last_heartbeat = get_now()
-        db.commit()
-        return True
-
-
-def complete_session(session_id: str, result_summary: str) -> None:
-    """Marca la sesión como completada."""
-    with SessionLocal() as db:
-        session = db.query(AgentSession).filter(AgentSession.id == uuid.UUID(session_id)).first()
-        if not session:
-            return
-        session.status         = AgentStatus.COMPLETED
-        session.result_summary = result_summary
-        session.completed_at   = get_now()
-        db.commit()
-
-
-def fail_session(session_id: str, error_message: str) -> None:
-    """Marca la sesión como fallida."""
-    with SessionLocal() as db:
-        session = db.query(AgentSession).filter(AgentSession.id == uuid.UUID(session_id)).first()
-        if not session:
-            return
-        session.status        = AgentStatus.FAILED
-        session.error_message = error_message
-        session.completed_at  = get_now()
-        db.commit()
-
-
-def is_paused(session_id: str) -> bool:
-    """
-    El agente llama esto en cada iteración de su loop.
-    Si está PAUSED o WAITING, debe detenerse y esperar.
-    """
-    with SessionLocal() as db:
-        session = db.query(AgentSession).filter(AgentSession.id == uuid.UUID(session_id)).first()
-        if not session:
-            return False
-        return session.status in (AgentStatus.PAUSED, AgentStatus.WAITING)
-
-
-def check_timeout(session_id: str) -> bool:
-    """
-    Verifica si la sesión superó su timeout por inactividad (sin heartbeat).
-    Si sí, la marca como TIMEOUT y retorna True.
-    """
-    with SessionLocal() as db:
-        session = db.query(AgentSession).filter(AgentSession.id == uuid.UUID(session_id)).first()
-        if not session or session.status not in (AgentStatus.RUNNING, AgentStatus.WAITING):
-            return False
-
-        elapsed = (get_now() - session.last_heartbeat).total_seconds()
-        if elapsed > session.timeout_seconds:
-            session.status       = AgentStatus.TIMEOUT
-            session.error_message = f"Sin actividad por {int(elapsed)}s (límite: {session.timeout_seconds}s)"
-            session.completed_at = get_now()
-            db.commit()
-            return True
-        return False
-
-
 # ─────────────────────────────────────────────────────────────
 #  FUNCIÓN COMBINADA PARA LAS TOOLS
 #  Llama esto desde koda_execute_code, koda_patch_file, etc.
 # ─────────────────────────────────────────────────────────────
+def get_pending_hitl_requests(user_id: str) -> list[dict]:
+    """
+    Busca todas las solicitudes HITL en estado PENDING para el usuario.
+    Retorna una lista de diccionarios para el CLI.
+    """
+    with SessionLocal() as db:
+        logs = db.query(HITLLog).filter(
+            HITLLog.user_id == uuid.UUID(str(user_id)),
+            HITLLog.verdict == HITLVerdict.PENDING
+        ).all()
+        
+        return [
+            {
+                "id": log.id,
+                "tool": log.tool_name,
+                "input": log.raw_input,
+                "matched": log.matched_rule,
+                "session_id": str(log.session_id) if log.session_id else None
+            }
+            for log in logs
+        ]
+
+def is_already_approved(session_id: str, tool_name: str, raw_input: str) -> bool:
+    """
+    Revisa si el usuario ya aprobó esta misma acción en los últimos 5 minutos
+    para esta sesión, evitando que el HITL vuelva a bloquearla en el reintento.
+    """
+    if not session_id:
+        return False
+        
+    from datetime import timedelta
+    five_mins_ago = get_now() - timedelta(minutes=5)
+    
+    with SessionLocal() as db:
+        # Buscamos si existe un log aprobado idéntico recientemente
+        approved_log = db.query(HITLLog).filter(
+            HITLLog.session_id == uuid.UUID(session_id),
+            HITLLog.tool_name == tool_name,
+            HITLLog.raw_input == raw_input,
+            HITLLog.verdict == HITLVerdict.APPROVED,
+            HITLLog.created_at >= five_mins_ago
+        ).first()
+        
+        return approved_log is not None
 
 def hitl_guard(
     text: str,
@@ -339,8 +250,10 @@ def hitl_guard(
         - str  con el mensaje de bloqueo/advertencia si se interceptó
         - None si es SAFE (la tool puede continuar)
     """
+    if session_id and is_already_approved(session_id, tool_name, text):
+        return None  # Ya fue aprobado, lo dejamos pasar libremente
+    
     result = hitl_check(text)
-
     if result.is_safe:
         return None
 
@@ -356,12 +269,6 @@ def hitl_guard(
 
     # Si es WARN, marcar la sesión como WAITING
     if result.level == HITLRiskLevel.WARN and session_id:
-        with SessionLocal() as db:
-            session = db.query(AgentSession).filter(
-                AgentSession.id == uuid.UUID(session_id)
-            ).first()
-            if session:
-                session.status = AgentStatus.WAITING
-                db.commit()
+       set_session_waiting(session_id)
 
     return result.block_message() if result.level == HITLRiskLevel.BLOCK else result.warn_message()

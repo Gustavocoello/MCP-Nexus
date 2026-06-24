@@ -41,10 +41,10 @@ LANGUAGE RULE: Always respond in the exact same language the user used.
 class NexusAgent(BaseAgent):
     name = "Nexus"
 
-    def __init__(self, user_id: str):
+    def __init__(self, user_id: str, client_type: str = "web"):
         self.user_id = user_id
         llm = get_langchain_llm()
-        tools = build_nexus_tools(user_id=user_id)
+        tools = build_nexus_tools(user_id=user_id, client_type=client_type)
         template = get_nexus_template()
         super().__init__(llm, tools, template)
 
@@ -52,19 +52,20 @@ class NexusAgent(BaseAgent):
 _nexus_cache: dict[str, tuple] = {}
 _CACHE_TTL = timedelta(hours=12)
 
-def get_nexus(user_id: str) -> NexusAgent:
+def get_nexus(user_id: str, client_type: str = "web") -> NexusAgent:
     """
     Retorna la instancia de NexusAgent para ese user_id.
     La crea si no existe, la reutiliza si ya está en caché.
     Nunca mezcla usuarios.
     """
     now = get_now()
-    if user_id in _nexus_cache:
-        agent, created_at = _nexus_cache[user_id]
+    cache_key = f"{user_id}:{client_type}"
+    if cache_key in _nexus_cache:
+        agent, created_at = _nexus_cache[cache_key]
         if now - created_at < _CACHE_TTL:
             return agent
-    agent = NexusAgent(user_id=user_id)
-    _nexus_cache[user_id] = (agent, now)
+    agent = NexusAgent(user_id=user_id, client_type=client_type)
+    _nexus_cache[cache_key] = (agent, now)
     return agent
 
 

@@ -74,7 +74,7 @@ def internet_search_fallback(query: str) -> str:
 
     return "No se encontraron resultados relevantes en internet."
 
-def get_rag_tool(user_id: str):
+def get_rag_tool(user_id: str, client_type: str = "web"):
     @tool
     def search_my_documents(query: str) -> str:
         """
@@ -116,7 +116,7 @@ def get_rag_tool(user_id: str):
 # ==========================================
 # EXPORTACIÓN DE LA HERRAMIENTA PARA RAGEL
 # ==========================================
-def build_ragel_tools(user_id: str) -> list:
+def build_ragel_tools(user_id: str,  client_type: str = "web") -> list:
     """
     Builds the research and investigation tools for Ragel.
     (user_id is kept for future auditing or personalized RAG databases).
@@ -132,7 +132,7 @@ def build_ragel_tools(user_id: str) -> list:
                 "The Input MUST be strictly the search query string."
             )
         ),
-        get_rag_tool(user_id=user_id)
+        get_rag_tool(user_id=user_id, client_type=client_type)
         # Future tools:
         # read_pdf_document, query_vector_database, etc.
     ]

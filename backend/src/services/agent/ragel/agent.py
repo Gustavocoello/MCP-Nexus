@@ -42,11 +42,11 @@ LANGUAGE RULE: Always respond in the exact same language the user used.
 class RagelAgent(BaseAgent):
     name = "Ragel"
 
-    def __init__(self, user_id: str):
+    def __init__(self, user_id: str, client_type: str = "web"):
         self.user_id = user_id
         llm = get_langchain_llm()
         # Se asume que build_ragel_tools devuelve la lista de herramientas (Tavily, Brave, DDG)
-        tools = build_ragel_tools(user_id=user_id)
+        tools = build_ragel_tools(user_id=user_id, client_type=client_type)
         template = get_ragel_template()
         super().__init__(llm, tools, template)
 
@@ -54,18 +54,19 @@ class RagelAgent(BaseAgent):
 _ragel_cache: dict[str, tuple] = {}
 _CACHE_TTL = timedelta(hours=12)
 
-def get_ragel(user_id: str) -> RagelAgent:
+def get_ragel(user_id: str, client_type: str = "web") -> RagelAgent:
     """
     Returns the RagelAgent instance for the given user_id.
     Creates it if it does not exist, reuses it if in cache.
     """
     now = datetime.now()
-    if user_id in _ragel_cache:
-        agent, created_at = _ragel_cache[user_id]
+    cache_key = f"{user_id}:{client_type}"
+    if cache_key in _ragel_cache:
+        agent, created_at = _ragel_cache[cache_key]
         if now - created_at < _CACHE_TTL:
             return agent
     agent = RagelAgent(user_id=user_id)
-    _ragel_cache[user_id] = (agent, now)
+    _ragel_cache[cache_key] = (agent, now)
     return agent
 
 

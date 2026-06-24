@@ -118,10 +118,6 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 | "ui design", "emil kowalski", "frontend design", "animations", "ui polish" | `emil-design-eng` |
 | After creating/modifying a skill | `skill-sync` |
 | Creating new skills | `skill-creator` |
-| Cuando el usuario dice "menos formal | `human-tone` |
-| Cuando el usuario pide "hablar más natural | `human-tone` |
-| Cuando el usuario quiere "evitar detección de IA | `human-tone` |
-| Cuando el usuario solicita "tono humano | `human-tone` |
 | Regenerate AGENTS.md Auto-invoke tables (sync.sh) | `skill-sync` |
 | Syncing MCP documentation to the agents | `mcp-sync-docs` |
 | Troubleshoot why a skill is missing from AGENTS.md auto-invoke | `skill-sync` |

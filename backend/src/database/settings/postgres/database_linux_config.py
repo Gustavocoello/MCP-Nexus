@@ -4,6 +4,9 @@ from sqlalchemy import text, create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import OperationalError
 from dotenv import load_dotenv
+from src.core.logging import get_logger
+
+logger = get_logger("backend.engine.linux")
 
 load_dotenv()
 
@@ -33,9 +36,9 @@ def get_pg_engine():
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        print(f"🛠 Conexión a Postgres con linux({DB_NAME}) validada")
+        logger.info(f"🛠 Conexión a Postgres con linux({DB_NAME}) validada")
     except Exception as e:
-        print(f"Error en get_pg_engine: {e}")
+        logger.info(f"Error en get_pg_engine: {e}")
         raise e
 
     return engine

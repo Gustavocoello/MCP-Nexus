@@ -102,7 +102,7 @@ def diagnose_all_failed_providers() -> str:
     finally:
         if 'db' in locals(): db.close()
 
-def build_llm_monitor_tools() -> list:
+def build_llm_monitor_tools(user_id: str, client_type: str = "web") -> list:
     return [
         trigger_full_system_check,
         test_single_provider,

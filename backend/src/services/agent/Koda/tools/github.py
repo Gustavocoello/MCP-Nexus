@@ -3,13 +3,13 @@ import json
 import asyncio
 from typing import List, Optional
 from langchain_core.tools import tool, Tool
-from langchain_core.runnables import RunnableConfig
-from langgraph.errors import NodeInterrupt      
-
-from .hitl import hitl_guard, is_paused
+from langchain_core.runnables import RunnableConfig     
+from langgraph.types import interrupt
+from ..security.hitl import hitl_guard
 
 from src.database.models.models import Message
 from src.services.mcps.client.client_manager import MCPClientManager
+from src.services.agent.common.utils.session_manager import is_paused
 from src.services.agent.common.helpers import mcp_offline_error, mcp_no_client, _run, _parse_mcp_result
 
 # ---- MCPS GITHUB TOOLS (EN client_github.py) ----
@@ -141,7 +141,7 @@ def build_koda_github_tools(user_id: str, chat_id: Optional[str] = None, db_sess
         session_id = configurable.get("session_id")
         
         if session_id and is_paused(session_id):
-            raise NodeInterrupt(f"La sesión {session_id} ha sido pausada.")
+            raise interrupt(f"La sesión {session_id} ha sido pausada.")
 
         guard_msg = hitl_guard(
             text=f"GitHub: Create branch '{ref}' on {owner}/{repo}",
@@ -151,7 +151,7 @@ def build_koda_github_tools(user_id: str, chat_id: Optional[str] = None, db_sess
         )
         if guard_msg:
             if "HITL_BLOCKED" in guard_msg: return guard_msg
-            if "HITL_REQUIRES_APPROVAL" in guard_msg: raise NodeInterrupt(guard_msg)
+            if "HITL_REQUIRES_APPROVAL" in guard_msg: raise interrupt(guard_msg)
 
         try:
             client = get_github()
@@ -174,7 +174,7 @@ def build_koda_github_tools(user_id: str, chat_id: Optional[str] = None, db_sess
         session_id = configurable.get("session_id")
         
         if session_id and is_paused(session_id):
-            raise NodeInterrupt(f"La sesión {session_id} ha sido pausada.")
+            raise interrupt(f"La sesión {session_id} ha sido pausada.")
 
         guard_msg = hitl_guard(
             text=f"GitHub: Commit to '{path}' on branch '{branch}'\nMessage: {message}",
@@ -184,7 +184,7 @@ def build_koda_github_tools(user_id: str, chat_id: Optional[str] = None, db_sess
         )
         if guard_msg:
             if "HITL_BLOCKED" in guard_msg: return guard_msg
-            if "HITL_REQUIRES_APPROVAL" in guard_msg: raise NodeInterrupt(guard_msg)
+            if "HITL_REQUIRES_APPROVAL" in guard_msg: raise interrupt(guard_msg)
 
         try:
             client = get_github()
@@ -208,7 +208,7 @@ def build_koda_github_tools(user_id: str, chat_id: Optional[str] = None, db_sess
         session_id = configurable.get("session_id")
         
         if session_id and is_paused(session_id):
-            raise NodeInterrupt(f"La sesión {session_id} ha sido pausada.")
+            raise interrupt(f"La sesión {session_id} ha sido pausada.")
 
         guard_msg = hitl_guard(
             text=f"GitHub: Create Pull Request '{title}' ({head} -> {base})",
@@ -218,7 +218,7 @@ def build_koda_github_tools(user_id: str, chat_id: Optional[str] = None, db_sess
         )
         if guard_msg:
             if "HITL_BLOCKED" in guard_msg: return guard_msg
-            if "HITL_REQUIRES_APPROVAL" in guard_msg: raise NodeInterrupt(guard_msg)
+            if "HITL_REQUIRES_APPROVAL" in guard_msg: raise interrupt(guard_msg)
 
         try:
             client = get_github()

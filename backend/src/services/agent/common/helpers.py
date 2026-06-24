@@ -1,8 +1,18 @@
 # src/services/agent/common/mcp_errors.py
+import re
 import asyncio
 import json
 
 # ---------- HELPERS=------------------
+
+# sdd_orchestador
+def _generate_feature_name(self, prompt: str) -> str:
+    words = re.findall(r'[a-zA-ZáéíóúñÁÉÍÓÚÑ0-9]+', prompt.lower())
+    stopwords = {"el","la","los","las","un","una","de","que","y","a","para","con","se","en","del","vamos","creando"}
+    keywords = [w for w in words if w not in stopwords][:4]
+    return "-".join(keywords) if keywords else "feature-update"
+
+# Agents
 def _run(coro):
     """Helper to run async code from synchronous LangChain tools."""
     import concurrent.futures

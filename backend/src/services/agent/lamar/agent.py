@@ -46,10 +46,10 @@ def get_lamar_template() -> str:
 class LamarAgent(BaseAgent):
     name = "Lamar"
 
-    def __init__(self, user_id: str):
+    def __init__(self, user_id: str, client_type: str = "web"):
         self.user_id = user_id
         llm = get_langchain_llm()
-        tools = build_lamar_tools()
+        tools = build_lamar_tools(user_id, client_type=client_type)
         template = get_lamar_template()
         super().__init__(llm, tools, template)
 
@@ -60,16 +60,17 @@ class LamarAgent(BaseAgent):
 _lamar_cache: dict[str, tuple] = {}
 _CACHE_TTL = timedelta(hours=12)
 
-def get_lamar(user_id: str) -> LamarAgent:
+def get_lamar(user_id: str, client_type: str = "web") -> LamarAgent:
     """Retorna la instancia de LamarAgent para ese user_id, con caché de 12h."""
     now = datetime.now()
-    if user_id in _lamar_cache:
-        agent, created_at = _lamar_cache[user_id]
+    cache_key = f"{user_id}:{client_type}"
+    if cache_key in _lamar_cache:
+        agent, created_at = _lamar_cache[cache_key]
         if now - created_at < _CACHE_TTL:
             return agent
 
-    agent = LamarAgent(user_id=user_id)
-    _lamar_cache[user_id] = (agent, now)
+    agent = LamarAgent(user_id=user_id, client_type=client_type)
+    _lamar_cache[cache_key] = (agent, now)
     return agent
 
 

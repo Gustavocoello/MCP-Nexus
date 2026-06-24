@@ -12,7 +12,7 @@ from src.database.models.models import Message
 
 
 # --- DEVTOOLS TOOLS ---
-def build_devtools_tools(user_id: str, chat_id: Optional[str] = None, db_session=None) -> List[Tool]:
+def build_devtools_tools(user_id: str, chat_id: Optional[str] = None, db_session=None, client_type: str = "web") -> List[Tool]:
     """
     Factory: genera las tools de Chrome DevTools vinculadas a un user_id.
     Se conecta dinámicamente al servidor MCP para extraer las tools y envuelve

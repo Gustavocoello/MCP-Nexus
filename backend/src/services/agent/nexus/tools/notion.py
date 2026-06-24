@@ -12,7 +12,7 @@ from src.database.models.models import Message
 
 # --- NOTION TOOLS ---
 
-def build_notion_tools(user_id: str, chat_id: Optional[str] = None, db_session=None):
+def build_notion_tools(user_id: str, chat_id: Optional[str] = None, db_session=None, client_type: str = "web"):
     """
     Factory: genera las 9 tools de Notion vinculadas a un user_id específico.
     Se llama UNA vez al crear NexusAgent(user_id).

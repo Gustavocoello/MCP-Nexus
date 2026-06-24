@@ -28,5 +28,5 @@ def get_llm_usage_report() -> str:
         if 'db' in locals():
             db.close()
 
-def build_token_monitor_tools() -> list:
+def build_token_monitor_tools(user_id: str, client_type: str = "web") -> list:
     return [get_llm_usage_report]

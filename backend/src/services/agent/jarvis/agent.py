@@ -43,10 +43,10 @@ LANGUAGE RULE: Always respond in the exact same language the user used.
 class JarvisAgent(BaseAgent):
     name = "Jarvis"
 
-    def __init__(self, user_id: str):
+    def __init__(self, user_id: str, client_type: str = "web"):
         self.user_id = user_id
         llm = get_langchain_llm() 
-        tools = build_jarvis_tools(user_id=user_id)
+        tools = build_jarvis_tools(user_id=user_id, client_type=client_type)
         template = get_jarvis_template()
         super().__init__(llm, tools, template)
 
@@ -55,19 +55,20 @@ class JarvisAgent(BaseAgent):
 _jarvis_cache: dict[str, tuple] = {}
 _CACHE_TTL = timedelta(hours=12)
 
-def get_jarvis(user_id: str) -> JarvisAgent:
+def get_jarvis(user_id: str, client_type: str = "web") -> JarvisAgent:
     """
     Retorna la instancia de JarvisAgent (El Orquestador) para ese user_id.
     La crea si no existe, la reutiliza si ya está en caché.
     """
     now = get_now()
-    if user_id in _jarvis_cache:
-        agent, created_at = _jarvis_cache[user_id]
+    cache_key = f"{user_id}:{client_type}"  # distingue sesión CLI vs web del mismo user
+    if cache_key in _jarvis_cache:
+        agent, created_at = _jarvis_cache[cache_key]
         if now - created_at < _CACHE_TTL:
             return agent
     
-    agent = JarvisAgent(user_id=user_id)
-    _jarvis_cache[user_id] = (agent, now)
+    agent = JarvisAgent(user_id=user_id, client_type=client_type)
+    _jarvis_cache[cache_key] = (agent, now)
     return agent
 
 if __name__ == "__main__":

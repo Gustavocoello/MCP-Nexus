@@ -132,7 +132,7 @@ def ping_single_service(tool_input: str) -> str:
     alive = status_code in [200, 201]
     return f"service: {canonical}\nstatus: {'ok' if alive else 'down'}\ncode: {status_code}\nurl: {url}"
 
-def build_service_pinger_tools() -> list:
+def build_service_pinger_tools(user_id: str, client_type: str = "web") -> list:
     return [
         ping_services, 
         ping_single_service

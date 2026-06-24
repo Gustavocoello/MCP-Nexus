@@ -11,7 +11,7 @@ from src.database.models.models import Message
 
 
 # --- GITHUB TOOLS ---    
-def build_github_tools(user_id: str, chat_id: Optional[str] = None, db_session=None):
+def build_github_tools(user_id: str, chat_id: Optional[str] = None, db_session=None,  client_type: str = "web"):
     """
     Factory: Genera las herramientas de GitHub para Koda.
     Incluye protección HITL para acciones de escritura (ramas, commits, PRs).

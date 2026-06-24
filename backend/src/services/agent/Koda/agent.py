@@ -1,11 +1,19 @@
 # src/services/agent/Koda/agent.py
+
+import logging
+logging.getLogger('apscheduler').setLevel(logging.WARNING)
+logging.getLogger('urllib3').setLevel(logging.WARNING)
+logging.getLogger('tzlocal').setLevel(logging.WARNING)
+logging.getLogger('mcp.client.streamable_http').setLevel(logging.WARNING)
+logging.getLogger('langchain_core').setLevel(logging.WARNING)
+logging.getLogger('langgraph').setLevel(logging.WARNING)
+
 import os
 import sys
 import pytz
 import uuid
 from pathlib import Path
 from datetime import datetime, timedelta
-import logging
 from dotenv import load_dotenv
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -14,17 +22,16 @@ current_dir = Path(__file__).resolve().parent.parent.parent
 backend_dir = current_dir.parent.parent
 sys.path.insert(0, str(backend_dir))
 
+from src.core.logging import get_logger
 from src.core.time_helper import get_now
 from src.database.models.models import AgentSession, AgentStatus
-from src.services.agent.Koda.tools.hitl import check_timeout
-logging.getLogger('apscheduler').setLevel(logging.WARNING)
-logging.getLogger('urllib3').setLevel(logging.WARNING)
-logging.getLogger('tzlocal').setLevel(logging.WARNING)
-logging.getLogger('mcp.client.streamable_http').setLevel(logging.WARNING)
+from src.services.agent.common.utils.session_manager import check_timeout
 from src.database.settings.connection import SessionLocal
 from src.services.agent.common.base_agent import BaseAgent
 from src.services.agent.Koda.tool import build_koda_tools
 from src.services.llm.chat.llm_router import get_langchain_llm
+
+logger = get_logger("backend.agents.koda")
 
 load_dotenv()
 
@@ -53,7 +60,7 @@ def start_koda_scheduler():
         _scheduler.add_job(job_check_timeouts, 'interval', minutes=10)
         _scheduler.start()
         _scheduler_started = True
-        print("⏰ [KODA] Scheduler de timeouts iniciado (Ciclo de 10 min).")
+        logger.info("⏰ [KODA] Scheduler de timeouts iniciado (Ciclo de 10 min).")
 
 # Iniciar el scheduler automáticamente al importar este módulo
 start_koda_scheduler()
@@ -86,10 +93,10 @@ LANGUAGE RULE: Always respond in the exact same language the user used.
 class KodaAgent(BaseAgent):
     name = "Koda"
 
-    def __init__(self, user_id: str):
+    def __init__(self, user_id: str, client_type: str = "web"):
         self.user_id = user_id
         llm = get_langchain_llm() 
-        tools = build_koda_tools(user_id=user_id)
+        tools = build_koda_tools(user_id=user_id, client_type=client_type) # Distinguir entre CLI & UI
         template = get_koda_template()
         super().__init__(llm, tools, template)
 
@@ -97,18 +104,19 @@ class KodaAgent(BaseAgent):
 _koda_cache: dict[str, tuple] = {}
 _CACHE_TTL = timedelta(hours=12)
 
-def get_koda(user_id: str) -> KodaAgent:
+def get_koda(user_id: str, client_type: str = "web") -> KodaAgent:
     """
     Retorna la instancia de KodaAgent para ese user_id.
     """
     now = datetime.now()
-    if user_id in _koda_cache:
-        agent, created_at = _koda_cache[user_id]
+    cache_key = f"{user_id}:{client_type}"
+    if cache_key in _koda_cache:
+        agent, created_at = _koda_cache[cache_key]
         if now - created_at < _CACHE_TTL:
             return agent
     
-    agent = KodaAgent(user_id=user_id)
-    _koda_cache[user_id] = (agent, now)
+    agent = KodaAgent(user_id=user_id, client_type=client_type)
+    _koda_cache[cache_key] = (agent, now)
     return agent
 
 

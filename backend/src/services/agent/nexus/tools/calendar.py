@@ -10,7 +10,7 @@ from src.services.agent.common.helpers import mcp_offline_error, mcp_no_client
 from src.database.models.models import Message
 
 # --- CALENDAR TOOLS ---
-def build_calendar_tools(user_id: str, chat_id: Optional[str] = None, db_session=None):
+def build_calendar_tools(user_id: str, chat_id: Optional[str] = None, db_session=None, client_type: str = "web"):
     """
     Factory: genera las 12 tools de Google Calendar vinculadas a un user_id.
     """

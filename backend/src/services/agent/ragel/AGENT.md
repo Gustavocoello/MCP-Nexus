@@ -33,10 +33,6 @@ When performing these actions, ALWAYS invoke the corresponding skill FIRST:
 
 | Action | Skill |
 |--------|-------|
-| Cuando el usuario dice "menos formal | `human-tone` |
-| Cuando el usuario pide "hablar más natural | `human-tone` |
-| Cuando el usuario quiere "evitar detección de IA | `human-tone` |
-| Cuando el usuario solicita "tono humano | `human-tone` |
 | configurar runners en GitHub Actions | `github-actions-docs` |
 | crear acciones reutilizables en GitHub | `github-actions-docs` |
 | cómo escribir workflows en GitHub Actions | `github-actions-docs` |

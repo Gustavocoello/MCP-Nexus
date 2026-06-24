@@ -6,9 +6,9 @@ from typing import List, Optional
 from langchain_core.tools import tool, Tool
 from langchain_core.tools import StructuredTool
 from langchain_core.runnables import RunnableConfig
-from langgraph.errors import NodeInterrupt      
+from langgraph.types import interrupt      
 
-from .tools.hitl import hitl_guard, is_paused
+from .security.hitl import hitl_guard
 from .tools.sandbox_client import execute_in_sandbox
 from .tools.web_scraper import scrape_technical_doc
 from .tools.ast_analyzer import get_code_skeleton
@@ -20,6 +20,7 @@ from .tools.rag import get_koda_rag_tools
 
 from src.services.rag.pipeline import RAGPipeline
 from src.database.settings.connection import SessionLocal
+from src.services.agent.common.utils.session_manager import is_paused
 
 
 @tool("koda_execute_code")
@@ -42,7 +43,7 @@ def koda_execute_code(command: str, config: RunnableConfig) -> str:
 
     # 2. Verificar si la sesión fue pausada manualmente por el Admin
     if session_id and is_paused(session_id):
-        raise NodeInterrupt(f"La sesión {session_id} ha sido pausada. Esperando reanudación.")
+        raise interrupt(f"La sesión {session_id} ha sido pausada. Esperando reanudación.")
 
     # 3. Pasar por el Guardián HITL
     if user_id:
@@ -60,7 +61,7 @@ def koda_execute_code(command: str, config: RunnableConfig) -> str:
             
             if "HITL_REQUIRES_APPROVAL" in guard_msg:
                 # Riesgo medio: Detenemos la ejecución del grafo completamente.
-                raise NodeInterrupt(guard_msg)
+                raise interrupt(guard_msg)
 
     # 4. Si todo está SAFE o ya fue aprobado, ejecutar:
     return execute_in_sandbox(command)
@@ -87,10 +88,10 @@ def koda_get_code_skeleton(file_path: str) -> str:
 
 # TOOLS TEMPLATE AGENT
 
-def build_koda_tools(user_id: str):
+def build_koda_tools(user_id: str, client_type: str = "Web"):
     """Retorna la lista de herramientas disponibles para Koda."""
-    return [
-        koda_execute_code,
+    
+    base_tools = [
         koda_read_technical_doc,
         koda_get_code_skeleton,
         *get_koda_rag_tools(user_id),
@@ -99,3 +100,9 @@ def build_koda_tools(user_id: str):
         *build_koda_context7_tools(user_id),
         *build_devtools_tools(user_id)
     ]
+    
+    if client_type != "cli":
+       base_tools.insert(0, koda_execute_code)
+
+    return base_tools
+    
