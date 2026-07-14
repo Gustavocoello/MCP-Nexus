@@ -76,6 +76,9 @@ class Message(Base):
     __tablename__ = 'message'
     id         = Column(Integer, primary_key=True, autoincrement=True)
     chat_id    = Column(UUID(as_uuid=True), ForeignKey('chat.id'), nullable=False)
+    session_id = Column(UUID(as_uuid=True), ForeignKey('agent_sessions.id'), nullable=True)
+    agent_name = Column(String(50), nullable=True, default="jarvis")
+    is_internal = Column(Boolean, default=False) # Pensamientos de los agentes
     role       = Column(String(16), nullable=False) # 'user', 'assistant', 'system'
     content    = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), default=get_now)
@@ -247,10 +250,12 @@ class AgentSession(Base):
     """
     __tablename__ = "agent_sessions"
  
-    id              = Column(UUID(as_uuid=True), primary_key=True)
-    user_id         = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    chat_id         = Column(UUID(as_uuid=True), ForeignKey("chat.id"),  nullable=True)
-    status          = Column(PgEnum(AgentStatus), nullable=False, default=AgentStatus.RUNNING, index=True)
+    id               = Column(UUID(as_uuid=True), primary_key=True)
+    user_id          = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    chat_id          = Column(UUID(as_uuid=True), ForeignKey("chat.id"),  nullable=True)
+    thread_id        = Column(String(255), unique=True, index=True, nullable=True)
+    assigned_agent   = Column(String(50), nullable=False)
+    status           = Column(PgEnum(AgentStatus), nullable=False, default=AgentStatus.RUNNING, index=True)
     task_description = Column(Text, nullable=True)        # Tarea y progreso - resumen de lo que hace Koda
     current_step     = Column(String(255), nullable=True) # ej: "running tests", "installing deps"
     steps_completed  = Column(Integer, default=0)

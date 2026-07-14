@@ -17,12 +17,15 @@ def create_agent_session(
     user_id: str,
     task_description: str,
     chat_id: Optional[str] = None,
+    thread_id: Optional[str] = None,
+    assigned_agent: str = "jarvis",
     steps_total: Optional[int] = None,
     timeout_seconds: int = 3600,
 ) -> str:
     """Crea una nueva AgentSession. Retorna el session_id (UUID str)."""
     session_id = uuid.uuid4()
     with SessionLocal() as db:
+        parsed_user_id = uuid.UUID(str(user_id))
         if chat_id:
             parsed_chat_id = uuid.UUID(str(chat_id))
             existing_chat = db.query(Chat).filter(Chat.id == parsed_chat_id).first()
@@ -30,7 +33,10 @@ def create_agent_session(
                 clean_desc = task_description.replace('\n', ' ').strip() if task_description else "Sesión de Koda"
                 
                 # --- NUEVO: Borramos la etiqueta de sistema del título ---
-                clean_desc = re.sub(r'\[SYSTEM:.*?\]', '', clean_desc).strip()
+                clean_desc = re.sub(r'\[SYSTEM:.*?\]', '', clean_desc, flags=re.DOTALL).strip()
+                # Evitamos que un comando se vuelva un chat
+                if clean_desc.startswith('/'):
+                    clean_desc = "Comando de Sistema"
                 if not clean_desc: 
                     clean_desc = "Sesión de Agente"
                 # ---------------------------------------------------------
@@ -38,17 +44,21 @@ def create_agent_session(
                 short_title = (clean_desc[:45] + "...") if len(clean_desc) > 45 else clean_desc
                 new_chat = Chat(
                     id=parsed_chat_id,
-                    user_id= uuid.UUID(str(user_id)),
+                    user_id= parsed_user_id,
                     title=short_title,
                     summary=clean_desc
                 )
                 db.add(new_chat)
                 db.commit()
+        else:
+            parsed_chat_id = None
                 
         session = AgentSession(
             id               = session_id,
-            user_id          = uuid.UUID(str(user_id)),
-            chat_id          = uuid.UUID(str(chat_id)) if chat_id else None,
+            user_id          = parsed_user_id,
+            chat_id          = parsed_chat_id,
+            thread_id        = thread_id,
+            assigned_agent   = assigned_agent,
             task_description = task_description,
             steps_total      = steps_total,
             timeout_seconds  = timeout_seconds,

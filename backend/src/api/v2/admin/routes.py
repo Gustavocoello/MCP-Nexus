@@ -15,7 +15,8 @@ from src.database.settings.connection import get_db
 from src.services.auth.auth.auth_middleware import get_current_user
 
 # Importa las funciones de tu hitl.py (Asumo que estas manejan su propia DB interna)
-from src.services.agent.Koda.tools.hitl import resolve_hitl_log, resume_session, pause_session
+from src.services.agent.Koda.security.hitl import resolve_hitl_log
+from src.services.agent.common.utils.session_manager import resume_session, pause_session
 
 logger = get_logger(__name__)
 
